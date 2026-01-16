@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { EditorView, keymap, placeholder } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
@@ -27,14 +27,30 @@ const languages: Record<string, () => ReturnType<typeof javascript>> = {
   markdown: markdown,
 };
 
+const LANGUAGE_OPTIONS = [
+  { value: 'plaintext', label: 'Plain Text' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'jsx', label: 'JSX' },
+  { value: 'tsx', label: 'TSX' },
+  { value: 'python', label: 'Python' },
+  { value: 'rust', label: 'Rust' },
+  { value: 'html', label: 'HTML' },
+  { value: 'css', label: 'CSS' },
+  { value: 'json', label: 'JSON' },
+  { value: 'markdown', label: 'Markdown' },
+];
+
 export function EditorWindow() {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  const { content, setContent, language, stats, isVisible } = useEditorStore();
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const { content, setContent, language, setLanguage, stats, isVisible } = useEditorStore();
   const { settings } = useSettingsStore();
   const { isProFeatureEnabled } = useLicenseStore();
 
   const hasStatsDisplay = isProFeatureEnabled('stats_display');
+  const hasSyntaxHighlighting = isProFeatureEnabled('syntax_highlighting');
 
   // Focus editor when window becomes visible
   useEffect(() => {
@@ -133,7 +149,41 @@ export function EditorWindow() {
               <span className="text-[var(--editor-muted)] text-xs">Pro: Stats display</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* Language Selector */}
+            <div className="relative">
+              {hasSyntaxHighlighting ? (
+                <>
+                  <button
+                    onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                    className="text-xs px-2 py-1 rounded bg-[var(--editor-surface)] border border-[var(--editor-border)] hover:border-[var(--editor-accent)] transition-colors"
+                  >
+                    {LANGUAGE_OPTIONS.find(l => l.value === language)?.label || 'Plain Text'}
+                    <span className="ml-1 opacity-50">▼</span>
+                  </button>
+                  {showLanguageDropdown && (
+                    <div className="absolute bottom-full mb-1 right-0 bg-[var(--editor-bg)] border border-[var(--editor-border)] rounded shadow-lg z-50 min-w-[140px] max-h-[200px] overflow-y-auto">
+                      {LANGUAGE_OPTIONS.map((lang) => (
+                        <button
+                          key={lang.value}
+                          onClick={() => {
+                            setLanguage(lang.value);
+                            setShowLanguageDropdown(false);
+                          }}
+                          className={`w-full text-left text-xs px-3 py-1.5 hover:bg-[var(--editor-surface)] ${
+                            language === lang.value ? 'text-[var(--editor-accent)]' : ''
+                          }`}
+                        >
+                          {lang.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <span className="text-[var(--editor-muted)] text-xs">Pro: Syntax</span>
+              )}
+            </div>
             <span className="kbd">⌘⏎</span>
             <span>Copy</span>
             <span className="kbd">ESC</span>

@@ -237,6 +237,7 @@ fn get_license_status() -> Result<LicenseStatusInfo, String> {
 fn check_feature_enabled(feature: String) -> Result<bool, String> {
     let pro_feature = match feature.as_str() {
         "history" => ProFeature::History,
+        "syntax_highlighting" => ProFeature::SyntaxHighlighting,
         "snippets" => ProFeature::Snippets,
         "custom_themes" => ProFeature::CustomThemes,
         "stats_display" => ProFeature::StatsDisplay,

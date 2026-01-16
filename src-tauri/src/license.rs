@@ -79,6 +79,7 @@ impl Default for LicenseStatus {
 #[serde(rename_all = "snake_case")]
 pub enum ProFeature {
     History,
+    SyntaxHighlighting,
     Snippets,
     CustomThemes,
     StatsDisplay,
@@ -515,6 +516,7 @@ pub fn is_feature_enabled(_feature: ProFeature) -> bool {
 pub fn get_feature_status() -> Vec<(ProFeature, bool)> {
     let features = vec![
         ProFeature::History,
+        ProFeature::SyntaxHighlighting,
         ProFeature::Snippets,
         ProFeature::CustomThemes,
         ProFeature::StatsDisplay,
