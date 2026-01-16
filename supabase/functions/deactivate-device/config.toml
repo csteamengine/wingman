@@ -1,0 +1,3 @@
+# Allow requests with publishable API key (no JWT required)
+# The function validates the license key before deactivating
+verify_jwt = false

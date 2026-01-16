@@ -1,0 +1,3 @@
+# Allow requests with publishable API key (no JWT required)
+# The function validates licenses using its own logic
+verify_jwt = false
