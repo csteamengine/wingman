@@ -578,3 +578,358 @@ body {
     text-align: center;
   }
 }
+
+/* How It Works Section */
+.how-it-works {
+  padding: 6rem 2rem;
+  background: var(--bg-secondary);
+}
+
+.how-it-works h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.section-subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  margin-bottom: 4rem;
+  font-size: 1.125rem;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.step {
+  text-align: center;
+}
+
+.step-number {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 auto 1.5rem;
+}
+
+.step-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.step-content p {
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+  margin-bottom: 1.5rem;
+}
+
+.step-visual {
+  margin-top: 1rem;
+}
+
+.hotkey-demo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+}
+
+.hotkey-demo kbd {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.mini-window {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 200px;
+  margin: 0 auto;
+}
+
+.mini-header {
+  padding: 0.5rem;
+  background: var(--border);
+  display: flex;
+  gap: 4px;
+}
+
+.mini-header span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.mini-content {
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.paste-demo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--green);
+}
+
+.paste-demo kbd {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+/* Demo Sections */
+.demo-section {
+  padding: 6rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4rem;
+}
+
+.demo-section.reverse {
+  flex-direction: row-reverse;
+}
+
+.demo-content {
+  flex: 1;
+}
+
+.demo-content h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.demo-content p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+}
+
+.demo-list {
+  list-style: none;
+}
+
+.demo-list li {
+  padding: 0.5rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+  color: var(--text-secondary);
+}
+
+.demo-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.demo-visual {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.pro-badge-inline {
+  margin-bottom: 0.5rem;
+}
+
+.pro-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Transform Demo */
+.transform-demo {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.transform-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.window-mock.small {
+  max-width: 220px;
+}
+
+.window-content.compact {
+  padding: 1rem;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.window-content.highlighted {
+  color: var(--accent);
+}
+
+.transform-arrow {
+  color: var(--accent);
+}
+
+/* History Demo */
+.window-title {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.window-header {
+  display: flex;
+  align-items: center;
+}
+
+.history-content {
+  padding: 0 !important;
+}
+
+.history-item {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-item:hover,
+.history-item.selected {
+  background: var(--bg-tertiary);
+}
+
+.history-text {
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Snippets Demo */
+.snippets-content {
+  padding: 0 !important;
+}
+
+.snippet-item {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.snippet-item:last-child {
+  border-bottom: none;
+}
+
+.snippet-item:hover,
+.snippet-item.selected {
+  background: var(--bg-tertiary);
+}
+
+.snippet-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.snippet-preview {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.snippet-tags {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.snippet-tags span {
+  padding: 0.125rem 0.5rem;
+  background: var(--border);
+  border-radius: 4px;
+  font-size: 0.625rem;
+  color: var(--text-muted);
+}
+
+/* Responsive for new sections */
+@media (max-width: 900px) {
+  .steps-grid {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  .demo-section,
+  .demo-section.reverse {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .demo-list li {
+    text-align: left;
+  }
+
+  .transform-demo {
+    flex-direction: column;
+  }
+
+  .transform-arrow {
+    transform: rotate(90deg);
+  }
+}

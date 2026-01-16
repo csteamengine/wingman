@@ -12,7 +12,6 @@ interface ProFeatureGateProps {
 
 const FEATURE_NAMES: Record<ProFeature, string> = {
   history: 'History',
-  syntax_highlighting: 'Syntax Highlighting',
   snippets: 'Snippets',
   custom_themes: 'Custom Themes',
   stats_display: 'Stats Display',

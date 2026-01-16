@@ -20,8 +20,8 @@
       </a>
       <div class="nav-links">
         <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
         <a href="#pricing">Pricing</a>
-        <a href="https://github.com/charliesteenhagen/niblet" target="_blank" rel="noopener">GitHub</a>
       </div>
     </div>
   </nav>
@@ -57,14 +57,67 @@
             </div>
           </div>
           <div class="window-content">
-            <div class="editor-line"><span class="line-number">1</span><span class="code-keyword">const</span> message = <span class="code-string">"Hello, world!"</span>;</div>
-            <div class="editor-line"><span class="line-number">2</span><span class="code-keyword">console</span>.<span class="code-function">log</span>(message);</div>
-            <div class="editor-line"><span class="line-number">3</span><span class="cursor">|</span></div>
+            <div class="editor-line"><span class="line-number">1</span>Quick meeting notes:</div>
+            <div class="editor-line"><span class="line-number">2</span></div>
+            <div class="editor-line"><span class="line-number">3</span>- Review Q4 roadmap</div>
+            <div class="editor-line"><span class="line-number">4</span>- Discuss hiring timeline</div>
+            <div class="editor-line"><span class="line-number">5</span>- Plan team offsite<span class="cursor">|</span></div>
           </div>
           <div class="window-footer">
-            <span class="stat">3 lines</span>
-            <span class="stat">42 chars</span>
-            <span class="stat">JavaScript</span>
+            <span class="stat">5 lines</span>
+            <span class="stat">78 chars</span>
+            <span class="stat">12 words</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how-it-works" class="how-it-works">
+      <h2>How It Works</h2>
+      <p class="section-subtitle">Three steps to faster text composition</p>
+
+      <div class="steps-grid">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h3>Summon</h3>
+            <p>Press your hotkey anywhere to bring up Niblet instantly</p>
+            <div class="step-visual">
+              <div class="hotkey-demo">
+                <kbd>Cmd</kbd> <span>+</span> <kbd>Shift</kbd> <span>+</span> <kbd>Space</kbd>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h3>Compose</h3>
+            <p>Write or transform your text with powerful editing tools</p>
+            <div class="step-visual">
+              <div class="mini-window">
+                <div class="mini-header"><span></span><span></span><span></span></div>
+                <div class="mini-content">Draft your message here...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h3>Paste</h3>
+            <p>Hit Enter and it's automatically pasted into your previous app</p>
+            <div class="step-visual">
+              <div class="paste-demo">
+                <kbd>Enter</kbd>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+                <span>Pasted!</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -112,6 +165,134 @@
           </div>
           <h3>Customizable</h3>
           <p>Set your own hotkey, choose your theme, and make Niblet work the way you want.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Text Transforms Demo -->
+    <section class="demo-section">
+      <div class="demo-content">
+        <h2>Powerful Text Transforms</h2>
+        <p>Transform your text instantly with built-in tools. No more copying to external converters.</p>
+        <ul class="demo-list">
+          <li>UPPERCASE and lowercase conversion</li>
+          <li>Title Case and Sentence case</li>
+          <li>Sort lines alphabetically</li>
+          <li>Remove duplicate lines</li>
+          <li>Trim whitespace</li>
+          <li>Reverse line order</li>
+        </ul>
+      </div>
+      <div class="demo-visual">
+        <div class="transform-demo">
+          <div class="transform-before">
+            <div class="transform-label">Before</div>
+            <div class="window-mock small">
+              <div class="window-header"><div class="window-dots"><span></span><span></span><span></span></div></div>
+              <div class="window-content compact">
+                <div>hello world</div>
+                <div>this is a test</div>
+                <div>make it uppercase</div>
+              </div>
+            </div>
+          </div>
+          <div class="transform-arrow">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </div>
+          <div class="transform-after">
+            <div class="transform-label">After (Uppercase)</div>
+            <div class="window-mock small">
+              <div class="window-header"><div class="window-dots"><span></span><span></span><span></span></div></div>
+              <div class="window-content compact highlighted">
+                <div>HELLO WORLD</div>
+                <div>THIS IS A TEST</div>
+                <div>MAKE IT UPPERCASE</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- History Demo (Pro) -->
+    <section class="demo-section reverse">
+      <div class="demo-content">
+        <h2>Never Lose Your Drafts</h2>
+        <p class="pro-badge-inline"><span class="pro-badge">Pro</span></p>
+        <p>Every text you compose is automatically saved. Search through your last 50 drafts and reuse them instantly.</p>
+        <ul class="demo-list">
+          <li>Automatic draft saving</li>
+          <li>Full-text search</li>
+          <li>Quick selection with keyboard</li>
+          <li>Export history to JSON</li>
+        </ul>
+      </div>
+      <div class="demo-visual">
+        <div class="window-mock">
+          <div class="window-header">
+            <div class="window-dots"><span></span><span></span><span></span></div>
+            <span class="window-title">History</span>
+          </div>
+          <div class="window-content history-content">
+            <div class="history-item selected">
+              <div class="history-text">Quick meeting notes: Review Q4...</div>
+              <div class="history-meta">2m ago - 12 words</div>
+            </div>
+            <div class="history-item">
+              <div class="history-text">Email draft: Hi team, following up...</div>
+              <div class="history-meta">15m ago - 45 words</div>
+            </div>
+            <div class="history-item">
+              <div class="history-text">TODO: Fix login bug, update docs...</div>
+              <div class="history-meta">1h ago - 8 words</div>
+            </div>
+            <div class="history-item">
+              <div class="history-text">API response template for error...</div>
+              <div class="history-meta">3h ago - 23 words</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Snippets Demo (Pro) -->
+    <section class="demo-section">
+      <div class="demo-content">
+        <h2>Save Templates as Snippets</h2>
+        <p class="pro-badge-inline"><span class="pro-badge">Pro</span></p>
+        <p>Create reusable text snippets for things you type often. Email templates, code blocks, signatures, and more.</p>
+        <ul class="demo-list">
+          <li>Organize with tags</li>
+          <li>Quick search and insert</li>
+          <li>Keyboard navigation</li>
+          <li>Unlimited snippets</li>
+        </ul>
+      </div>
+      <div class="demo-visual">
+        <div class="window-mock">
+          <div class="window-header">
+            <div class="window-dots"><span></span><span></span><span></span></div>
+            <span class="window-title">Snippets</span>
+          </div>
+          <div class="window-content snippets-content">
+            <div class="snippet-item selected">
+              <div class="snippet-name">Email Signature</div>
+              <div class="snippet-preview">Best regards,<br>Charlie</div>
+              <div class="snippet-tags"><span>email</span><span>work</span></div>
+            </div>
+            <div class="snippet-item">
+              <div class="snippet-name">Meeting Template</div>
+              <div class="snippet-preview">Attendees:<br>Agenda:<br>Action items:</div>
+              <div class="snippet-tags"><span>meetings</span></div>
+            </div>
+            <div class="snippet-item">
+              <div class="snippet-name">Bug Report</div>
+              <div class="snippet-preview">Steps to reproduce:<br>Expected:<br>Actual:</div>
+              <div class="snippet-tags"><span>dev</span><span>template</span></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -186,13 +367,7 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
-              <strong>Syntax highlighting</strong>
-            </li>
-            <li>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-              <strong>Custom themes</strong>
+              <strong>Custom themes</strong> - Dracula, Nord, Solarized
             </li>
             <li>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -233,8 +408,8 @@
         <span>Niblet</span>
       </div>
       <div class="footer-links">
-        <a href="https://github.com/charliesteenhagen/niblet" target="_blank" rel="noopener">GitHub</a>
         <a href="mailto:support@niblet-editor.app">Support</a>
+        <a href="#pricing">Pricing</a>
       </div>
       <p class="footer-copy">&copy; 2025 <a href="https://niblet-editor.app">niblet-editor.app</a></p>
     </div>
