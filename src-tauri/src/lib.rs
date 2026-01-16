@@ -3,6 +3,7 @@ mod history;
 mod hotkey;
 mod license;
 mod storage;
+mod updater;
 
 use rusqlite::Connection;
 use std::sync::Mutex;
@@ -26,6 +27,7 @@ use license::{
 use storage::{
     load_settings, load_snippets, save_settings, save_snippets, AppSettings, Snippet, SnippetsData,
 };
+use updater::{check_for_updates, UpdateInfo};
 
 pub struct AppState {
     db: Mutex<Connection>,
@@ -252,6 +254,17 @@ async fn refresh_license_status() -> Result<LicenseStatusInfo, String> {
     refresh_license().await.map_err(|e| e.to_string())
 }
 
+// Update commands
+#[tauri::command]
+async fn check_for_app_updates() -> Result<UpdateInfo, String> {
+    check_for_updates().await
+}
+
+#[tauri::command]
+fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
 // Window commands
 #[tauri::command]
 async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Result<(), String> {
@@ -468,6 +481,9 @@ pub fn run() {
             show_window,
             hide_window,
             hide_and_paste,
+            // Updates
+            check_for_app_updates,
+            get_app_version,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

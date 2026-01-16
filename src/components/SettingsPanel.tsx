@@ -1,9 +1,20 @@
 import { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-shell';
 import { useSettings } from '../hooks/useSettings';
 import { useEditorStore } from '../stores/editorStore';
 import { useLicenseStore } from '../stores/licenseStore';
 import { LicenseActivation } from './LicenseActivation';
 import type { ThemeType } from '../types';
+
+interface UpdateInfo {
+  current_version: string;
+  latest_version: string;
+  has_update: boolean;
+  release_url: string;
+  release_notes: string | null;
+  download_url: string | null;
+}
 
 const THEMES: { value: ThemeType; label: string; isPro: boolean }[] = [
   { value: 'dark', label: 'Dark', isPro: false },
@@ -21,8 +32,37 @@ export function SettingsPanel() {
   const { isProFeatureEnabled } = useLicenseStore();
   const [hotkeyInput, setHotkeyInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [appVersion, setAppVersion] = useState<string>('');
 
   const hasCustomThemes = isProFeatureEnabled('custom_themes');
+
+  // Get app version on mount
+  useEffect(() => {
+    invoke<string>('get_app_version').then(setAppVersion).catch(console.error);
+  }, []);
+
+  const checkForUpdates = async () => {
+    setIsCheckingUpdate(true);
+    setUpdateError(null);
+    try {
+      const info = await invoke<UpdateInfo>('check_for_app_updates');
+      setUpdateInfo(info);
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
+  const openDownloadUrl = async () => {
+    const url = updateInfo?.download_url || updateInfo?.release_url;
+    if (url) {
+      await open(url);
+    }
+  };
 
   useEffect(() => {
     if (settings) {
@@ -227,6 +267,48 @@ export function SettingsPanel() {
           <div className="mt-6 pt-6 border-t border-[var(--editor-border)]">
             <p className="text-sm font-medium mb-4">License</p>
             <LicenseActivation />
+          </div>
+
+          {/* Updates Section */}
+          <div className="mt-6 pt-6 border-t border-[var(--editor-border)]">
+            <p className="text-sm font-medium mb-2">Updates</p>
+            <p className="text-xs text-[var(--editor-muted)] mb-3">
+              Current version: {appVersion || 'Loading...'}
+            </p>
+
+            <button
+              onClick={checkForUpdates}
+              disabled={isCheckingUpdate}
+              className="btn bg-[var(--editor-surface)] hover:bg-[var(--editor-border)] disabled:opacity-50"
+            >
+              {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
+            </button>
+
+            {updateError && (
+              <p className="text-xs text-red-400 mt-2">{updateError}</p>
+            )}
+
+            {updateInfo && !updateError && (
+              <div className="mt-3 p-3 rounded-md bg-[var(--editor-surface)] border border-[var(--editor-border)]">
+                {updateInfo.has_update ? (
+                  <>
+                    <p className="text-sm text-green-400 mb-2">
+                      Update available: {updateInfo.latest_version}
+                    </p>
+                    <button
+                      onClick={openDownloadUrl}
+                      className="btn bg-[var(--editor-accent)] text-white text-sm"
+                    >
+                      Download Update
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-sm text-[var(--editor-muted)]">
+                    You're running the latest version
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

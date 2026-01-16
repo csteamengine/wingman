@@ -1,38 +1,35 @@
 // Detect user's operating system and update download links
 (function() {
-  // GitHub releases URL - update this with your actual GitHub username/repo
-  const GITHUB_REPO = 'charliesteenhagen/niblet';
-  const RELEASES_URL = `https://github.com/${GITHUB_REPO}/releases/latest`;
+  const GITHUB_REPO = 'csteamengine/niblet';
+  const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+  const RELEASES_PAGE = `https://github.com/${GITHUB_REPO}/releases/latest`;
 
-  // Download URLs for each platform
-  // These will be GitHub release assets - update filenames as needed
-  const DOWNLOADS = {
+  // Asset filename patterns for each platform
+  const ASSET_PATTERNS = {
     mac: {
-      url: `https://github.com/${GITHUB_REPO}/releases/latest/download/Niblet_universal.dmg`,
+      pattern: /_aarch64\.dmg$/,
       text: 'Download for macOS',
-      altText: 'macOS'
-    },
-    macArm: {
-      url: `https://github.com/${GITHUB_REPO}/releases/latest/download/Niblet_aarch64.dmg`,
-      text: 'Download for macOS (Apple Silicon)',
       altText: 'macOS (Apple Silicon)'
     },
     macIntel: {
-      url: `https://github.com/${GITHUB_REPO}/releases/latest/download/Niblet_x64.dmg`,
+      pattern: /_x64\.dmg$/,
       text: 'Download for macOS (Intel)',
       altText: 'macOS (Intel)'
     },
     windows: {
-      url: `https://github.com/${GITHUB_REPO}/releases/latest/download/Niblet_x64-setup.exe`,
+      pattern: /_x64-setup\.exe$/,
       text: 'Download for Windows',
       altText: 'Windows'
     },
     linux: {
-      url: `https://github.com/${GITHUB_REPO}/releases/latest/download/niblet_amd64.deb`,
+      pattern: /_amd64\.deb$/,
       text: 'Download for Linux',
       altText: 'Linux (.deb)'
     }
   };
+
+  let releaseData = null;
+  let downloadUrls = {};
 
   function detectOS() {
     const userAgent = navigator.userAgent.toLowerCase();
@@ -45,7 +42,7 @@
     } else if (platform.includes('linux') || userAgent.includes('linux')) {
       return 'linux';
     }
-    return 'mac'; // Default to macOS
+    return 'mac';
   }
 
   function getAlternateOS(currentOS) {
@@ -54,11 +51,53 @@
     return 'mac';
   }
 
+  function findAssetUrl(assets, pattern) {
+    const asset = assets.find(a => pattern.test(a.name));
+    return asset ? asset.browser_download_url : null;
+  }
+
+  async function fetchLatestRelease() {
+    try {
+      const response = await fetch(GITHUB_API_URL);
+      if (!response.ok) throw new Error('Failed to fetch release');
+      releaseData = await response.json();
+
+      // Map assets to download URLs
+      for (const [key, config] of Object.entries(ASSET_PATTERNS)) {
+        const url = findAssetUrl(releaseData.assets, config.pattern);
+        if (url) {
+          downloadUrls[key] = {
+            url,
+            text: config.text,
+            altText: config.altText
+          };
+        }
+      }
+
+      // Update version display if element exists
+      const versionEl = document.getElementById('version');
+      if (versionEl && releaseData.tag_name) {
+        versionEl.textContent = releaseData.tag_name;
+      }
+
+      return true;
+    } catch (error) {
+      console.warn('Could not fetch latest release:', error);
+      // Fallback to releases page
+      downloadUrls = {
+        mac: { url: RELEASES_PAGE, text: 'Download for macOS', altText: 'macOS' },
+        windows: { url: RELEASES_PAGE, text: 'Download for Windows', altText: 'Windows' },
+        linux: { url: RELEASES_PAGE, text: 'Download for Linux', altText: 'Linux' }
+      };
+      return false;
+    }
+  }
+
   function updateDownloadLinks() {
     const os = detectOS();
     const altOS = getAlternateOS(os);
-    const download = DOWNLOADS[os];
-    const altDownload = DOWNLOADS[altOS];
+    const download = downloadUrls[os] || downloadUrls.mac;
+    const altDownload = downloadUrls[altOS] || downloadUrls.windows;
 
     // Update main download buttons
     const downloadBtn = document.getElementById('download-btn');
@@ -66,16 +105,16 @@
     const downloadFree = document.getElementById('download-free');
     const downloadCta = document.getElementById('download-cta');
 
-    if (downloadBtn) {
+    if (downloadBtn && download) {
       downloadBtn.href = download.url;
     }
-    if (downloadText) {
+    if (downloadText && download) {
       downloadText.textContent = download.text;
     }
-    if (downloadFree) {
+    if (downloadFree && download) {
       downloadFree.href = download.url;
     }
-    if (downloadCta) {
+    if (downloadCta && download) {
       downloadCta.href = download.url;
     }
 
@@ -83,23 +122,32 @@
     const otherPlatforms = document.getElementById('other-platforms');
     const altDownloadLink = document.getElementById('alt-download');
 
-    if (altDownloadLink) {
+    if (altDownloadLink && altDownload) {
       altDownloadLink.href = altDownload.url;
       altDownloadLink.textContent = altDownload.altText;
     }
 
     // Show Linux link if on Mac or Windows
-    if (os !== 'linux' && otherPlatforms) {
-      const linuxLink = document.createElement('span');
-      linuxLink.innerHTML = ` and <a href="${DOWNLOADS.linux.url}">${DOWNLOADS.linux.altText}</a>`;
-      otherPlatforms.appendChild(linuxLink);
+    if (os !== 'linux' && otherPlatforms && downloadUrls.linux) {
+      const existingLinux = otherPlatforms.querySelector('.linux-link');
+      if (!existingLinux) {
+        const linuxLink = document.createElement('span');
+        linuxLink.className = 'linux-link';
+        linuxLink.innerHTML = ` and <a href="${downloadUrls.linux.url}">${downloadUrls.linux.altText}</a>`;
+        otherPlatforms.appendChild(linuxLink);
+      }
     }
+  }
+
+  async function init() {
+    await fetchLatestRelease();
+    updateDownloadLinks();
   }
 
   // Run on DOM ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', updateDownloadLinks);
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    updateDownloadLinks();
+    init();
   }
 })();
