@@ -34,8 +34,6 @@ export function EditorWindow() {
   const { settings } = useSettingsStore();
   const { isProFeatureEnabled } = useLicenseStore();
 
-  // Check pro features
-  const hasSyntaxHighlighting = isProFeatureEnabled('syntax_highlighting');
   const hasStatsDisplay = isProFeatureEnabled('stats_display');
 
   // Focus editor when window becomes visible
@@ -49,11 +47,9 @@ export function EditorWindow() {
   }, [isVisible]);
 
   const getLanguageExtension = useCallback(() => {
-    // Only provide syntax highlighting for Pro users
-    if (!hasSyntaxHighlighting) return [];
     const langFn = languages[language];
     return langFn ? [langFn()] : [];
-  }, [language, hasSyntaxHighlighting]);
+  }, [language]);
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -96,7 +92,7 @@ export function EditorWindow() {
     return () => {
       view.destroy();
     };
-  }, [language, settings?.theme, hasSyntaxHighlighting]);
+  }, [language, settings?.theme]);
 
   // Update editor content when it changes externally
   useEffect(() => {

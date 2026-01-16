@@ -80,7 +80,6 @@ export type LicenseStatus = 'valid' | 'grace_period' | 'expired' | 'invalid' | '
 
 export type ProFeature =
   | 'history'
-  | 'syntax_highlighting'
   | 'snippets'
   | 'custom_themes'
   | 'stats_display'
