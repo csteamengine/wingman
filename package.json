@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "release": "./scripts/release.sh"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.1",
