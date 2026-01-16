@@ -44,7 +44,8 @@ async function sendLicenseEmail(email: string, licenseKey: string): Promise<bool
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Niblet <onboarding@resend.dev>", // Update with your verified domain
+        from: "Niblet <noreply@niblet-editor.app>",
+        reply_to: "support@niblet-editor.app",
         to: email,
         subject: "Your Niblet Pro License Key",
         html: `
@@ -70,11 +71,12 @@ async function sendLicenseEmail(email: string, licenseKey: string): Promise<bool
             </ol>
 
             <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6; margin-top: 30px;">
-              If you have any issues, reply to this email and we'll help you out.
+              If you have any issues, reply to this email or contact us at <a href="mailto:support@niblet-editor.app">support@niblet-editor.app</a>.
             </p>
 
             <p style="color: #999; font-size: 14px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
-              — The Niblet Team
+              — The Niblet Team<br>
+              <a href="https://niblet-editor.app" style="color: #999;">niblet-editor.app</a>
             </p>
           </div>
         `,
