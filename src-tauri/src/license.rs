@@ -1,4 +1,4 @@
-//! License management module for Niblet Pro
+//! License management module for Wingman Pro
 //!
 //! Handles device identification, license validation (online/offline),
 //! encrypted cache storage, and feature gating.
@@ -169,7 +169,7 @@ pub fn get_os_name() -> &'static str {
 fn derive_key(device_id: &str) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(device_id.as_bytes());
-    hasher.update(b"niblet-license-key-salt-v1");
+    hasher.update(b"wingman-license-key-salt-v1");
     let result = hasher.finalize();
     let mut key = [0u8; 32];
     key.copy_from_slice(&result);
@@ -230,7 +230,7 @@ fn decrypt_cache(encrypted: &str, device_id: &str) -> Result<LicenseCache, Licen
 fn get_cache_path() -> Result<PathBuf, LicenseError> {
     let data_dir = dirs::data_dir()
         .ok_or_else(|| LicenseError::StorageError("Cannot find data directory".to_string()))?;
-    let app_dir = data_dir.join("com.niblet.app");
+    let app_dir = data_dir.join("com.wingman.app");
     fs::create_dir_all(&app_dir)
         .map_err(|e| LicenseError::StorageError(e.to_string()))?;
     Ok(app_dir.join("license.enc"))

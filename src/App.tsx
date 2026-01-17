@@ -141,7 +141,7 @@ function App() {
         className="h-8 flex items-center justify-center border-b border-[var(--editor-border)] cursor-move select-none rounded-t-xl"
         onMouseDown={handleDragStart}
       >
-        <span className="text-xs text-[var(--editor-muted)] font-medium pointer-events-none">Niblet</span>
+        <span className="text-xs text-[var(--editor-muted)] font-medium pointer-events-none">Wingman</span>
       </div>
 
       {/* License status banner (shows when in grace period or expired) */}

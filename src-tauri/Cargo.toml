@@ -1,15 +1,15 @@
 [package]
-name = "niblet"
+name = "wingman"
 version = "0.2.1"
-description = "Niblet - Cross-Platform Text Composition Tool"
-authors = ["Niblet Contributors"]
+description = "Wingman - Cross-Platform Text Composition Tool"
+authors = ["Wingman Contributors"]
 license = "MIT"
-repository = "https://github.com/charliesteenhagen-wk/niblet"
+repository = "https://github.com/charliesteenhagen-wk/wingman"
 edition = "2021"
 rust-version = "1.77.2"
 
 [lib]
-name = "niblet_lib"
+name = "wingman_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -42,3 +42,5 @@ hostname = "0.4"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.24"
+tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel.git", branch = "v2.1" }
+monitor = { git = "https://github.com/ahkohd/tauri-toolkit.git", branch = "v2" }

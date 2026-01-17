@@ -1,10 +1,10 @@
-# Niblet
+# Wingman
 
 A lightweight, cross-platform text composition tool that provides a floating overlay for quick text editing with clipboard integration.
 
-## What is Niblet?
+## What is Wingman?
 
-Niblet is a desktop application that lets you quickly compose multi-line text before pasting it anywhere. Press a global hotkey, type your text with full editing capabilities, and copy it to clipboard with a single command.
+Wingman is a desktop application that lets you quickly compose multi-line text before pasting it anywhere. Press a global hotkey, type your text with full editing capabilities, and copy it to clipboard with a single command.
 
 ### Key Use Cases
 
@@ -35,20 +35,20 @@ Niblet is a desktop application that lets you quickly compose multi-line text be
 
 ### Download
 
-Download the latest release for your platform from the [Releases page](https://github.com/charliesteenhagen-wk/niblet/releases):
+Download the latest release for your platform from the [Releases page](https://github.com/charliesteenhagen-wk/wingman/releases):
 
-- **macOS (Apple Silicon)**: `Niblet_*_aarch64.dmg`
-- **macOS (Intel)**: `Niblet_*_x64.dmg`
-- **Windows**: `Niblet_*_x64-setup.exe` or `.msi`
-- **Linux**: `Niblet_*_amd64.deb` or `.AppImage`
+- **macOS (Apple Silicon)**: `Wingman_*_aarch64.dmg`
+- **macOS (Intel)**: `Wingman_*_x64.dmg`
+- **Windows**: `Wingman_*_x64-setup.exe` or `.msi`
+- **Linux**: `Wingman_*_amd64.deb` or `.AppImage`
 
 #### macOS: "App is damaged" warning
 
-Since Niblet is not signed with an Apple Developer certificate, macOS will show a warning that the app "is damaged and can't be opened." To fix this:
+Since Wingman is not signed with an Apple Developer certificate, macOS will show a warning that the app "is damaged and can't be opened." To fix this:
 
 1. Open Terminal
-2. Run: `xattr -cr /Applications/Niblet.app`
-3. Now you can open Niblet normally
+2. Run: `xattr -cr /Applications/Wingman.app`
+3. Now you can open Wingman normally
 
 Alternatively, you can right-click the app and select "Open" instead of double-clicking.
 
@@ -64,8 +64,8 @@ Alternatively, you can right-click the app and select "Open" instead of double-c
 
 ```bash
 # Clone the repository
-git clone https://github.com/charliesteenhagen-wk/niblet.git
-cd niblet
+git clone https://github.com/charliesteenhagen-wk/wingman.git
+cd wingman
 
 # Install dependencies
 npm install
@@ -93,7 +93,7 @@ npm run tauri build
 #### Global
 | Shortcut | Action |
 |----------|--------|
-| `Cmd/Ctrl+Shift+Space` | Show/hide Niblet (configurable) |
+| `Cmd/Ctrl+Shift+Space` | Show/hide Wingman (configurable) |
 
 #### Editor
 | Shortcut | Action |
@@ -127,29 +127,14 @@ npm run tauri build
 - **Move the window** by dragging the title bar
 - Window position and size are remembered between sessions
 - Use snippets for frequently typed text like email signatures or code templates
-- Text is preserved when you close without pasting - it'll be there next time you open Niblet
-
-## Known Limitations
-
-### Fullscreen App Overlay (macOS)
-
-Niblet currently **cannot appear over fullscreen applications** on macOS. When you trigger the hotkey while in a fullscreen app, Niblet will open on your desktop instead of overlaying the fullscreen app.
-
-**Why this happens**: Apps like Raycast that can appear over fullscreen apps require:
-1. Proper code signing with an Apple Developer certificate
-2. Specific macOS entitlements for accessibility features
-3. Native macOS APIs with special permissions
-
-These native APIs caused stability issues (crashes) in our testing, so we've disabled this feature to ensure Niblet remains stable and usable. The app works perfectly when you're not in fullscreen mode.
-
-**Workaround**: Exit fullscreen mode before triggering Niblet, or use macOS's Split View feature instead of true fullscreen.
+- Text is preserved when you close without pasting - it'll be there next time you open Wingman
 
 ## Configuration
 
 Settings are stored in:
-- **macOS**: `~/Library/Application Support/com.niblet.app/`
-- **Windows**: `%APPDATA%\com.niblet.app\`
-- **Linux**: `~/.local/share/com.niblet.app/`
+- **macOS**: `~/Library/Application Support/com.wingman.app/`
+- **Windows**: `%APPDATA%\com.wingman.app\`
+- **Linux**: `~/.local/share/com.wingman.app/`
 
 ### Settings Include:
 - Global hotkey customization
@@ -161,7 +146,7 @@ Settings are stored in:
 
 ## Privacy
 
-Niblet is privacy-first:
+Wingman is privacy-first:
 - **No analytics or telemetry** - your data never leaves your machine
 - **All data stored locally** - settings, history, and snippets are stored in local files
 - **Works completely offline** - no internet connection required
@@ -171,7 +156,7 @@ Niblet is privacy-first:
 ### Project Structure
 
 ```
-niblet/
+wingman/
 ├── src-tauri/              # Rust backend
 │   ├── src/
 │   │   ├── main.rs        # Application entry
@@ -179,7 +164,8 @@ niblet/
 │   │   ├── hotkey.rs      # Hotkey utilities
 │   │   ├── clipboard.rs   # Text utilities
 │   │   ├── storage.rs     # Settings & snippets storage
-│   │   └── history.rs     # SQLite history management
+│   │   ├── history.rs     # SQLite history management
+│   │   └── window.rs      # macOS NSPanel for fullscreen overlay
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── src/                    # React frontend
@@ -224,7 +210,7 @@ Contributions are welcome! Please read our contributing guidelines before submit
 ### Reporting Issues
 
 - Use GitHub Issues to report bugs
-- Include your OS version and Niblet version
+- Include your OS version and Wingman version
 - Provide steps to reproduce the issue
 
 ## License

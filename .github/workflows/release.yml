@@ -152,18 +152,18 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.event.inputs.version || github.ref_name }}
-          releaseName: 'Niblet ${{ github.event.inputs.version || github.ref_name }}'
+          releaseName: 'Wingman ${{ github.event.inputs.version || github.ref_name }}'
           releaseBody: |
-            ## Niblet ${{ github.event.inputs.version || github.ref_name }}
+            ## Wingman ${{ github.event.inputs.version || github.ref_name }}
 
             A lightweight, cross-platform text composition tool.
 
             ### Installation
 
-            - **macOS (Apple Silicon):** Download `Niblet_*_aarch64.dmg`
-            - **macOS (Intel):** Download `Niblet_*_x64.dmg`
-            - **Windows:** Download `Niblet_*_x64-setup.exe` or `.msi`
-            - **Linux:** Download `Niblet_*_amd64.deb` or `.AppImage`
+            - **macOS (Apple Silicon):** Download `Wingman_*_aarch64.dmg`
+            - **macOS (Intel):** Download `Wingman_*_x64.dmg`
+            - **Windows:** Download `Wingman_*_x64-setup.exe` or `.msi`
+            - **Linux:** Download `Wingman_*_amd64.deb` or `.AppImage`
 
             ### Features
 

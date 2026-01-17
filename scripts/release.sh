@@ -1,5 +1,5 @@
 #!/bin/bash
-# Release script for Niblet
+# Release script for Wingman
 # Usage: ./scripts/release.sh <version>
 # Example: ./scripts/release.sh 0.3.0
 
@@ -60,4 +60,4 @@ git push origin "v$VERSION"
 echo ""
 echo "Released v$VERSION!"
 echo "GitHub Actions will now build and publish the release."
-echo "Watch progress at: https://github.com/csteamengine/niblet/actions"
+echo "Watch progress at: https://github.com/csteamengine/wingman/actions"
