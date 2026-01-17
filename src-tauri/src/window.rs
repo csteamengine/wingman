@@ -52,8 +52,10 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
             CollectionBehavior::new()
                 // Makes panel appear alongside full screen apps
                 .full_screen_auxiliary()
-                // Panel appears on all spaces (like Spotlight)
-                .can_join_all_spaces()
+                // Panel moves to active space when shown (like Raycast/Spotlight)
+                .move_to_active_space()
+                // Transient - doesn't persist when switching spaces
+                .transient()
                 .value(),
         );
 
