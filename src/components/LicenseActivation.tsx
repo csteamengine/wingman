@@ -42,7 +42,7 @@ export function LicenseActivation() {
   if (isPro) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+        <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/20 rounded-md">
           <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
             <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -57,7 +57,7 @@ export function LicenseActivation() {
         </div>
 
         {status === 'grace_period' && daysUntilExpiry !== null && (
-          <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+          <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
             <p className="text-sm text-yellow-400">
               Offline validation required. {daysUntilExpiry} days remaining.
             </p>
@@ -118,7 +118,7 @@ export function LicenseActivation() {
   // Show activation form
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3 p-3 bg-[var(--editor-surface)] border border-[var(--editor-border)] rounded-lg">
+      <div className="flex items-center gap-3 p-3 bg-[var(--editor-surface)] border border-[var(--editor-border)] rounded-md">
         <div className="w-8 h-8 rounded-full bg-[var(--editor-border)] flex items-center justify-center flex-shrink-0">
           <svg className="w-4 h-4 text-[var(--editor-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />

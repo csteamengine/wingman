@@ -75,17 +75,43 @@ fn get_platform_download_url(assets: &[GitHubAsset]) -> Option<String> {
 pub async fn check_for_updates() -> Result<UpdateInfo, String> {
     let url = format!("{}/{}/releases/latest", GITHUB_API_URL, GITHUB_REPO);
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
     let response = client
         .get(&url)
         .header("User-Agent", "Wingman-App")
         .header("Accept", "application/vnd.github.v3+json")
         .send()
         .await
-        .map_err(|e| format!("Failed to fetch release info: {}", e))?;
+        .map_err(|e| {
+            if e.is_connect() {
+                "Unable to connect. Check your internet connection.".to_string()
+            } else if e.is_timeout() {
+                "Request timed out. Try again later.".to_string()
+            } else {
+                format!("Network error: {}", e)
+            }
+        })?;
 
-    if !response.status().is_success() {
-        return Err(format!("GitHub API returned status: {}", response.status()));
+    let status = response.status();
+    if status == reqwest::StatusCode::NOT_FOUND {
+        // No releases yet - return current version as latest
+        let current_version = get_current_version();
+        return Ok(UpdateInfo {
+            current_version: current_version.clone(),
+            latest_version: current_version,
+            has_update: false,
+            release_url: format!("https://github.com/{}/releases", GITHUB_REPO),
+            release_notes: Some("No releases published yet.".to_string()),
+            download_url: None,
+        });
+    } else if status == reqwest::StatusCode::FORBIDDEN {
+        return Err("GitHub API rate limit exceeded. Try again later.".to_string());
+    } else if !status.is_success() {
+        return Err(format!("GitHub API error: {}", status));
     }
 
     let release: GitHubRelease = response

@@ -21,13 +21,15 @@ export function QuickActionsPanel() {
   return (
     <div className="flex flex-col h-full animate-fade-in">
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--editor-border)]">
-        <h2 className="text-lg font-semibold">Quick Actions</h2>
+        <h2 className="text-sm font-medium text-[var(--editor-text)]">Quick Actions</h2>
         <button
           onClick={() => setActivePanel('editor')}
-          className="btn"
+          className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] text-[var(--editor-muted)] hover:text-[var(--editor-text)] transition-colors"
           aria-label="Close quick actions"
         >
-          ✕
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M2 2l8 8M10 2l-8 8" />
+          </svg>
         </button>
       </div>
 
@@ -53,12 +55,13 @@ export function QuickActionsPanel() {
         )}
       </div>
 
-      <div className="px-4 py-2 border-t border-[var(--editor-border)] rounded-br-xl text-xs text-[var(--editor-muted)]">
+      <div className="px-4 py-2 border-t border-[var(--editor-border)] rounded-br-[10px] text-xs text-[var(--editor-muted)]">
         <div className="flex items-center gap-2">
           <span className="kbd">⌘⇧U</span>
-          <span>Uppercase</span>
+          <span className="opacity-60">Upper</span>
+          <span className="opacity-30">·</span>
           <span className="kbd">⌘⇧L</span>
-          <span>Lowercase</span>
+          <span className="opacity-60">Lower</span>
         </div>
       </div>
     </div>

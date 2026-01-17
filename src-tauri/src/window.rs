@@ -52,8 +52,8 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
             CollectionBehavior::new()
                 // Makes panel appear alongside full screen apps
                 .full_screen_auxiliary()
-                // Panel follows active desktop space
-                .move_to_active_space()
+                // Panel appears on all spaces (like Spotlight)
+                .can_join_all_spaces()
                 .value(),
         );
 

@@ -57,7 +57,7 @@ export function ProFeatureGate({
           />
         </svg>
       </div>
-      <h3 className="text-lg font-semibold mb-2">{FEATURE_NAMES[feature]}</h3>
+      <h3 className="text-base font-medium mb-2">{FEATURE_NAMES[feature]}</h3>
       <p className="text-sm text-[var(--editor-muted)] mb-4 max-w-xs">
         This is a Pro feature. Upgrade to Wingman Pro for $4.99 (one-time) to unlock all features.
       </p>
