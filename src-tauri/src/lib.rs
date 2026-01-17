@@ -579,10 +579,16 @@ pub fn run() {
             let menu = Menu::with_items(app, &[&show_item, &settings_item, &quit_item])?;
 
             // Build tray icon - menu shows on left-click
-            // Use custom tray icon (light version for visibility in menu bar)
+            // Use custom tray icon (light version with colors for menu bar)
+            let tray_icon = {
+                let png_bytes = include_bytes!("../icons/tray/icon.png");
+                let img = image::load_from_memory(png_bytes).expect("Failed to decode tray icon");
+                let rgba = img.to_rgba8();
+                let (width, height) = rgba.dimensions();
+                tauri::image::Image::new_owned(rgba.into_raw(), width, height)
+            };
             let _tray = TrayIconBuilder::new()
-                .icon_as_template(true)
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(tray_icon)
                 .menu(&menu)
                 .show_menu_on_left_click(true)
                 .on_menu_event(|app, event| {
