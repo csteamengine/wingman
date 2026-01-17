@@ -60,24 +60,18 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
         // Ensures the panel cannot activate the App
         panel.set_style_mask(StyleMask::empty().nonactivating_panel().into());
 
-        // Setup event handler for panel events
+        // Setup event handler for panel events (logging only)
+        // Note: We don't auto-hide on resign_key because it triggers when switching
+        // spaces. The panel is hidden explicitly via Escape, hotkey toggle, or actions.
         let handler = WingmanPanelEventHandler::new();
 
         handler.window_did_become_key(|_| {
             log::info!("panel became key window");
         });
 
-        let app_handle = self.app_handle().clone();
-
-        handler.window_did_resign_key(move |_| {
+        handler.window_did_resign_key(|_| {
             log::info!("panel resigned key window");
-
-            // Hide panel when it resigns key window status
-            if let Ok(panel) = app_handle.get_webview_panel(MAIN_WINDOW_LABEL) {
-                if panel.is_visible() {
-                    panel.hide();
-                }
-            }
+            // Don't auto-hide - let the user dismiss explicitly
         });
 
         panel.set_event_handler(Some(handler.as_ref()));
