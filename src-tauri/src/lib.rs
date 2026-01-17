@@ -38,7 +38,7 @@ use updater::{check_for_updates, UpdateInfo};
 pub struct AppState {
     db: Mutex<Connection>,
     #[cfg(target_os = "macos")]
-    previous_app: Mutex<Option<String>>,
+    previous_app: Mutex<Option<(String, std::time::Instant)>>,
 }
 
 // Settings commands
@@ -276,35 +276,14 @@ fn get_app_version() -> String {
 async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Result<(), String> {
     log::info!("show_window called");
 
-    // On macOS, remember the current frontmost app before showing Wingman
-    #[cfg(target_os = "macos")]
-    {
-        let output = std::process::Command::new("osascript")
-            .arg("-e")
-            .arg(r#"tell application "System Events" to get name of first process whose frontmost is true"#)
-            .output()
-            .ok();
-
-        if let Some(o) = output {
-            if let Ok(app_name) = String::from_utf8(o.stdout) {
-                let app_name = app_name.trim().to_string();
-                log::info!("Previous app detected: {}", app_name);
-                if !app_name.is_empty() && app_name != "Wingman" {
-                    *state.previous_app.lock().unwrap() = Some(app_name.clone());
-                    log::info!("Stored previous app: {}", app_name);
-                }
-            }
-        }
-    }
-
     // On macOS, use NSPanel for fullscreen overlay support
-    // Panel operations MUST run on the main thread
+    // Show the panel IMMEDIATELY, then detect previous app in background
     #[cfg(target_os = "macos")]
     {
         let app_handle = window.app_handle().clone();
         let app_handle_inner = app_handle.clone();
 
-        // Run panel operations on the main thread
+        // Run panel operations on the main thread - this is the critical path
         app_handle
             .run_on_main_thread(move || {
                 let webview_window = match app_handle_inner.get_webview_window(MAIN_WINDOW_LABEL) {
@@ -315,15 +294,18 @@ async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Resul
                     }
                 };
 
-                // Get or create the panel
-                let panel = match app_handle_inner
-                    .get_webview_panel(MAIN_WINDOW_LABEL)
-                    .or_else(|_| webview_window.to_wingman_panel())
-                {
+                // Get the pre-initialized panel (should already exist from setup)
+                let panel = match app_handle_inner.get_webview_panel(MAIN_WINDOW_LABEL) {
                     Ok(p) => p,
-                    Err(e) => {
-                        log::error!("Failed to get/create panel: {:?}", e);
-                        return;
+                    Err(_) => {
+                        // Fallback: create panel if not pre-initialized
+                        match webview_window.to_wingman_panel() {
+                            Ok(p) => p,
+                            Err(e) => {
+                                log::error!("Failed to create panel: {:?}", e);
+                                return;
+                            }
+                        }
                     }
                 };
 
@@ -336,6 +318,39 @@ async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Resul
                 log::info!("show_window (panel) completed successfully");
             })
             .map_err(|e| e.to_string())?;
+
+        // Detect previous app in background (non-blocking)
+        // Check if we have a recent cached value (within 500ms)
+        let needs_detection = {
+            let cache = state.previous_app.lock().unwrap();
+            match &*cache {
+                Some((_, timestamp)) => timestamp.elapsed() > std::time::Duration::from_millis(500),
+                None => true,
+            }
+        };
+
+        if needs_detection {
+            let app_handle_for_thread = window.app_handle().clone();
+            std::thread::spawn(move || {
+                let output = std::process::Command::new("osascript")
+                    .arg("-e")
+                    .arg(r#"tell application "System Events" to get name of first process whose frontmost is true"#)
+                    .output()
+                    .ok();
+
+                if let Some(o) = output {
+                    if let Ok(app_name) = String::from_utf8(o.stdout) {
+                        let app_name = app_name.trim().to_string();
+                        log::info!("Previous app detected (async): {}", app_name);
+                        if !app_name.is_empty() && app_name != "Wingman" {
+                            let state = app_handle_for_thread.state::<AppState>();
+                            *state.previous_app.lock().unwrap() = Some((app_name.clone(), std::time::Instant::now()));
+                            log::info!("Stored previous app: {}", app_name);
+                        }
+                    }
+                }
+            });
+        }
 
         return Ok(());
     }
@@ -389,9 +404,9 @@ async fn hide_window(window: tauri::Window) -> Result<(), String> {
 
 #[tauri::command]
 async fn hide_and_paste(window: tauri::Window, state: State<'_, AppState>) -> Result<(), String> {
-    // Get the stored previous app
+    // Get the stored previous app (extract just the name, ignore timestamp)
     #[cfg(target_os = "macos")]
-    let previous_app: Option<String> = state.previous_app.lock().unwrap().clone();
+    let previous_app: Option<String> = state.previous_app.lock().unwrap().as_ref().map(|(name, _)| name.clone());
 
     // Hide the window/panel - must run on main thread
     #[cfg(target_os = "macos")]
@@ -545,6 +560,14 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             {
                 app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+                // Pre-initialize the NSPanel so it's ready when hotkey is pressed
+                // This eliminates panel creation overhead on first show
+                if let Err(e) = window.to_wingman_panel() {
+                    log::warn!("Failed to pre-initialize panel: {:?}", e);
+                } else {
+                    log::info!("NSPanel pre-initialized successfully");
+                }
             }
 
             // Create system tray menu
