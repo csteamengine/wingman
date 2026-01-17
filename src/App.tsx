@@ -138,10 +138,14 @@ function App() {
 
       {/* Title bar / drag region */}
       <div
-        className="h-8 flex items-center justify-center border-b border-[var(--editor-border)] cursor-move select-none rounded-t-xl"
+        className="h-11 flex items-center justify-center cursor-move select-none rounded-t-[10px]"
         onMouseDown={handleDragStart}
       >
-        <span className="text-xs text-[var(--editor-muted)] font-medium pointer-events-none">Wingman</span>
+        <div className="flex items-center gap-1.5 pointer-events-none opacity-40">
+          <div className="w-2.5 h-2.5 rounded-full bg-[var(--editor-muted)]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[var(--editor-muted)]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[var(--editor-muted)]" />
+        </div>
       </div>
 
       {/* License status banner (shows when in grace period or expired) */}

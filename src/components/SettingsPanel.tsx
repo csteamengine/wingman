@@ -119,13 +119,15 @@ export function SettingsPanel() {
   return (
     <div className="flex flex-col h-full animate-fade-in">
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--editor-border)]">
-        <h2 className="text-lg font-semibold">Settings</h2>
+        <h2 className="text-sm font-medium text-[var(--editor-text)]">Settings</h2>
         <button
           onClick={() => setActivePanel('editor')}
-          className="btn"
+          className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] text-[var(--editor-muted)] hover:text-[var(--editor-text)] transition-colors"
           aria-label="Close settings"
         >
-          ✕
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M2 2l8 8M10 2l-8 8" />
+          </svg>
         </button>
       </div>
 
@@ -313,8 +315,8 @@ export function SettingsPanel() {
         </div>
       </div>
 
-      <div className="px-4 py-3 border-t border-[var(--editor-border)] rounded-b-xl">
-        <button onClick={handleReset} className="btn text-red-400 hover:text-red-300 text-sm">
+      <div className="px-4 py-3 border-t border-[var(--editor-border)] rounded-b-[10px]">
+        <button onClick={handleReset} className="text-xs text-[var(--editor-muted)] hover:text-red-400 transition-colors">
           Reset All Settings
         </button>
       </div>

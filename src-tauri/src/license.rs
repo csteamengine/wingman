@@ -297,6 +297,7 @@ pub async fn validate_license_online(
 
     let response = client
         .post(&url)
+        .header("apikey", SUPABASE_PUBLISHABLE_KEY)
         .header("Authorization", format!("Bearer {}", SUPABASE_PUBLISHABLE_KEY))
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
@@ -364,6 +365,7 @@ pub async fn deactivate_license_online(license_key: &str) -> Result<(), LicenseE
 
     let response = client
         .post(&url)
+        .header("apikey", SUPABASE_PUBLISHABLE_KEY)
         .header("Authorization", format!("Bearer {}", SUPABASE_PUBLISHABLE_KEY))
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({

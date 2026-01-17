@@ -45,7 +45,7 @@ export function EditorWindow() {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const { content, setContent, language, setLanguage, stats, isVisible } = useEditorStore();
+  const { content, setContent, language, setLanguage, stats, isVisible, pasteAndClose } = useEditorStore();
   const { settings } = useSettingsStore();
   const { isProFeatureEnabled } = useLicenseStore();
 
@@ -137,32 +137,35 @@ export function EditorWindow() {
         }}
       />
       {settings?.show_status_bar !== false && (
-        <div className="status-bar">
-          <div className="flex items-center gap-4">
-            {hasStatsDisplay ? (
-              <>
-                <span>{stats.character_count} characters</span>
-                <span>{stats.word_count} words</span>
-                <span>{stats.line_count} lines</span>
-              </>
-            ) : (
-              <span className="text-[var(--editor-muted)] text-xs">Pro: Stats display</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
+        <div className="border-t border-[var(--editor-border)] rounded-b-[10px]">
+          {/* Info row */}
+          <div className="flex items-center justify-between px-4 py-2 text-xs text-[var(--editor-muted)]">
+            <div className="flex items-center gap-3">
+              {hasStatsDisplay ? (
+                <>
+                  <span>{stats.character_count} chars</span>
+                  <span className="opacity-30">·</span>
+                  <span>{stats.word_count} words</span>
+                  <span className="opacity-30">·</span>
+                  <span>{stats.line_count} lines</span>
+                </>
+              ) : (
+                <span className="opacity-60">Pro: Stats</span>
+              )}
+            </div>
             {/* Language Selector */}
             <div className="relative">
               {hasSyntaxHighlighting ? (
                 <>
                   <button
                     onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                    className="text-xs px-2 py-1 rounded bg-[var(--editor-surface)] border border-[var(--editor-border)] hover:border-[var(--editor-accent)] transition-colors"
+                    className="text-xs px-2 py-1 rounded-md hover:bg-[var(--editor-hover)] transition-colors"
                   >
                     {LANGUAGE_OPTIONS.find(l => l.value === language)?.label || 'Plain Text'}
-                    <span className="ml-1 opacity-50">▼</span>
+                    <span className="ml-1 opacity-40">▾</span>
                   </button>
                   {showLanguageDropdown && (
-                    <div className="absolute bottom-full mb-1 right-0 bg-[var(--editor-bg)] border border-[var(--editor-border)] rounded shadow-lg z-50 min-w-[140px] max-h-[200px] overflow-y-auto">
+                    <div className="absolute bottom-full mb-1 right-0 bg-[var(--editor-bg)] border border-[var(--editor-border)] rounded-md shadow-lg z-50 min-w-[140px] max-h-[200px] overflow-y-auto py-1">
                       {LANGUAGE_OPTIONS.map((lang) => (
                         <button
                           key={lang.value}
@@ -170,7 +173,7 @@ export function EditorWindow() {
                             setLanguage(lang.value);
                             setShowLanguageDropdown(false);
                           }}
-                          className={`w-full text-left text-xs px-3 py-1.5 hover:bg-[var(--editor-surface)] ${
+                          className={`w-full text-left text-xs px-3 py-1.5 hover:bg-[var(--editor-hover)] ${
                             language === lang.value ? 'text-[var(--editor-accent)]' : ''
                           }`}
                         >
@@ -181,13 +184,21 @@ export function EditorWindow() {
                   )}
                 </>
               ) : (
-                <span className="text-[var(--editor-muted)] text-xs">Pro: Syntax</span>
+                <span className="opacity-60">Pro: Syntax</span>
               )}
             </div>
-            <span className="kbd">⌘⏎</span>
-            <span>Copy</span>
-            <span className="kbd">ESC</span>
-            <span>Close</span>
+          </div>
+
+          {/* Action button row */}
+          <div className="px-3 pb-3">
+            <button
+              onClick={pasteAndClose}
+              disabled={!content.trim()}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md bg-[var(--editor-surface)] border border-[var(--editor-border)] text-sm text-[var(--editor-text)] hover:bg-[var(--editor-hover)] disabled:opacity-40 transition-colors"
+            >
+              <span>Copy to Clipboard</span>
+              <span className="kbd">⌘↵</span>
+            </button>
           </div>
         </div>
       )}
