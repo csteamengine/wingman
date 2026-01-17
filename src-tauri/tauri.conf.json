@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Niblet",
+  "productName": "Wingman",
   "version": "0.2.1",
-  "identifier": "com.niblet.app",
+  "identifier": "com.wingman.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -15,7 +15,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Niblet",
+        "title": "Wingman",
         "width": 650,
         "height": 450,
         "minWidth": 400,
@@ -41,8 +41,8 @@
     "targets": "all",
     "category": "Utility",
     "shortDescription": "Cross-platform text composition tool",
-    "longDescription": "Niblet is a lightweight, cross-platform text composition tool that provides a floating overlay for quick text editing with clipboard integration.",
-    "copyright": "Copyright (c) 2024 Niblet Contributors",
+    "longDescription": "Wingman is a lightweight, cross-platform text composition tool that provides a floating overlay for quick text editing with clipboard integration.",
+    "copyright": "Copyright (c) 2024 Wingman Contributors",
     "license": "MIT",
     "licenseFile": "../LICENSE",
     "icon": [

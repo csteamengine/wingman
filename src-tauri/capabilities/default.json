@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Niblet default permissions",
+  "description": "Wingman default permissions",
   "windows": ["main"],
   "permissions": [
     "core:default",

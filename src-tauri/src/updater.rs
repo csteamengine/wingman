@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-const GITHUB_REPO: &str = "csteamengine/niblet";
+const GITHUB_REPO: &str = "csteamengine/wingman";
 const GITHUB_API_URL: &str = "https://api.github.com/repos";
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -78,7 +78,7 @@ pub async fn check_for_updates() -> Result<UpdateInfo, String> {
     let client = reqwest::Client::new();
     let response = client
         .get(&url)
-        .header("User-Agent", "Niblet-App")
+        .header("User-Agent", "Wingman-App")
         .header("Accept", "application/vnd.github.v3+json")
         .send()
         .await

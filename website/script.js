@@ -1,6 +1,6 @@
 // Detect user's operating system and update download links
 (function() {
-  const GITHUB_REPO = 'csteamengine/niblet';
+  const GITHUB_REPO = 'csteamengine/wingman';
   const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
   const RELEASES_PAGE = `https://github.com/${GITHUB_REPO}/releases/latest`;
 

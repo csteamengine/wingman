@@ -1,10 +1,10 @@
 {
-  "name": "niblet",
+  "name": "wingman",
   "private": true,
   "version": "0.2.1",
   "type": "module",
-  "description": "Niblet - Cross-Platform Text Composition Tool",
-  "author": "Niblet Contributors",
+  "description": "Wingman - Cross-Platform Text Composition Tool",
+  "author": "Wingman Contributors",
   "license": "MIT",
   "scripts": {
     "dev": "vite",

@@ -49,7 +49,7 @@ export function LicenseActivation() {
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-green-400">Niblet Pro Active</p>
+            <p className="text-sm font-medium text-green-400">Wingman Pro Active</p>
             {email && (
               <p className="text-xs text-[var(--editor-muted)] truncate">{email}</p>
             )}
@@ -176,10 +176,10 @@ export function LicenseActivation() {
           Don't have a license?
         </p>
         <button
-          onClick={() => open('https://gumroad.com/l/niblet-pro')}
+          onClick={() => open('https://gumroad.com/l/wingman-pro')}
           className="btn w-full text-center text-sm"
         >
-          Get Niblet Pro - $4.99
+          Get Wingman Pro - $4.99
         </button>
       </div>
     </div>

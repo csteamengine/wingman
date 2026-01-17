@@ -59,10 +59,10 @@ export function ProFeatureGate({
       </div>
       <h3 className="text-lg font-semibold mb-2">{FEATURE_NAMES[feature]}</h3>
       <p className="text-sm text-[var(--editor-muted)] mb-4 max-w-xs">
-        This is a Pro feature. Upgrade to Niblet Pro for $4.99 (one-time) to unlock all features.
+        This is a Pro feature. Upgrade to Wingman Pro for $4.99 (one-time) to unlock all features.
       </p>
       <button
-        onClick={() => open('https://gumroad.com/l/niblet-pro')}
+        onClick={() => open('https://gumroad.com/l/wingman-pro')}
         className="btn bg-[var(--editor-accent)] text-white px-4 py-2"
       >
         Upgrade to Pro

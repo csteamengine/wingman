@@ -44,16 +44,16 @@ async function sendLicenseEmail(email: string, licenseKey: string): Promise<bool
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Niblet <noreply@niblet-editor.app>",
-        reply_to: "support@niblet-editor.app",
+        from: "Wingman <noreply@wingman-editor.app>",
+        reply_to: "support@wingman-editor.app",
         to: email,
-        subject: "Your Niblet Pro License Key",
+        subject: "Your Wingman Pro License Key",
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-            <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 20px;">Thank you for purchasing Niblet Pro!</h1>
+            <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 20px;">Thank you for purchasing Wingman Pro!</h1>
 
             <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-              Your license key is ready. Use it to activate Niblet Pro on up to 2 devices.
+              Your license key is ready. Use it to activate Wingman Pro on up to 2 devices.
             </p>
 
             <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 30px 0; text-align: center;">
@@ -63,7 +63,7 @@ async function sendLicenseEmail(email: string, licenseKey: string): Promise<bool
 
             <h2 style="color: #1a1a1a; font-size: 18px; margin-top: 30px;">How to activate:</h2>
             <ol style="color: #4a4a4a; font-size: 16px; line-height: 1.8; padding-left: 20px;">
-              <li>Open Niblet</li>
+              <li>Open Wingman</li>
               <li>Go to Settings (⌘ + ,)</li>
               <li>Scroll to the License section</li>
               <li>Enter your email and license key</li>
@@ -71,12 +71,12 @@ async function sendLicenseEmail(email: string, licenseKey: string): Promise<bool
             </ol>
 
             <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6; margin-top: 30px;">
-              If you have any issues, reply to this email or contact us at <a href="mailto:support@niblet-editor.app">support@niblet-editor.app</a>.
+              If you have any issues, reply to this email or contact us at <a href="mailto:support@wingman-editor.app">support@wingman-editor.app</a>.
             </p>
 
             <p style="color: #999; font-size: 14px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee;">
-              — The Niblet Team<br>
-              <a href="https://niblet-editor.app" style="color: #999;">niblet-editor.app</a>
+              — The Wingman Team<br>
+              <a href="https://wingman-editor.app" style="color: #999;">wingman-editor.app</a>
             </p>
           </div>
         `,
@@ -118,7 +118,7 @@ serve(async (req) => {
     const email = data.email?.toLowerCase();
     const saleId = data.sale_id;
     const productId = data.product_id;
-    const productName = data.product_name || "Niblet Pro";
+    const productName = data.product_name || "Wingman Pro";
     const refunded = data.refunded === "true";
     const isTest = data.test === "true";
 

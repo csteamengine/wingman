@@ -92,7 +92,7 @@ pub struct SnippetsData {
 
 pub fn get_app_data_dir() -> Result<PathBuf, StorageError> {
     dirs::data_dir()
-        .map(|p| p.join("Niblet"))
+        .map(|p| p.join("Wingman"))
         .ok_or(StorageError::NoAppDataDir)
 }
 

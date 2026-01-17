@@ -1,4 +1,4 @@
--- Niblet License System Schema
+-- Wingman License System Schema
 -- Run this in your Supabase SQL Editor
 
 -- Enable UUID extension

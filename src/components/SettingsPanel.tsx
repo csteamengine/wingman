@@ -135,7 +135,7 @@ export function SettingsPanel() {
           <div>
             <label className="block text-sm font-medium mb-2">Global Hotkey</label>
             <p className="text-xs text-[var(--editor-muted)] mb-3">
-              Press this keyboard shortcut anywhere to summon Niblet
+              Press this keyboard shortcut anywhere to summon Wingman
             </p>
 
             <div className="flex gap-2">
