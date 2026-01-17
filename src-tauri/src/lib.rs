@@ -579,7 +579,9 @@ pub fn run() {
             let menu = Menu::with_items(app, &[&show_item, &settings_item, &quit_item])?;
 
             // Build tray icon - menu shows on left-click
+            // Use custom tray icon (light version for visibility in menu bar)
             let _tray = TrayIconBuilder::new()
+                .icon_as_template(true)
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
                 .show_menu_on_left_click(true)
