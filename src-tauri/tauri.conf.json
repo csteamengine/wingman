@@ -60,11 +60,11 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "entitlements": "entitlements.plist",
+      "entitlements": null,
       "exceptionDomain": "",
       "frameworks": [],
       "minimumSystemVersion": "10.15",
-      "signingIdentity": "-"
+      "signingIdentity": null
     },
     "windows": {
       "digestAlgorithm": "sha256",
