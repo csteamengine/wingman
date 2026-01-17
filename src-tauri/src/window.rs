@@ -1,4 +1,4 @@
-use tauri::{Manager, Runtime, WebviewWindow};
+use tauri::{Emitter, Manager, Runtime, WebviewWindow};
 use tauri_nspanel::{
     tauri_panel, CollectionBehavior, ManagerExt, PanelHandle, PanelLevel, StyleMask,
     WebviewWindowExt as WebviewPanelExt,
@@ -78,6 +78,8 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
             if let Ok(panel) = app_handle.get_webview_panel(MAIN_WINDOW_LABEL) {
                 if panel.is_visible() {
                     panel.hide();
+                    // Notify frontend that panel was hidden so it can sync isVisible state
+                    let _ = app_handle.emit("panel-hidden", ());
                 }
             }
         });
