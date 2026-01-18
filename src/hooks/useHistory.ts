@@ -1,11 +1,12 @@
 import { useEffect, useCallback } from 'react';
 import { useHistoryStore } from '../stores/historyStore';
-import { useEditorStore } from '../stores/editorStore';
+import { useEditorStore, type EditorImage } from '../stores/editorStore';
+import type { HistoryEntry } from '../types';
 
 export function useHistory() {
   const { entries, loading, searchQuery, loadHistory, searchHistory, deleteEntry, setSearchQuery } =
     useHistoryStore();
-  const { setContent, setActivePanel } = useEditorStore();
+  const { setContent, setActivePanel, setImages, clearImages } = useEditorStore();
 
   useEffect(() => {
     loadHistory();
@@ -20,11 +21,22 @@ export function useHistory() {
   );
 
   const handleSelect = useCallback(
-    (entry: { content: string }) => {
+    (entry: HistoryEntry) => {
       setContent(entry.content);
+      // Load images if present
+      if (entry.images) {
+        try {
+          const images: EditorImage[] = JSON.parse(entry.images);
+          setImages(images);
+        } catch {
+          clearImages();
+        }
+      } else {
+        clearImages();
+      }
       setActivePanel('editor');
     },
-    [setContent, setActivePanel]
+    [setContent, setActivePanel, setImages, clearImages]
   );
 
   const handleDelete = useCallback(

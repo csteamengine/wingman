@@ -23,6 +23,7 @@ pub struct HistoryEntry {
     pub line_count: i32,
     pub language: Option<String>,
     pub tags: Option<String>,
+    pub images: Option<String>, // JSON array of image data
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,10 +57,14 @@ pub fn init_database() -> Result<Connection, HistoryError> {
             word_count INTEGER,
             line_count INTEGER,
             language TEXT,
-            tags TEXT
+            tags TEXT,
+            images TEXT
         )",
         [],
     )?;
+
+    // Migration: add images column if it doesn't exist
+    let _ = conn.execute("ALTER TABLE history ADD COLUMN images TEXT", []);
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_created_at ON history(created_at DESC)",
@@ -79,15 +84,16 @@ pub fn add_entry(
     content: &str,
     language: Option<&str>,
     tags: Option<&str>,
+    images: Option<&str>,
 ) -> Result<i64, HistoryError> {
     let character_count = content.chars().count() as i32;
     let word_count = content.split_whitespace().count() as i32;
     let line_count = content.lines().count() as i32;
 
     conn.execute(
-        "INSERT INTO history (content, character_count, word_count, line_count, language, tags)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        rusqlite::params![content, character_count, word_count, line_count, language, tags],
+        "INSERT INTO history (content, character_count, word_count, line_count, language, tags, images)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        rusqlite::params![content, character_count, word_count, line_count, language, tags, images],
     )?;
 
     Ok(conn.last_insert_rowid())
@@ -99,7 +105,7 @@ pub fn get_entries(
     offset: u32,
 ) -> Result<Vec<HistoryEntry>, HistoryError> {
     let mut stmt = conn.prepare(
-        "SELECT id, content, created_at, character_count, word_count, line_count, language, tags
+        "SELECT id, content, created_at, character_count, word_count, line_count, language, tags, images
          FROM history
          ORDER BY created_at DESC
          LIMIT ?1 OFFSET ?2",
@@ -116,6 +122,7 @@ pub fn get_entries(
                 line_count: row.get(5)?,
                 language: row.get(6)?,
                 tags: row.get(7)?,
+                images: row.get(8)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -130,7 +137,7 @@ pub fn search_entries(
 ) -> Result<Vec<HistoryEntry>, HistoryError> {
     let search_pattern = format!("%{}%", query);
     let mut stmt = conn.prepare(
-        "SELECT id, content, created_at, character_count, word_count, line_count, language, tags
+        "SELECT id, content, created_at, character_count, word_count, line_count, language, tags, images
          FROM history
          WHERE content LIKE ?1 OR tags LIKE ?1
          ORDER BY created_at DESC
@@ -148,6 +155,7 @@ pub fn search_entries(
                 line_count: row.get(5)?,
                 language: row.get(6)?,
                 tags: row.get(7)?,
+                images: row.get(8)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
