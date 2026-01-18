@@ -55,7 +55,7 @@ function ImageIcon({ className }: { className?: string }) {
 }
 
 function HistoryPanelContent() {
-  const { entries, loading, searchQuery, handleSearch, handleSelect } = useHistory();
+  const { entries, loading, searchQuery, handleSearch, handleSelect, handleDelete } = useHistory();
   const { setActivePanel } = useEditorStore();
   const { exportHistory } = useHistoryStore();
   const { isProFeatureEnabled } = useLicenseStore();
@@ -227,6 +227,7 @@ function HistoryPanelContent() {
                     index={index}
                     isSelected={index === selectedIndex}
                     onSelect={handleSelect}
+                    onDelete={handleDelete}
                     onHover={() => setSelectedIndex(index)}
                     truncate={truncate}
                     isCode={!!isCodeEntry(entry)}
@@ -329,18 +330,19 @@ interface HistoryItemProps {
   index: number;
   isSelected: boolean;
   onSelect: (entry: HistoryEntry) => void;
+  onDelete: (id: number, e?: React.MouseEvent) => void;
   onHover: () => void;
   truncate: (text: string, length: number) => string;
   isCode: boolean;
 }
 
-function HistoryItem({ entry, index, isSelected, onSelect, onHover, truncate, isCode }: HistoryItemProps) {
+function HistoryItem({ entry, index, isSelected, onSelect, onDelete, onHover, truncate, isCode }: HistoryItemProps) {
   const hasImages = parseImages(entry).length > 0;
 
   return (
     <div
       data-index={index}
-      className={`flex items-center gap-3 px-4 py-2 mx-2 rounded-md cursor-pointer transition-colors ${
+      className={`group flex items-center gap-3 px-4 py-2 mx-2 rounded-md cursor-pointer transition-colors ${
         isSelected
           ? 'bg-[var(--editor-surface)]'
           : 'hover:bg-[var(--editor-hover)]'
@@ -361,6 +363,18 @@ function HistoryItem({ entry, index, isSelected, onSelect, onHover, truncate, is
           {truncate(entry.content.split('\n')[0] || 'Empty', 40)}
         </p>
       </div>
+
+      {/* Delete button - shows on hover */}
+      <button
+        onClick={(e) => onDelete(entry.id, e)}
+        className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-[var(--editor-muted)] hover:text-red-500 transition-all"
+        title="Delete"
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 3.5h10M5 3.5V2.5a1 1 0 011-1h2a1 1 0 011 1v1M11 3.5v8a1 1 0 01-1 1H4a1 1 0 01-1-1v-8" />
+          <path d="M5.5 6v4M8.5 6v4" />
+        </svg>
+      </button>
     </div>
   );
 }

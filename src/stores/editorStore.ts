@@ -35,6 +35,7 @@ interface EditorState {
   clearContent: () => void;
   transformText: (transform: string) => Promise<void>;
   applyBulletList: () => void;
+  applyNumberedList: () => void;
   showWindow: () => Promise<void>;
   hideWindow: () => Promise<void>;
 }
@@ -268,6 +269,91 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (isSingleLine && fromLine.text.trim() === '') {
         editorView.dispatch({
           selection: { anchor: fromLine.from + 2 },
+        });
+      }
+    }
+    editorView.focus();
+  },
+
+  applyNumberedList: () => {
+    const { editorView, content } = get();
+
+    // If no content, start a new numbered list
+    if (!content.trim()) {
+      set({ content: '1. ' });
+      get().updateStats();
+      // Move cursor to end
+      if (editorView) {
+        setTimeout(() => {
+          editorView.dispatch({
+            selection: { anchor: 3 },
+          });
+          editorView.focus();
+        }, 0);
+      }
+      return;
+    }
+
+    if (!editorView) {
+      // Fallback: apply numbers to all lines
+      const lines = content.split('\n');
+      let num = 1;
+      const numbered = lines.map(line => {
+        if (line.trim() === '') {
+          return line;
+        }
+        // Skip already numbered lines
+        if (/^\s*\d+\.\s/.test(line)) {
+          return line;
+        }
+        return `${num++}. ${line}`;
+      }).join('\n');
+      set({ content: numbered });
+      get().updateStats();
+      return;
+    }
+
+    const state = editorView.state;
+    const selection = state.selection.main;
+
+    // Get line range for selection or current line
+    const fromLine = state.doc.lineAt(selection.from);
+    const toLine = state.doc.lineAt(selection.to);
+    const isSingleLine = fromLine.number === toLine.number;
+
+    // Process each line in the range
+    const changes: { from: number; to: number; insert: string }[] = [];
+    let num = 1;
+    for (let lineNum = fromLine.number; lineNum <= toLine.number; lineNum++) {
+      const line = state.doc.line(lineNum);
+      const lineText = line.text;
+
+      // Skip already numbered lines
+      if (/^\s*\d+\.\s/.test(lineText)) {
+        num++;
+        continue;
+      }
+
+      // For single line (current line): add number even if empty
+      // For multi-line selection: skip empty lines (blank separators)
+      if (!isSingleLine && lineText.trim() === '') {
+        continue;
+      }
+
+      // Add number at the start of the line
+      changes.push({
+        from: line.from,
+        to: line.from,
+        insert: `${num++}. `,
+      });
+    }
+
+    if (changes.length > 0) {
+      editorView.dispatch({ changes });
+      // Move cursor to end of the line if it was empty
+      if (isSingleLine && fromLine.text.trim() === '') {
+        editorView.dispatch({
+          selection: { anchor: fromLine.from + 3 },
         });
       }
     }

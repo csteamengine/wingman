@@ -52,8 +52,8 @@ export function EditorWindow() {
 
   const hasImageSupport = isProFeatureEnabled('image_attachments');
 
-  // Auto-bullet keymap: Enter adds bullet on bullet lines, Shift+Enter is normal newline
-  const bulletKeymap = keymap.of([
+  // Auto-list keymap: Enter continues bullets/numbers, Shift+Enter is normal newline
+  const listKeymap = keymap.of([
     {
       key: 'Enter',
       run: (view) => {
@@ -82,7 +82,35 @@ export function EditorWindow() {
           return true;
         }
 
-        // Not a bullet line, let default Enter behavior handle it
+        // Check if current line starts with a number (e.g., "1. ", "2. ", "10. ")
+        const numberMatch = lineText.match(/^(\s*)(\d+)\.\s/);
+        if (numberMatch) {
+          const indent = numberMatch[1];
+          const currentNum = parseInt(numberMatch[2], 10);
+          const nextNum = currentNum + 1;
+
+          // If line is just the number with no content after it, remove it
+          const contentAfterNumber = lineText.slice(numberMatch[0].length).trim();
+          if (contentAfterNumber === '') {
+            view.dispatch({
+              changes: { from: line.from, to: line.to, insert: '' },
+            });
+            return true;
+          }
+
+          // Insert newline + next number
+          const nextPrefix = `\n${indent}${nextNum}. `;
+          view.dispatch({
+            changes: {
+              from: state.selection.main.head,
+              insert: nextPrefix,
+            },
+            selection: { anchor: state.selection.main.head + nextPrefix.length },
+          });
+          return true;
+        }
+
+        // Not a list line, let default Enter behavior handle it
         return false;
       },
     },
@@ -201,7 +229,7 @@ export function EditorWindow() {
     const extensions = [
       history(),
       // Bullet keymap first so it takes precedence for Enter key
-      bulletKeymap,
+      listKeymap,
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       placeholder('Start typing...'),
       EditorView.lineWrapping,
