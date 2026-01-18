@@ -227,6 +227,7 @@ export function QuickActionsPanel() {
     const needsInput = action.requiresInput && !hasContent;
     const isDisabled = needsInput || !isPro;
     const isSelected = index === selectedIndex;
+    const tooltip = showSection ? `${action.section}: ${action.description}` : action.description;
 
     return (
       <button
@@ -235,20 +236,15 @@ export function QuickActionsPanel() {
         onClick={() => !isDisabled && handleAction(action)}
         onMouseEnter={() => setSelectedIndex(index)}
         disabled={isDisabled}
-        className={`list-item text-left ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''} ${isSelected ? 'bg-[var(--editor-hover)] ring-1 ring-[var(--editor-accent)]/50' : ''}`}
+        title={tooltip}
+        className={`flex items-center justify-between px-2 py-1.5 rounded-md text-left text-sm ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[var(--editor-hover)]'} ${isSelected ? 'bg-[var(--editor-hover)] ring-1 ring-[var(--editor-accent)]/50' : ''}`}
       >
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-sm">{action.label}</span>
-          {!isPro && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--editor-accent)]/20 text-[var(--editor-accent)]">
-              PRO
-            </span>
-          )}
-        </div>
-        <div className="text-xs text-[var(--editor-muted)]">
-          {showSection && <span className="opacity-60">{action.section} · </span>}
-          {action.description}
-        </div>
+        <span className="text-[var(--editor-text)]">{action.label}</span>
+        {!isPro && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--editor-accent)]/20 text-[var(--editor-accent)]">
+            PRO
+          </span>
+        )}
       </button>
     );
   };
