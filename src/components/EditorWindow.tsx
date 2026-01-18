@@ -45,9 +45,45 @@ export function EditorWindow() {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const { content, setContent, language, setLanguage, stats, isVisible, pasteAndClose } = useEditorStore();
+  const { content, setContent, language, setLanguage, stats, isVisible, pasteAndClose, setEditorView } = useEditorStore();
   const { settings } = useSettingsStore();
   const { isProFeatureEnabled } = useLicenseStore();
+
+  // Auto-bullet keymap: Enter adds bullet on bullet lines, Shift+Enter is normal newline
+  const bulletKeymap = keymap.of([
+    {
+      key: 'Enter',
+      run: (view) => {
+        const state = view.state;
+        const line = state.doc.lineAt(state.selection.main.head);
+        const lineText = line.text;
+
+        // Check if current line starts with a bullet
+        if (lineText.trimStart().startsWith('• ')) {
+          // If line is just "• " (empty bullet), remove it instead of adding new bullet
+          if (lineText.trim() === '•') {
+            view.dispatch({
+              changes: { from: line.from, to: line.to, insert: '' },
+            });
+            return true;
+          }
+
+          // Insert newline + bullet
+          view.dispatch({
+            changes: {
+              from: state.selection.main.head,
+              insert: '\n• ',
+            },
+            selection: { anchor: state.selection.main.head + 3 },
+          });
+          return true;
+        }
+
+        // Not a bullet line, let default Enter behavior handle it
+        return false;
+      },
+    },
+  ]);
 
   const hasStatsDisplay = isProFeatureEnabled('stats_display');
   const hasSyntaxHighlighting = isProFeatureEnabled('syntax_highlighting');
@@ -73,6 +109,8 @@ export function EditorWindow() {
 
     const extensions = [
       history(),
+      // Bullet keymap first so it takes precedence for Enter key
+      bulletKeymap,
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       placeholder('Start typing...'),
       EditorView.lineWrapping,
@@ -102,12 +140,14 @@ export function EditorWindow() {
     });
 
     viewRef.current = view;
+    setEditorView(view);
 
     // Focus the editor
     view.focus();
 
     return () => {
       view.destroy();
+      setEditorView(null);
     };
   }, [language, settings?.theme]);
 
