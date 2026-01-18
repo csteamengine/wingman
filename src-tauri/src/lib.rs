@@ -189,6 +189,7 @@ fn transform_text_cmd(text: String, transform: String) -> Result<String, String>
         "sort" => TextTransform::SortLines,
         "deduplicate" => TextTransform::RemoveDuplicateLines,
         "reverse" => TextTransform::ReverseLines,
+        "bulletlist" => TextTransform::BulletList,
         _ => return Err(format!("Unknown transform: {}", transform)),
     };
     Ok(transform_text(&text, transform_type))
@@ -197,6 +198,200 @@ fn transform_text_cmd(text: String, transform: String) -> Result<String, String>
 #[tauri::command]
 fn count_pattern_occurrences(text: String, pattern: String) -> usize {
     clipboard::count_occurrences(&text, &pattern)
+}
+
+// JSON/XML formatting commands
+#[tauri::command]
+fn format_json(text: String) -> Result<String, String> {
+    let parsed: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|e| format!("Invalid JSON: {}", e))?;
+    serde_json::to_string_pretty(&parsed)
+        .map_err(|e| format!("Failed to format JSON: {}", e))
+}
+
+#[tauri::command]
+fn minify_json(text: String) -> Result<String, String> {
+    let parsed: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|e| format!("Invalid JSON: {}", e))?;
+    serde_json::to_string(&parsed)
+        .map_err(|e| format!("Failed to minify JSON: {}", e))
+}
+
+#[tauri::command]
+fn format_xml(text: String) -> Result<String, String> {
+    // Simple XML formatter - add indentation
+    let mut result = String::new();
+    let mut indent = 0;
+    let mut tag_content = String::new();
+
+    for ch in text.chars() {
+        match ch {
+            '<' => {
+                if !tag_content.trim().is_empty() {
+                    result.push_str(&"  ".repeat(indent));
+                    result.push_str(tag_content.trim());
+                    result.push('\n');
+                }
+                tag_content.clear();
+                tag_content.push(ch);
+            }
+            '>' => {
+                tag_content.push(ch);
+
+                let is_closing_tag = tag_content.starts_with("</");
+                let is_self_closing = tag_content.ends_with("/>") || tag_content.starts_with("<?") || tag_content.starts_with("<!");
+
+                if is_closing_tag && indent > 0 {
+                    indent -= 1;
+                }
+
+                result.push_str(&"  ".repeat(indent));
+                result.push_str(&tag_content);
+                result.push('\n');
+
+                if !is_closing_tag && !is_self_closing {
+                    indent += 1;
+                }
+
+                tag_content.clear();
+            }
+            _ => {
+                tag_content.push(ch);
+            }
+        }
+    }
+
+    // Handle any remaining content
+    if !tag_content.trim().is_empty() {
+        result.push_str(tag_content.trim());
+    }
+
+    Ok(result.trim().to_string())
+}
+
+// Encoding/decoding commands
+#[tauri::command]
+fn encode_base64(text: String) -> String {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    STANDARD.encode(text.as_bytes())
+}
+
+#[tauri::command]
+fn decode_base64(text: String) -> Result<String, String> {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    let bytes = STANDARD.decode(text.trim())
+        .map_err(|e| format!("Invalid Base64: {}", e))?;
+    String::from_utf8(bytes)
+        .map_err(|e| format!("Invalid UTF-8 in decoded data: {}", e))
+}
+
+#[tauri::command]
+fn encode_url(text: String) -> String {
+    urlencoding::encode(&text).into_owned()
+}
+
+#[tauri::command]
+fn decode_url(text: String) -> Result<String, String> {
+    urlencoding::decode(&text)
+        .map(|s| s.into_owned())
+        .map_err(|e| format!("Invalid URL encoding: {}", e))
+}
+
+#[tauri::command]
+fn encode_html(text: String) -> String {
+    text.chars()
+        .map(|c| match c {
+            '&' => "&amp;".to_string(),
+            '<' => "&lt;".to_string(),
+            '>' => "&gt;".to_string(),
+            '"' => "&quot;".to_string(),
+            '\'' => "&#x27;".to_string(),
+            _ => c.to_string(),
+        })
+        .collect()
+}
+
+#[tauri::command]
+fn decode_html(text: String) -> String {
+    text.replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#x27;", "'")
+        .replace("&#39;", "'")
+        .replace("&apos;", "'")
+        .replace("&#x2F;", "/")
+        .replace("&#47;", "/")
+        .replace("&nbsp;", " ")
+}
+
+// UUID generator command
+#[tauri::command]
+fn generate_uuid() -> String {
+    uuid_v4()
+}
+
+// Lorem ipsum generator command
+#[tauri::command]
+fn generate_lorem_ipsum(paragraphs: u32, format: String) -> String {
+    let words = [
+        "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit",
+        "sed", "do", "eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore",
+        "magna", "aliqua", "enim", "ad", "minim", "veniam", "quis", "nostrud",
+        "exercitation", "ullamco", "laboris", "nisi", "aliquip", "ex", "ea", "commodo",
+        "consequat", "duis", "aute", "irure", "in", "reprehenderit", "voluptate",
+        "velit", "esse", "cillum", "fugiat", "nulla", "pariatur", "excepteur", "sint",
+        "occaecat", "cupidatat", "non", "proident", "sunt", "culpa", "qui", "officia",
+        "deserunt", "mollit", "anim", "id", "est", "laborum", "at", "vero", "eos",
+        "accusamus", "iusto", "odio", "dignissimos", "ducimus", "blanditiis",
+        "praesentium", "voluptatum", "deleniti", "atque", "corrupti", "quos", "dolores",
+        "quas", "molestias", "excepturi", "obcaecati", "cupiditate", "provident",
+    ];
+
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let seed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos() as u64;
+
+    let mut rng_state = seed;
+    let mut next_random = || {
+        rng_state = rng_state.wrapping_mul(1103515245).wrapping_add(12345);
+        rng_state
+    };
+
+    let generate_sentence = |rng: &mut dyn FnMut() -> u64| -> String {
+        let word_count = 8 + (rng() % 12) as usize;
+        let mut sentence: Vec<String> = (0..word_count)
+            .map(|_| words[(rng() % words.len() as u64) as usize].to_string())
+            .collect();
+        if let Some(first) = sentence.first_mut() {
+            *first = first.chars().next().unwrap().to_uppercase().to_string()
+                + &first[1..];
+        }
+        sentence.join(" ") + "."
+    };
+
+    let generate_paragraph = |rng: &mut dyn FnMut() -> u64| -> String {
+        let sentence_count = 4 + (rng() % 4) as usize;
+        (0..sentence_count)
+            .map(|_| generate_sentence(rng))
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+
+    let paras: Vec<String> = (0..paragraphs)
+        .map(|_| generate_paragraph(&mut next_random))
+        .collect();
+
+    match format.as_str() {
+        "html" => paras.iter()
+            .map(|p| format!("<p>{}</p>", p))
+            .collect::<Vec<_>>()
+            .join("\n\n"),
+        "markdown" => paras.join("\n\n"),
+        _ => paras.join("\n\n"), // plain text
+    }
 }
 
 // License commands
@@ -250,6 +445,9 @@ fn check_feature_enabled(feature: String) -> Result<bool, String> {
         "custom_themes" => ProFeature::CustomThemes,
         "stats_display" => ProFeature::StatsDisplay,
         "export_history" => ProFeature::ExportHistory,
+        "language_selection" => ProFeature::LanguageSelection,
+        "json_xml_formatting" => ProFeature::JsonXmlFormatting,
+        "encode_decode" => ProFeature::EncodeDecode,
         _ => return Err(format!("Unknown feature: {}", feature)),
     };
     Ok(is_feature_enabled(pro_feature))
@@ -537,6 +735,20 @@ pub fn run() {
             get_text_stats,
             transform_text_cmd,
             count_pattern_occurrences,
+            // JSON/XML formatting
+            format_json,
+            minify_json,
+            format_xml,
+            // Encoding/decoding
+            encode_base64,
+            decode_base64,
+            encode_url,
+            decode_url,
+            encode_html,
+            decode_html,
+            // Generators
+            generate_uuid,
+            generate_lorem_ipsum,
             // License
             activate_license,
             deactivate_license,

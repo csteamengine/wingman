@@ -84,7 +84,10 @@ export type ProFeature =
   | 'snippets'
   | 'custom_themes'
   | 'stats_display'
-  | 'export_history';
+  | 'export_history'
+  | 'language_selection'
+  | 'json_xml_formatting'
+  | 'encode_decode';
 
 export interface LicenseStatusInfo {
   tier: LicenseTier;

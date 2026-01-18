@@ -8,47 +8,60 @@ A lightweight, cross-platform developer toolkit that provides a spotlight-style 
 
 ## What is Wingman?
 
-Wingman is a desktop application that gives you instant access to developer tools through a global hotkey. Press the shortcut and get a powerful overlay with JSON/XML formatting, text scratchpads with syntax highlighting, snippet recording, and all the features from Niblet—without ever leaving your current workspace.
+Wingman is a desktop application that gives you instant access to developer tools through a global hotkey. Press the shortcut and get a powerful overlay with JSON/XML formatting, text scratchpads with syntax highlighting, snippet recording, and more—without ever leaving your current workspace.
 
 ### Key Use Cases
 
-- **JSON/XML Validation & Formatting**: Quickly validate and beautify JSON or XML with syntax highlighting
-- **Code Scratchpad**: Multi-language syntax-highlighted scratch space for testing snippets
-- **Snippet Recording**: Capture and replay frequently-used code patterns
-- **Quick Text Transformations**: Convert case, sort lines, remove duplicates, encode/decode
-- **Clipboard Management**: Advanced clipboard history and manipulation
-- **Developer Utilities**: Color picker, hash generator, regex tester, base64 encoding, and more
+- **Quick Text Transformations**: Convert case, sort lines, remove duplicates
+- **Code Scratchpad**: Scratch space for testing snippets and quick edits
+- **Developer Utilities**: UUID generator, Lorem Ipsum generator
+- **JSON/XML Formatting** *(Pro)*: Quickly validate and beautify JSON or XML
+- **Clipboard Management** *(Pro)*: Advanced clipboard history and manipulation
+- **Snippet Recording** *(Pro)*: Capture and replay frequently-used code patterns
 
 ## Features
 
-### Core Tools
+### Free Features
 
-- **JSON/XML Validator & Formatter**: Paste messy JSON/XML and get beautifully formatted, validated output
-- **Multi-Language Scratchpad**: Code editor with syntax highlighting for 20+ languages
-- **Snippet Library**: Save, organize, and quickly insert code snippets
-- **Clipboard History**: Access your last 100 clipboard items with search
+Everything you need for quick text manipulation:
+
+- **Text Scratchpad**: Simple code editor for quick text work
 - **Text Transformations**:
-    - Case conversion (camelCase, snake_case, UPPERCASE, etc.)
+    - Case conversion (UPPERCASE, lowercase, Title Case, Sentence case)
     - Line operations (sort, deduplicate, reverse)
-    - Encode/decode (Base64, URL, HTML entities)
-    - Hash generation (MD5, SHA-256)
+    - Trim whitespace
+- **Generators**:
+    - UUID v4 generator
+    - Lorem Ipsum generator (1, 3, or 5 paragraphs)
+- **Interface**:
+    - Spotlight-style overlay that appears over any application
+    - Global hotkey activation (configurable)
+    - Copy to clipboard with keyboard shortcut
+    - Customizable font family, size, and opacity
+    - System tray integration
 
-### Niblet Features
+### Pro Features
 
-- **Regex Tester**: Live pattern testing with match highlighting
-- **Color Picker**: Advanced color selection with format conversion (HEX, RGB, HSL, etc.)
-- **Unit Converter**: Convert between units with developer-friendly formats
-- **UUID Generator**: Generate v4 UUIDs instantly
-- **Timestamp Converter**: Unix timestamp to human-readable and vice versa
-- **Lorem Ipsum Generator**: Placeholder text, JSON, or code snippets
+Unlock the full power of Wingman:
 
-### Interface
+- **Multi-Language Scratchpad**: Syntax highlighting for 11 languages (JavaScript, TypeScript, Python, Rust, HTML, CSS, JSON, Markdown, and more)
+- **JSON/XML Formatter**: Pretty-print and minify JSON, format XML with proper indentation
+- **Encode/Decode Tools**:
+    - Base64 encode/decode
+    - URL encode/decode
+    - HTML entity encode/decode
+- **Clipboard History**: Access your clipboard history with search
+- **Export History**: Export clipboard history to JSON
+- **Snippet Library**: Save, organize, search, and tag your code snippets
+- **Stats Display**: Character, word, and line count
+- **Custom Themes**: Dark, Light, High Contrast, Solarized Dark/Light, Dracula, Nord
 
-- Spotlight-style overlay that appears over any application
-- Frameless, always-on-top floating window
-- Semi-transparent background with blur effects
-- Fast keyboard navigation
-- Theme support (dark mode, light mode, high contrast)
+### Coming Soon
+
+- **Hash Generation**: MD5, SHA-256 *(coming soon)*
+- **Regex Tester**: Live pattern testing with match highlighting *(coming soon)*
+- **Unit Converter**: Convert between units with developer-friendly formats *(coming soon)*
+- **Timestamp Converter**: Unix timestamp to human-readable and vice versa *(coming soon)*
 
 ## Installation
 

@@ -102,7 +102,6 @@ function App() {
   // Handle resize from corners/edges
   const handleResize = useCallback(async (direction: 'se' | 'sw' | 'ne' | 'nw' | 'n' | 's' | 'e' | 'w') => {
     const win = getCurrentWindow();
-    // Tauri 2.x uses startResizeDragging with ResizeDirection enum values
     const directionMap: Record<string, string> = {
       'n': 'North', 'ne': 'NorthEast', 'e': 'East', 'se': 'SouthEast',
       's': 'South', 'sw': 'SouthWest', 'w': 'West', 'nw': 'NorthWest'
@@ -150,14 +149,32 @@ function App() {
 
       {/* Title bar / drag region */}
       <div
-        className="h-11 flex items-center justify-center cursor-move select-none rounded-t-[10px]"
+        className="h-11 flex items-center justify-between px-3 cursor-move select-none rounded-t-[10px]"
         onMouseDown={handleDragStart}
       >
+        {/* Left spacer for balance */}
+        <div className="w-8" />
+
+        {/* Center dots */}
         <div className="flex items-center gap-1.5 pointer-events-none opacity-40">
           <div className="w-2.5 h-2.5 rounded-full bg-[var(--editor-muted)]" />
           <div className="w-2.5 h-2.5 rounded-full bg-[var(--editor-muted)]" />
           <div className="w-2.5 h-2.5 rounded-full bg-[var(--editor-muted)]" />
         </div>
+
+        {/* Hamburger menu button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setActivePanel(activePanel === 'actions' ? 'editor' : 'actions');
+          }}
+          className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] text-[var(--editor-muted)] hover:text-[var(--editor-text)] transition-colors"
+          title="Quick Actions"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M2 4h12M2 8h12M2 12h12" />
+          </svg>
+        </button>
       </div>
 
       {/* License status banner (shows when in grace period or expired) */}

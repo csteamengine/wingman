@@ -59,8 +59,8 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
                 .value(),
         );
 
-        // Ensures the panel cannot activate the App
-        panel.set_style_mask(StyleMask::empty().nonactivating_panel().into());
+        // Ensures the panel cannot activate the App, but can still be resized
+        panel.set_style_mask(StyleMask::empty().nonactivating_panel().resizable().into());
 
         // Setup event handler for panel events
         let handler = WingmanPanelEventHandler::new();

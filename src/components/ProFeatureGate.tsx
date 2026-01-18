@@ -17,6 +17,9 @@ const FEATURE_NAMES: Record<ProFeature, string> = {
   custom_themes: 'Custom Themes',
   stats_display: 'Stats Display',
   export_history: 'Export History',
+  language_selection: 'Language Selection',
+  json_xml_formatting: 'JSON/XML Formatting',
+  encode_decode: 'Encode/Decode',
 };
 
 export function ProFeatureGate({
