@@ -1,16 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { useHistory } from '../hooks/useHistory';
-import { useEditorStore, type EditorImage } from '../stores/editorStore';
+import { useEditorStore, type EditorAttachment } from '../stores/editorStore';
 import { useHistoryStore } from '../stores/historyStore';
 import { useLicenseStore } from '../stores/licenseStore';
 import { ProFeatureGate } from './ProFeatureGate';
 import type { HistoryEntry } from '../types';
 
-// Helper to parse images from history entry
-function parseImages(entry: HistoryEntry): EditorImage[] {
+// Helper to parse attachments from history entry
+function parseAttachments(entry: HistoryEntry): EditorAttachment[] {
   if (!entry.images) return [];
   try {
-    return JSON.parse(entry.images);
+    const attachments = JSON.parse(entry.images);
+    // Normalize for backwards compatibility
+    return attachments.map((a: EditorAttachment) => ({
+      ...a,
+      type: a.type || (a.width ? 'image' : 'file'),
+      mimeType: a.mimeType || 'application/octet-stream',
+      size: a.size || 0,
+    }));
   } catch {
     return [];
   }
@@ -50,6 +57,16 @@ function ImageIcon({ className }: { className?: string }) {
       <rect x="2" y="2" width="12" height="12" rx="1.5" />
       <circle cx="5.5" cy="5.5" r="1" />
       <path d="M2 11l3-3 2 2 4-4 3 3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// File icon for entries with file attachments
+function FileIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25">
+      <path d="M4 14h8a1 1 0 001-1V5.414a1 1 0 00-.293-.707l-2.414-2.414A1 1 0 009.586 2H4a1 1 0 00-1 1v10a1 1 0 001 1z" />
+      <path d="M9 2v3a1 1 0 001 1h3" />
     </svg>
   );
 }
@@ -251,24 +268,43 @@ function HistoryPanelContent() {
                   </pre>
                 </div>
 
-                {/* Image thumbnails */}
+                {/* Attachments */}
                 {(() => {
-                  const images = parseImages(selectedEntry);
-                  if (images.length === 0) return null;
+                  const attachments = parseAttachments(selectedEntry);
+                  if (attachments.length === 0) return null;
                   return (
                     <div className="mb-4">
                       <div className="text-xs font-medium text-[var(--editor-muted)] uppercase tracking-wide mb-2">
-                        Images ({images.length})
+                        Attachments ({attachments.length})
                       </div>
                       <div className="flex gap-2 flex-wrap">
-                        {images.map((img) => (
-                          <img
-                            key={img.id}
-                            src={img.data}
-                            alt={img.name}
-                            className="h-12 w-auto rounded border border-[var(--editor-border)] object-cover"
-                            title={img.name}
-                          />
+                        {attachments.map((attachment) => (
+                          attachment.type === 'image' ? (
+                            <img
+                              key={attachment.id}
+                              src={attachment.data}
+                              alt={attachment.name}
+                              className="h-12 w-auto rounded border border-[var(--editor-border)] object-cover"
+                              title={attachment.name}
+                            />
+                          ) : (
+                            <div
+                              key={attachment.id}
+                              className="h-12 px-2 rounded border border-[var(--editor-border)] bg-[var(--editor-surface)] flex items-center gap-2"
+                              title={attachment.name}
+                            >
+                              {attachment.type === 'text' ? (
+                                <svg className="w-5 h-5 text-[var(--editor-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5 text-[var(--editor-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                              )}
+                              <span className="text-xs text-[var(--editor-muted)] max-w-[80px] truncate">{attachment.name}</span>
+                            </div>
+                          )
                         ))}
                       </div>
                     </div>
@@ -337,7 +373,9 @@ interface HistoryItemProps {
 }
 
 function HistoryItem({ entry, index, isSelected, onSelect, onDelete, onHover, truncate, isCode }: HistoryItemProps) {
-  const hasImages = parseImages(entry).length > 0;
+  const attachments = parseAttachments(entry);
+  const hasImageAttachments = attachments.some(a => a.type === 'image');
+  const hasAttachments = attachments.length > 0;
 
   return (
     <div
@@ -354,7 +392,7 @@ function HistoryItem({ entry, index, isSelected, onSelect, onDelete, onHover, tr
     >
       {/* Icon */}
       <div className={`flex-shrink-0 ${isSelected ? 'text-[var(--editor-accent)]' : 'text-[var(--editor-muted)]'}`}>
-        {hasImages ? <ImageIcon /> : isCode ? <CodeIcon /> : <DocumentIcon />}
+        {hasImageAttachments ? <ImageIcon /> : hasAttachments ? <FileIcon /> : isCode ? <CodeIcon /> : <DocumentIcon />}
       </div>
 
       {/* Content */}
