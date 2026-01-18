@@ -84,6 +84,9 @@ pub enum ProFeature {
     CustomThemes,
     StatsDisplay,
     ExportHistory,
+    LanguageSelection,
+    JsonXmlFormatting,
+    EncodeDecode,
 }
 
 /// Cached license data stored locally with encryption

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { EditorView, keymap, placeholder } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
 import { rust } from '@codemirror/lang-rust';
@@ -51,6 +51,7 @@ export function EditorWindow() {
 
   const hasStatsDisplay = isProFeatureEnabled('stats_display');
   const hasSyntaxHighlighting = isProFeatureEnabled('syntax_highlighting');
+  const hasLanguageSelection = isProFeatureEnabled('language_selection');
 
   // Focus editor when window becomes visible
   useEffect(() => {
@@ -72,7 +73,7 @@ export function EditorWindow() {
 
     const extensions = [
       history(),
-      keymap.of([...defaultKeymap, ...historyKeymap]),
+      keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       placeholder('Start typing...'),
       EditorView.lineWrapping,
       EditorView.updateListener.of((update) => {
@@ -155,7 +156,7 @@ export function EditorWindow() {
             </div>
             {/* Language Selector */}
             <div className="relative">
-              {hasSyntaxHighlighting ? (
+              {hasLanguageSelection && hasSyntaxHighlighting ? (
                 <>
                   <button
                     onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
@@ -184,7 +185,7 @@ export function EditorWindow() {
                   )}
                 </>
               ) : (
-                <span className="opacity-60">Pro: Syntax</span>
+                <span className="opacity-60 text-[10px] px-1.5 py-0.5 rounded bg-[var(--editor-accent)]/20 text-[var(--editor-accent)]">PRO</span>
               )}
             </div>
           </div>
