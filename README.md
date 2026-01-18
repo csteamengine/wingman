@@ -44,6 +44,7 @@ Everything you need for quick text manipulation:
 
 Unlock the full power of Wingman:
 
+- **Image & File Attachments**: Drag and drop images and files to include with your text—paste them together anywhere
 - **Multi-Language Scratchpad**: Syntax highlighting for 11 languages (JavaScript, TypeScript, Python, Rust, HTML, CSS, JSON, Markdown, and more)
 - **JSON/XML Formatter**: Pretty-print and minify JSON, format XML with proper indentation
 - **Encode/Decode Tools**:

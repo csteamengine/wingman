@@ -49,6 +49,26 @@ interface EditorState {
   hideWindow: () => Promise<void>;
 }
 
+// Helper to safely get current editor content from editorView or fall back to store
+const getEditorContent = (state: EditorState): string => {
+  const { editorView, content } = state;
+  if (editorView) {
+    try {
+      // Try to get content from the editor (source of truth)
+      const editorContent = editorView.state.doc.toString();
+      // Also sync to store if different
+      if (editorContent !== content) {
+        // Don't use set() here to avoid infinite loops, just return the editor content
+      }
+      return editorContent;
+    } catch (e) {
+      // EditorView might be destroyed or invalid
+      console.warn('Failed to read from editorView, using store content');
+    }
+  }
+  return content;
+};
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   content: '',
   language: 'plaintext',
@@ -180,56 +200,55 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   pasteAndClose: async () => {
-    const { content, images } = get();
+    const storeState = get();
+    const { images } = storeState;
+    // Get content from editor (source of truth) or fall back to store
+    const content = getEditorContent(storeState);
+
     if (content.trim() || images.length > 0) {
       try {
-        // If we have attachments, write to clipboard with proper format
+        // If we have attachments, use native clipboard to write both text and images
         if (images.length > 0) {
-          // Separate images from other files
-          const imageAttachments = images.filter(a => a.type === 'image');
-          const otherAttachments = images.filter(a => a.type !== 'image');
-
-          // Build clipboard items
-          const clipboardData: Record<string, Blob> = {};
-
-          // Always include plain text
-          clipboardData['text/plain'] = new Blob([content], { type: 'text/plain' });
-
-          // Build HTML content with embedded images
-          let htmlContent = content;
-          images.forEach((attachment) => {
-            const imagePlaceholder = `[image #${attachment.id}]`;
-            const filePlaceholder = `[file #${attachment.id}]`;
-            if (attachment.type === 'image') {
-              const imgTag = `<img src="${attachment.data}" alt="${attachment.name}" style="max-width: 100%;">`;
-              htmlContent = htmlContent.replace(new RegExp(imagePlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), imgTag);
+          // Build text content: user's text + filenames of attachments
+          let textContent = content;
+          if (images.length > 0) {
+            const filenames = images.map(a => a.name).join('\n');
+            if (textContent.trim()) {
+              textContent = textContent + '\n\n' + filenames;
             } else {
-              // For non-image files, replace with filename
-              htmlContent = htmlContent.replace(new RegExp(filePlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `[${attachment.name}]`);
+              textContent = filenames;
             }
-          });
-
-          // Add HTML version
-          const fullHtml = `<!DOCTYPE html><html><body>${htmlContent.replace(/\n/g, '<br>')}</body></html>`;
-          clipboardData['text/html'] = new Blob([fullHtml], { type: 'text/html' });
-
-          // If there's exactly one image and minimal text, also add raw image data
-          // This allows pasting into image editors and native macOS apps
-          if (imageAttachments.length === 1 && otherAttachments.length === 0) {
-            const img = imageAttachments[0];
-            // Convert base64 data URL to blob
-            const base64Data = img.data.split(',')[1];
-            const mimeType = img.mimeType || 'image/png';
-            const byteString = atob(base64Data);
-            const arrayBuffer = new ArrayBuffer(byteString.length);
-            const uint8Array = new Uint8Array(arrayBuffer);
-            for (let i = 0; i < byteString.length; i++) {
-              uint8Array[i] = byteString.charCodeAt(i);
-            }
-            clipboardData[mimeType] = new Blob([arrayBuffer], { type: mimeType });
           }
 
-          await navigator.clipboard.write([new ClipboardItem(clipboardData)]);
+          // Build HTML content if there's text (for rich text apps)
+          let fullHtml: string | null = null;
+          if (textContent.trim()) {
+            fullHtml = `<!DOCTYPE html><html><body>${textContent.replace(/\n/g, '<br>')}</body></html>`;
+          }
+
+          // Prepare attachment data for native clipboard (all file types)
+          const clipboardImages = images
+            .map(attachment => ({
+              // Extract base64 data without the data URL prefix
+              data: attachment.data.split(',')[1] || attachment.data,
+              mime_type: attachment.mimeType || 'application/octet-stream',
+              name: attachment.name,
+            }));
+
+          try {
+            // Use native clipboard command to write text, HTML, and images
+            await invoke('write_native_clipboard', {
+              text: textContent,
+              html: fullHtml,
+              images: clipboardImages,
+            });
+          } catch (nativeError) {
+            console.error('Native clipboard failed, falling back to writeText:', nativeError);
+            // Fallback: at least copy the plain text if there is any
+            if (textContent.trim()) {
+              await writeText(textContent);
+            }
+          }
         } else {
           // No attachments - just write plain text
           await writeText(content);
@@ -249,6 +268,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         return;
       } catch (error) {
         console.error('Failed to paste:', error);
+        // Still try to hide window on error
+        try {
+          await get().hideWindow();
+        } catch (e) {
+          // Ignore
+        }
       }
     }
     get().hideWindow();
@@ -257,8 +282,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   closeWithoutPaste: async () => {
     await get().hideWindow();
-    // Keep the content - only reset panel, don't clear text
-    set({ activePanel: 'editor' });
+    // Keep the content and panel state - don't reset anything
   },
 
   clearContent: () => {
@@ -267,7 +291,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   transformText: async (transform: string) => {
-    const { content } = get();
+    const state = get();
+    // Get content from editor (source of truth) or fall back to store
+    const content = getEditorContent(state);
     try {
       const transformed = await invoke<string>('transform_text_cmd', { text: content, transform });
       set({ content: transformed });
@@ -278,7 +304,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   applyBulletList: () => {
-    const { editorView, content } = get();
+    const storeState = get();
+    const { editorView } = storeState;
+
+    // Get content from editor (source of truth) or fall back to store
+    const content = getEditorContent(storeState);
 
     // If no content, start a new bullet list
     if (!content.trim()) {
@@ -356,7 +386,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   applyNumberedList: () => {
-    const { editorView, content } = get();
+    const storeState = get();
+    const { editorView } = storeState;
+
+    // Get content from editor (source of truth) or fall back to store
+    const content = getEditorContent(storeState);
 
     // If no content, start a new numbered list
     if (!content.trim()) {
