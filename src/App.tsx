@@ -14,7 +14,7 @@ import { useEditorStore } from './stores/editorStore';
 
 function App() {
   const { settings } = useSettings();
-  const { activePanel, setActivePanel, closeWithoutPaste } = useEditorStore();
+  const { activePanel, setActivePanel } = useEditorStore();
 
   // Initialize license check
   useLicense();
@@ -38,30 +38,16 @@ function App() {
 
   // Listen for panel-hidden event from Rust (when panel loses focus on macOS)
   // This syncs the frontend isVisible state with the actual panel visibility
+  // Note: We don't use onFocusChanged because Rust already handles hiding via resign_key
   useEffect(() => {
     const unlisten = listen('panel-hidden', () => {
-      useEditorStore.setState({ isVisible: false });
+      useEditorStore.setState({ isVisible: false, activePanel: 'actions' });
     });
 
     return () => {
       unlisten.then(fn => fn());
     };
   }, []);
-
-  // Close window when clicking outside (window loses focus)
-  useEffect(() => {
-    const window = getCurrentWindow();
-    const unlisten = window.onFocusChanged(({ payload: focused }) => {
-      if (!focused) {
-        // Window lost focus - hide it but keep content
-        closeWithoutPaste();
-      }
-    });
-
-    return () => {
-      unlisten.then(fn => fn());
-    };
-  }, [closeWithoutPaste]);
 
 
   // Apply theme class to root element
