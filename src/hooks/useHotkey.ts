@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { register, unregister, isRegistered } from '@tauri-apps/plugin-global-shortcut';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useEditorStore } from '../stores/editorStore';
@@ -6,15 +6,7 @@ import { useLicenseStore } from '../stores/licenseStore';
 
 export function useGlobalHotkey() {
   const { settings } = useSettingsStore();
-  const { showWindow, isVisible, hideWindow } = useEditorStore();
-
-  const toggleWindow = useCallback(async () => {
-    if (isVisible) {
-      await hideWindow();
-    } else {
-      await showWindow();
-    }
-  }, [isVisible, showWindow, hideWindow]);
+  const { showWindow } = useEditorStore();
 
   useEffect(() => {
     if (!settings?.hotkey) return;
@@ -30,10 +22,11 @@ export function useGlobalHotkey() {
           await unregister(shortcut);
         }
 
-        // Register the hotkey
+        // Register the hotkey - always shows the window (summon behavior)
+        // User can dismiss with Escape or clicking outside
         await register(shortcut, (event) => {
           if (event.state === 'Pressed') {
-            toggleWindow();
+            showWindow();
           }
         });
         registered = true;
@@ -50,7 +43,7 @@ export function useGlobalHotkey() {
         unregister(shortcut).catch(console.error);
       }
     };
-  }, [settings?.hotkey, toggleWindow]);
+  }, [settings?.hotkey, showWindow]);
 }
 
 export function useKeyboardShortcuts() {
