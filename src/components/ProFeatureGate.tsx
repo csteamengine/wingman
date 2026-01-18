@@ -20,6 +20,7 @@ const FEATURE_NAMES: Record<ProFeature, string> = {
   language_selection: 'Language Selection',
   json_xml_formatting: 'JSON/XML Formatting',
   encode_decode: 'Encode/Decode',
+  image_attachments: 'Image Attachments',
 };
 
 export function ProFeatureGate({

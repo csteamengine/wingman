@@ -277,6 +277,7 @@ export function QuickActionsPanel() {
           </svg>
           <input
             ref={searchInputRef}
+            id="quick-actions-search"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
