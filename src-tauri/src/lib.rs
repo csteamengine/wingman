@@ -448,6 +448,7 @@ fn check_feature_enabled(feature: String) -> Result<bool, String> {
         "language_selection" => ProFeature::LanguageSelection,
         "json_xml_formatting" => ProFeature::JsonXmlFormatting,
         "encode_decode" => ProFeature::EncodeDecode,
+        "image_attachments" => ProFeature::ImageAttachments,
         _ => return Err(format!("Unknown feature: {}", feature)),
     };
     Ok(is_feature_enabled(pro_feature))

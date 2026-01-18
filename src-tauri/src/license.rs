@@ -87,6 +87,7 @@ pub enum ProFeature {
     LanguageSelection,
     JsonXmlFormatting,
     EncodeDecode,
+    ImageAttachments,
 }
 
 /// Cached license data stored locally with encryption

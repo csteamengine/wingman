@@ -4,6 +4,14 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import type { EditorView } from '@codemirror/view';
 import type { TextStats, PanelType } from '../types';
 
+export interface EditorImage {
+  id: number;
+  data: string; // base64 data URL
+  name: string;
+  width?: number;
+  height?: number;
+}
+
 interface EditorState {
   content: string;
   language: string;
@@ -11,10 +19,15 @@ interface EditorState {
   activePanel: PanelType;
   isVisible: boolean;
   editorView: EditorView | null;
+  images: EditorImage[];
+  nextImageId: number;
   setContent: (content: string) => void;
   setLanguage: (language: string) => void;
   setActivePanel: (panel: PanelType) => void;
   setEditorView: (view: EditorView | null) => void;
+  addImage: (file: File) => Promise<number>;
+  removeImage: (id: number) => void;
+  clearImages: () => void;
   updateStats: () => Promise<void>;
   pasteAndClose: () => Promise<void>;
   closeWithoutPaste: () => Promise<void>;
@@ -32,6 +45,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activePanel: 'actions',
   isVisible: false,
   editorView: null,
+  images: [],
+  nextImageId: 1,
 
   setContent: (content: string) => {
     set({ content });
@@ -50,6 +65,42 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ editorView: view });
   },
 
+  addImage: async (file: File): Promise<number> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = e.target?.result as string;
+        const img = new Image();
+        img.onload = () => {
+          const { nextImageId, images } = get();
+          const newImage: EditorImage = {
+            id: nextImageId,
+            data,
+            name: file.name,
+            width: img.width,
+            height: img.height,
+          };
+          set({
+            images: [...images, newImage],
+            nextImageId: nextImageId + 1,
+          });
+          resolve(nextImageId);
+        };
+        img.src = data;
+      };
+      reader.readAsDataURL(file);
+    });
+  },
+
+  removeImage: (id: number) => {
+    const { images } = get();
+    set({ images: images.filter((img) => img.id !== id) });
+  },
+
+  clearImages: () => {
+    set({ images: [], nextImageId: 1 });
+  },
+
   updateStats: async () => {
     const { content } = get();
     try {
@@ -66,13 +117,37 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   pasteAndClose: async () => {
-    const { content } = get();
-    if (content.trim()) {
+    const { content, images } = get();
+    if (content.trim() || images.length > 0) {
       try {
-        // Write to clipboard
-        await writeText(content);
+        // If we have images, write HTML to clipboard so images are included
+        if (images.length > 0) {
+          // Replace [image #N] placeholders with actual img tags for HTML clipboard
+          let htmlContent = content;
+          images.forEach((img) => {
+            const placeholder = `[image #${img.id}]`;
+            const imgTag = `<img src="${img.data}" alt="${img.name}" style="max-width: 100%;">`;
+            htmlContent = htmlContent.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), imgTag);
+          });
 
-        // Save to history
+          // Wrap in basic HTML structure
+          const fullHtml = `<!DOCTYPE html><html><body>${htmlContent.replace(/\n/g, '<br>')}</body></html>`;
+
+          // Use web Clipboard API for HTML
+          const blob = new Blob([fullHtml], { type: 'text/html' });
+          const textBlob = new Blob([content], { type: 'text/plain' });
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/html': blob,
+              'text/plain': textBlob,
+            }),
+          ]);
+        } else {
+          // No images - just write plain text
+          await writeText(content);
+        }
+
+        // Save to history (text only for now)
         await invoke('add_history_entry', {
           content,
           language: get().language,
@@ -81,14 +156,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
         // Hide window and auto-paste to previous app
         await invoke('hide_and_paste');
-        set({ content: '', activePanel: 'editor', isVisible: false });
+        set({ content: '', images: [], nextImageId: 1, activePanel: 'actions', isVisible: false });
         return;
       } catch (error) {
         console.error('Failed to paste:', error);
       }
     }
     get().hideWindow();
-    set({ content: '', activePanel: 'editor' });
+    set({ content: '', images: [], nextImageId: 1, activePanel: 'actions' });
   },
 
   closeWithoutPaste: async () => {
@@ -98,7 +173,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   clearContent: () => {
-    set({ content: '' });
+    set({ content: '', images: [], nextImageId: 1 });
     get().updateStats();
   },
 

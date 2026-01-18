@@ -106,7 +106,20 @@ export function useKeyboardShortcuts() {
       // Cmd/Ctrl + Shift + A - quick actions
       if (isMod && e.shiftKey && e.key === 'a') {
         e.preventDefault();
-        setActivePanel(activePanel === 'actions' ? 'editor' : 'actions');
+        if (activePanel === 'actions') {
+          // If QA is open, check if search is focused
+          const searchInput = document.getElementById('quick-actions-search');
+          if (document.activeElement === searchInput) {
+            // Search is focused - close the menu
+            setActivePanel('editor');
+          } else {
+            // Search is not focused - focus it instead of closing
+            searchInput?.focus();
+          }
+        } else {
+          // QA is closed - open it
+          setActivePanel('actions');
+        }
         return;
       }
 

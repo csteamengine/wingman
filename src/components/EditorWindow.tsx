@@ -45,9 +45,12 @@ export function EditorWindow() {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const { content, setContent, language, setLanguage, stats, isVisible, pasteAndClose, setEditorView } = useEditorStore();
+  const [isDragging, setIsDragging] = useState(false);
+  const { content, setContent, language, setLanguage, stats, isVisible, pasteAndClose, setEditorView, images, addImage, removeImage } = useEditorStore();
   const { settings } = useSettingsStore();
   const { isProFeatureEnabled } = useLicenseStore();
+
+  const hasImageSupport = isProFeatureEnabled('image_attachments');
 
   // Auto-bullet keymap: Enter adds bullet on bullet lines, Shift+Enter is normal newline
   const bulletKeymap = keymap.of([
@@ -88,6 +91,45 @@ export function EditorWindow() {
   const hasStatsDisplay = isProFeatureEnabled('stats_display');
   const hasSyntaxHighlighting = isProFeatureEnabled('syntax_highlighting');
   const hasLanguageSelection = isProFeatureEnabled('language_selection');
+
+  // Handle drag-and-drop for images (PRO feature)
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (hasImageSupport) {
+      setIsDragging(true);
+    }
+  }, [hasImageSupport]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (!hasImageSupport) return;
+
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+
+    for (const file of imageFiles) {
+      const imageId = await addImage(file);
+      // Insert placeholder at cursor position
+      if (viewRef.current) {
+        const pos = viewRef.current.state.selection.main.head;
+        const placeholder = `[image #${imageId}]`;
+        viewRef.current.dispatch({
+          changes: { from: pos, insert: placeholder },
+          selection: { anchor: pos + placeholder.length },
+        });
+      }
+    }
+  }, [hasImageSupport, addImage]);
 
   // Focus editor when window becomes visible
   useEffect(() => {
@@ -168,7 +210,24 @@ export function EditorWindow() {
   }, [content]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div
+      className="flex flex-col h-full"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--editor-bg)]/90 border-2 border-dashed border-[var(--editor-accent)] rounded-lg">
+          <div className="text-center">
+            <svg className="w-12 h-12 mx-auto mb-2 text-[var(--editor-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p className="text-sm text-[var(--editor-text)]">Drop image to attach</p>
+          </div>
+        </div>
+      )}
+
       <div
         ref={editorRef}
         className="flex-1 overflow-hidden"
@@ -177,6 +236,36 @@ export function EditorWindow() {
           fontSize: `${settings?.font_size || 14}px`,
         }}
       />
+
+      {/* Image thumbnails */}
+      {images.length > 0 && (
+        <div className="border-t border-[var(--editor-border)] px-3 py-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-[var(--editor-muted)]">Images:</span>
+            {images.map((img) => (
+              <div key={img.id} className="relative group">
+                <img
+                  src={img.data}
+                  alt={img.name}
+                  className="h-10 w-auto rounded border border-[var(--editor-border)] object-cover"
+                  title={`[image #${img.id}] - ${img.name}`}
+                />
+                <button
+                  onClick={() => removeImage(img.id)}
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                  title="Remove image"
+                >
+                  ×
+                </button>
+                <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] px-1 truncate">
+                  #{img.id}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {settings?.show_status_bar !== false && (
         <div className="border-t border-[var(--editor-border)] rounded-b-[10px]">
           {/* Info row */}
