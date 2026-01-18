@@ -39,9 +39,10 @@ function App() {
   // Listen for panel-hidden event from Rust (when panel loses focus on macOS)
   // This syncs the frontend isVisible state with the actual panel visibility
   // Note: We don't use onFocusChanged because Rust already handles hiding via resign_key
+  // Note: We preserve activePanel state so it's restored when window reopens
   useEffect(() => {
     const unlisten = listen('panel-hidden', () => {
-      useEditorStore.setState({ isVisible: false, activePanel: 'actions' });
+      useEditorStore.setState({ isVisible: false });
     });
 
     return () => {

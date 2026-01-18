@@ -52,8 +52,106 @@ export function EditorWindow() {
 
   const hasImageSupport = isProFeatureEnabled('image_attachments');
 
-  // Auto-list keymap: Enter continues bullets/numbers, Shift+Enter is normal newline
-  const listKeymap = keymap.of([
+  // Editor keymaps: line operations and auto-list continuation
+  const editorKeymap = keymap.of([
+    // Cmd/Ctrl+D: Duplicate line
+    {
+      key: 'Mod-d',
+      run: (view) => {
+        const state = view.state;
+        const line = state.doc.lineAt(state.selection.main.head);
+        const lineText = line.text;
+
+        // Insert a copy of the line below
+        view.dispatch({
+          changes: {
+            from: line.to,
+            insert: '\n' + lineText,
+          },
+          // Move cursor to the duplicated line at the same position
+          selection: { anchor: line.to + 1 + (state.selection.main.head - line.from) },
+        });
+        return true;
+      },
+    },
+    // Cmd/Ctrl+Shift+Up: Move line(s) up
+    {
+      key: 'Mod-Shift-ArrowUp',
+      run: (view) => {
+        const state = view.state;
+        const selection = state.selection.main;
+
+        // Get the range of lines in the selection
+        const startLine = state.doc.lineAt(selection.from);
+        const endLine = state.doc.lineAt(selection.to);
+
+        // Can't move up if already at first line
+        if (startLine.number === 1) return true;
+
+        const prevLine = state.doc.line(startLine.number - 1);
+
+        // Get the text of all selected lines
+        const selectedText = state.doc.sliceString(startLine.from, endLine.to);
+
+        // Calculate new selection positions
+        const selectionStartOffset = selection.from - startLine.from;
+        const selectionEndOffset = selection.to - startLine.from;
+
+        // Move selected lines above the previous line
+        view.dispatch({
+          changes: {
+            from: prevLine.from,
+            to: endLine.to,
+            insert: selectedText + '\n' + prevLine.text,
+          },
+          selection: {
+            anchor: prevLine.from + selectionStartOffset,
+            head: prevLine.from + selectionEndOffset,
+          },
+        });
+        return true;
+      },
+    },
+    // Cmd/Ctrl+Shift+Down: Move line(s) down
+    {
+      key: 'Mod-Shift-ArrowDown',
+      run: (view) => {
+        const state = view.state;
+        const selection = state.selection.main;
+
+        // Get the range of lines in the selection
+        const startLine = state.doc.lineAt(selection.from);
+        const endLine = state.doc.lineAt(selection.to);
+
+        // Can't move down if already at last line
+        if (endLine.number === state.doc.lines) return true;
+
+        const nextLine = state.doc.line(endLine.number + 1);
+
+        // Get the text of all selected lines
+        const selectedText = state.doc.sliceString(startLine.from, endLine.to);
+
+        // Calculate new selection positions (after nextLine is moved above)
+        const selectionStartOffset = selection.from - startLine.from;
+        const selectionEndOffset = selection.to - startLine.from;
+        const newStart = startLine.from + nextLine.text.length + 1;
+
+        // Move selected lines below the next line
+        view.dispatch({
+          changes: {
+            from: startLine.from,
+            to: nextLine.to,
+            insert: nextLine.text + '\n' + selectedText,
+          },
+          selection: {
+            anchor: newStart + selectionStartOffset,
+            head: newStart + selectionEndOffset,
+          },
+        });
+        return true;
+      },
+    },
+    // Enter: Auto-continue lists
     {
       key: 'Enter',
       run: (view) => {
@@ -143,24 +241,9 @@ export function EditorWindow() {
     if (filesToAdd.length > 0) {
       e.preventDefault();
 
-      let insertText = '';
+      // Just add the files as attachments, no text placeholders
       for (const file of filesToAdd) {
-        const fileId = await addImage(file);
-        // Use appropriate placeholder based on file type
-        const isImage = file.type.startsWith('image/');
-        insertText += isImage ? `[image #${fileId}]` : `[file #${fileId}]`;
-        if (filesToAdd.indexOf(file) < filesToAdd.length - 1) {
-          insertText += ' ';
-        }
-      }
-
-      // Insert placeholders at cursor position
-      if (viewRef.current && insertText) {
-        const pos = viewRef.current.state.selection.main.head;
-        viewRef.current.dispatch({
-          changes: { from: pos, insert: insertText },
-          selection: { anchor: pos + insertText.length },
-        });
+        await addImage(file);
       }
     }
   }, [hasImageSupport, addImage]);
@@ -211,24 +294,9 @@ export function EditorWindow() {
     const files = Array.from(e.dataTransfer.files);
     if (files.length === 0) return;
 
-    let insertText = '';
+    // Just add the files as attachments, no text placeholders
     for (const file of files) {
-      const fileId = await addImage(file);
-      // Use appropriate placeholder based on file type
-      const isImage = file.type.startsWith('image/');
-      insertText += isImage ? `[image #${fileId}]` : `[file #${fileId}]`;
-      if (files.indexOf(file) < files.length - 1) {
-        insertText += ' ';
-      }
-    }
-
-    // Insert placeholders at cursor position
-    if (viewRef.current && insertText) {
-      const pos = viewRef.current.state.selection.main.head;
-      viewRef.current.dispatch({
-        changes: { from: pos, insert: insertText },
-        selection: { anchor: pos + insertText.length },
-      });
+      await addImage(file);
     }
   }, [hasImageSupport, addImage]);
 
@@ -247,13 +315,17 @@ export function EditorWindow() {
     return langFn ? [langFn()] : [];
   }, [language]);
 
+  // Store current content before recreating editor
+  const contentRef = useRef(content);
+  contentRef.current = content;
+
   useEffect(() => {
     if (!editorRef.current) return;
 
     const extensions = [
       history(),
-      // Bullet keymap first so it takes precedence for Enter key
-      listKeymap,
+      // Custom keymap first so it takes precedence (line ops, auto-list)
+      editorKeymap,
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       placeholder('Start typing...'),
       EditorView.lineWrapping,
@@ -272,8 +344,9 @@ export function EditorWindow() {
       extensions.push(oneDark);
     }
 
+    // Use contentRef to get latest content even when effect re-runs
     const state = EditorState.create({
-      doc: content,
+      doc: contentRef.current,
       extensions,
     });
 
@@ -292,7 +365,7 @@ export function EditorWindow() {
       view.destroy();
       setEditorView(null);
     };
-  }, [language, settings?.theme]);
+  }, [language, settings?.theme, setContent, getLanguageExtension]);
 
   // Update editor content when it changes externally
   useEffect(() => {
@@ -446,7 +519,7 @@ export function EditorWindow() {
           <div className="px-3 pb-3">
             <button
               onClick={pasteAndClose}
-              disabled={!content.trim()}
+              disabled={!content.trim() && images.length === 0}
               className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md bg-[var(--editor-surface)] border border-[var(--editor-border)] text-sm text-[var(--editor-text)] hover:bg-[var(--editor-hover)] disabled:opacity-40 transition-colors"
             >
               <span>Copy to Clipboard</span>

@@ -2,6 +2,7 @@ mod clipboard;
 mod history;
 mod hotkey;
 mod license;
+mod native_clipboard;
 mod storage;
 mod updater;
 #[cfg(target_os = "macos")]
@@ -199,6 +200,17 @@ fn transform_text_cmd(text: String, transform: String) -> Result<String, String>
 #[tauri::command]
 fn count_pattern_occurrences(text: String, pattern: String) -> usize {
     clipboard::count_occurrences(&text, &pattern)
+}
+
+/// Write text and images to the native clipboard using NSPasteboard
+/// This allows both text and images to be read by different apps
+#[tauri::command]
+fn write_native_clipboard(
+    text: String,
+    html: Option<String>,
+    images: Vec<native_clipboard::ClipboardImage>,
+) -> Result<(), String> {
+    native_clipboard::write_to_clipboard(&text, html.as_deref(), &images)
 }
 
 // JSON/XML formatting commands
@@ -737,6 +749,8 @@ pub fn run() {
             get_text_stats,
             transform_text_cmd,
             count_pattern_occurrences,
+            // Native clipboard
+            write_native_clipboard,
             // JSON/XML formatting
             format_json,
             minify_json,
