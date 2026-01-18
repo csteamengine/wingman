@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wingman - Lightning-fast text composition</title>
-  <meta name="description" content="A minimal, always-accessible text editor that appears with a hotkey. Compose, transform, and paste text instantly.">
+  <title>Wingman - Your Developer Toolkit</title>
+  <meta name="description" content="A spotlight-style developer toolkit with JSON/XML formatting, text transforms, UUID generator, and more. Press a hotkey, get things done.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
   <nav class="nav">
     <div class="nav-content">
       <a href="/" class="logo">
-        <span class="logo-icon">N</span>
+        <span class="logo-icon">W</span>
         <span class="logo-text">Wingman</span>
       </a>
       <div class="nav-links">
@@ -29,10 +29,10 @@
   <main>
     <section class="hero">
       <div class="hero-content">
-        <h1>Text composition,<br><span class="gradient-text">instantly accessible</span></h1>
+        <h1>Your developer toolkit,<br><span class="gradient-text">always within reach</span></h1>
         <p class="hero-description">
-          A minimal overlay editor that appears with a hotkey.
-          Write, transform, and paste text without switching windows.
+          A spotlight-style overlay with JSON formatting, text transforms, UUID generator, and more.
+          Press a hotkey, get things done, paste anywhere.
         </p>
         <div class="hero-actions">
           <a href="#" id="download-btn" class="btn btn-primary">
@@ -124,8 +124,17 @@
     </section>
 
     <section id="features" class="features">
-      <h2>Everything you need, nothing you don't</h2>
+      <h2>Developer tools at your fingertips</h2>
       <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 1L3 9h5l-1 6 6-8H8l1-6z"/>
+            </svg>
+          </div>
+          <h3>Quick Actions</h3>
+          <p>JSON formatting, text transforms, encode/decode, UUID generator—all in one searchable panel.</p>
+        </div>
         <div class="feature-card">
           <div class="feature-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -134,6 +143,17 @@
           </div>
           <h3>Global Hotkey</h3>
           <p>Press your custom shortcut anywhere to summon Wingman. No window switching required.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <h3>Text Transforms</h3>
+          <p>Case conversion, sort lines, remove duplicates, reverse, trim whitespace, bullet lists.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -148,13 +168,11 @@
         <div class="feature-card">
           <div class="feature-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5"/>
-              <path d="M2 12l10 5 10-5"/>
+              <path d="M4 7h16M4 12h16M4 17h10"/>
             </svg>
           </div>
-          <h3>Text Transforms</h3>
-          <p>Uppercase, lowercase, title case, sort lines, remove duplicates, and more.</p>
+          <h3>Generators</h3>
+          <p>UUID v4 generator, Lorem Ipsum generator (1, 3, or 5 paragraphs) for quick mock data.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -164,7 +182,7 @@
             </svg>
           </div>
           <h3>Customizable</h3>
-          <p>Set your own hotkey, choose your theme, and make Wingman work the way you want.</p>
+          <p>Set your own hotkey, choose your theme, adjust fonts and window settings.</p>
         </div>
       </div>
     </section>
@@ -172,15 +190,14 @@
     <!-- Text Transforms Demo -->
     <section class="demo-section">
       <div class="demo-content">
-        <h2>Powerful Text Transforms</h2>
-        <p>Transform your text instantly with built-in tools. No more copying to external converters.</p>
+        <h2>Text Transforms &amp; Generators</h2>
+        <p>Transform text instantly with built-in tools. Generate UUIDs, Lorem Ipsum, and more—no external tools needed.</p>
         <ul class="demo-list">
-          <li>UPPERCASE and lowercase conversion</li>
-          <li>Title Case and Sentence case</li>
-          <li>Sort lines alphabetically</li>
-          <li>Remove duplicate lines</li>
-          <li>Trim whitespace</li>
-          <li>Reverse line order</li>
+          <li>Case conversion (upper, lower, title, sentence)</li>
+          <li>Sort, deduplicate, and reverse lines</li>
+          <li>Trim whitespace, add bullet points</li>
+          <li>UUID v4 generator</li>
+          <li>Lorem Ipsum generator (1, 3, 5 paragraphs)</li>
         </ul>
       </div>
       <div class="demo-visual">
@@ -216,8 +233,54 @@
       </div>
     </section>
 
-    <!-- History Demo (Pro) -->
+    <!-- JSON/XML & Encode/Decode Demo (Pro) -->
     <section class="demo-section reverse">
+      <div class="demo-content">
+        <h2>Format &amp; Encode Data</h2>
+        <p class="pro-badge-inline"><span class="pro-badge">Pro</span></p>
+        <p>Validate and format JSON/XML with one click. Encode and decode Base64, URLs, and HTML entities instantly.</p>
+        <ul class="demo-list">
+          <li>JSON pretty-print and minify</li>
+          <li>XML formatting with indentation</li>
+          <li>Base64 encode/decode</li>
+          <li>URL encode/decode</li>
+          <li>HTML entity encode/decode</li>
+        </ul>
+      </div>
+      <div class="demo-visual">
+        <div class="transform-demo">
+          <div class="transform-before">
+            <div class="transform-label">Minified JSON</div>
+            <div class="window-mock small">
+              <div class="window-header"><div class="window-dots"><span></span><span></span><span></span></div></div>
+              <div class="window-content compact" style="font-family: 'JetBrains Mono', monospace; font-size: 11px;">
+                <div>{"name":"John","age":30}</div>
+              </div>
+            </div>
+          </div>
+          <div class="transform-arrow">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </div>
+          <div class="transform-after">
+            <div class="transform-label">Pretty-printed</div>
+            <div class="window-mock small">
+              <div class="window-header"><div class="window-dots"><span></span><span></span><span></span></div></div>
+              <div class="window-content compact highlighted" style="font-family: 'JetBrains Mono', monospace; font-size: 11px;">
+                <div>{</div>
+                <div>&nbsp;&nbsp;"name": "John",</div>
+                <div>&nbsp;&nbsp;"age": 30</div>
+                <div>}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- History Demo (Pro) -->
+    <section class="demo-section">
       <div class="demo-content">
         <h2>Never Lose Your Drafts</h2>
         <p class="pro-badge-inline"><span class="pro-badge">Pro</span></p>
@@ -258,7 +321,7 @@
     </section>
 
     <!-- Snippets Demo (Pro) -->
-    <section class="demo-section">
+    <section class="demo-section reverse">
       <div class="demo-content">
         <h2>Save Templates as Snippets</h2>
         <p class="pro-badge-inline"><span class="pro-badge">Pro</span></p>
@@ -306,7 +369,7 @@
           <div class="pricing-header">
             <h3>Free</h3>
             <div class="price">$0</div>
-            <p>Perfect for quick text editing</p>
+            <p>Essential developer tools</p>
           </div>
           <ul class="pricing-features">
             <li>
@@ -325,13 +388,25 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
-              Text transformations
+              Text transforms (case, sort, dedupe, trim)
             </li>
             <li>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
-              Dark &amp; light themes
+              UUID v4 generator
+            </li>
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Lorem Ipsum generator
+            </li>
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Basic scratchpad
             </li>
           </ul>
           <a href="#" id="download-free" class="btn btn-secondary btn-full">Download Free</a>
@@ -349,43 +424,49 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
-              Everything in Free
+              Everything in Free, plus:
             </li>
             <li>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
-              <strong>History</strong> - Last 50 drafts
+              <strong>JSON/XML formatting</strong> - Pretty-print &amp; minify
             </li>
             <li>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
-              <strong>Snippets</strong> - Save templates
+              <strong>Encode/Decode</strong> - Base64, URL, HTML
             </li>
             <li>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
-              <strong>Syntax highlighting</strong> - JS, Python, Rust, more
+              <strong>Syntax highlighting</strong> - 11 languages
+            </li>
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <strong>Clipboard history</strong> - Last 50 drafts
+            </li>
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <strong>Snippets library</strong> - Save &amp; organize templates
+            </li>
+            <li>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <strong>Stats display</strong> - Chars, words, lines
             </li>
             <li>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
               <strong>Custom themes</strong> - Dracula, Nord, Solarized
-            </li>
-            <li>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-              Character/word/line stats
-            </li>
-            <li>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-              Export history to JSON
             </li>
           </ul>
           <a href="https://gumroad.com/l/wingman-pro" target="_blank" rel="noopener" class="btn btn-primary btn-full">Buy Wingman Pro</a>
@@ -394,8 +475,8 @@
     </section>
 
     <section class="cta">
-      <h2>Ready to streamline your workflow?</h2>
-      <p>Download Wingman and start composing text faster than ever.</p>
+      <h2>Ready to boost your developer workflow?</h2>
+      <p>Download Wingman and get instant access to the tools you need, right where you work.</p>
       <a href="#" id="download-cta" class="btn btn-primary">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -410,7 +491,7 @@
   <footer class="footer">
     <div class="footer-content">
       <div class="footer-brand">
-        <span class="logo-icon">N</span>
+        <span class="logo-icon">W</span>
         <span>Wingman</span>
       </div>
       <div class="footer-links">
