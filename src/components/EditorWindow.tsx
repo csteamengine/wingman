@@ -45,7 +45,6 @@ export function EditorWindow() {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const { content, setContent, language, setLanguage, stats, isVisible, pasteAndClose, setEditorView, images, addImage, removeImage } = useEditorStore();
   const { settings } = useSettingsStore();
   const { isProFeatureEnabled } = useLicenseStore();
@@ -92,66 +91,39 @@ export function EditorWindow() {
   const hasSyntaxHighlighting = isProFeatureEnabled('syntax_highlighting');
   const hasLanguageSelection = isProFeatureEnabled('language_selection');
 
-  // Handle drag-and-drop for images (PRO feature)
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (hasImageSupport && e.dataTransfer.types.includes('Files')) {
-      setIsDragging(true);
-    }
-  }, [hasImageSupport]);
+  // Handle paste for images (PRO feature)
+  const handlePaste = useCallback(async (e: ClipboardEvent) => {
+    if (!hasImageSupport) return;
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (hasImageSupport && e.dataTransfer.types.includes('Files')) {
-      e.dataTransfer.dropEffect = 'copy';
-      setIsDragging(true);
-    }
-  }, [hasImageSupport]);
+    const items = e.clipboardData?.items;
+    if (!items) return;
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Only set dragging to false if we're leaving the main container
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setIsDragging(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    console.log('Drop event received', { hasImageSupport, files: e.dataTransfer.files.length });
-
-    if (!hasImageSupport) {
-      console.log('Image support not enabled (PRO feature)');
-      return;
-    }
-
-    const files = Array.from(e.dataTransfer.files);
-    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
-    console.log('Image files:', imageFiles.map(f => f.name));
-
-    for (const file of imageFiles) {
-      const imageId = await addImage(file);
-      console.log('Added image with ID:', imageId);
-      // Insert placeholder at cursor position
-      if (viewRef.current) {
-        const pos = viewRef.current.state.selection.main.head;
-        const placeholder = `[image #${imageId}]`;
-        viewRef.current.dispatch({
-          changes: { from: pos, insert: placeholder },
-          selection: { anchor: pos + placeholder.length },
-        });
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const imageId = await addImage(file);
+          // Insert placeholder at cursor position
+          if (viewRef.current) {
+            const pos = viewRef.current.state.selection.main.head;
+            const placeholder = `[image #${imageId}]`;
+            viewRef.current.dispatch({
+              changes: { from: pos, insert: placeholder },
+              selection: { anchor: pos + placeholder.length },
+            });
+          }
+        }
+        break; // Only handle first image
       }
     }
   }, [hasImageSupport, addImage]);
+
+  // Add paste event listener
+  useEffect(() => {
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [handlePaste]);
 
   // Focus editor when window becomes visible
   useEffect(() => {
@@ -232,25 +204,7 @@ export function EditorWindow() {
   }, [content]);
 
   return (
-    <div
-      className="flex flex-col h-full relative"
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {/* Drag overlay */}
-      {isDragging && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--editor-bg)]/90 border-2 border-dashed border-[var(--editor-accent)] rounded-lg">
-          <div className="text-center">
-            <svg className="w-12 h-12 mx-auto mb-2 text-[var(--editor-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <p className="text-sm text-[var(--editor-text)]">Drop image to attach</p>
-          </div>
-        </div>
-      )}
-
+    <div className="flex flex-col h-full relative">
       <div
         ref={editorRef}
         className="flex-1 overflow-hidden"

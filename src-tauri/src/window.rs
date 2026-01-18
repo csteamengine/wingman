@@ -73,11 +73,15 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
 
         handler.window_did_resign_key(move |_| {
             log::info!("panel resigned key window");
-            // TEMPORARILY DISABLED: Auto-hide on focus loss
-            // This allows drag-and-drop of images from Finder
-            // Users can close with Escape or hotkey instead
-            // TODO: Re-evaluate this behavior after testing image drag-and-drop
-            let _ = &app_handle; // Keep reference to avoid unused warning
+            // Hide panel when it loses focus (clicking outside, switching spaces, etc.)
+            // Like Raycast behavior - dismiss and re-summon with hotkey
+            if let Ok(panel) = app_handle.get_webview_panel(MAIN_WINDOW_LABEL) {
+                if panel.is_visible() {
+                    panel.hide();
+                    // Notify frontend that panel was hidden so it can sync isVisible state
+                    let _ = app_handle.emit("panel-hidden", ());
+                }
+            }
         });
 
         panel.set_event_handler(Some(handler.as_ref()));
