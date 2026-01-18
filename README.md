@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icons/icon-128.png" alt="Wingman Logo" width="128" height="128">
+</p>
+
 # Wingman
 
 A lightweight, cross-platform developer toolkit that provides a spotlight-style overlay for quick access to essential development utilities.
