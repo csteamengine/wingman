@@ -93,10 +93,19 @@ export function EditorWindow() {
   const hasLanguageSelection = isProFeatureEnabled('language_selection');
 
   // Handle drag-and-drop for images (PRO feature)
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (hasImageSupport && e.dataTransfer.types.includes('Files')) {
+      setIsDragging(true);
+    }
+  }, [hasImageSupport]);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (hasImageSupport) {
+    if (hasImageSupport && e.dataTransfer.types.includes('Files')) {
+      e.dataTransfer.dropEffect = 'copy';
       setIsDragging(true);
     }
   }, [hasImageSupport]);
@@ -104,7 +113,13 @@ export function EditorWindow() {
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    // Only set dragging to false if we're leaving the main container
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setIsDragging(false);
+    }
   }, []);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
@@ -112,13 +127,20 @@ export function EditorWindow() {
     e.stopPropagation();
     setIsDragging(false);
 
-    if (!hasImageSupport) return;
+    console.log('Drop event received', { hasImageSupport, files: e.dataTransfer.files.length });
+
+    if (!hasImageSupport) {
+      console.log('Image support not enabled (PRO feature)');
+      return;
+    }
 
     const files = Array.from(e.dataTransfer.files);
     const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+    console.log('Image files:', imageFiles.map(f => f.name));
 
     for (const file of imageFiles) {
       const imageId = await addImage(file);
+      console.log('Added image with ID:', imageId);
       // Insert placeholder at cursor position
       if (viewRef.current) {
         const pos = viewRef.current.state.selection.main.head;
@@ -211,7 +233,8 @@ export function EditorWindow() {
 
   return (
     <div
-      className="flex flex-col h-full"
+      className="flex flex-col h-full relative"
+      onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
