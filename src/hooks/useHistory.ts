@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useHistoryStore } from '../stores/historyStore';
-import { useEditorStore, type EditorImage } from '../stores/editorStore';
+import { useEditorStore, type EditorAttachment } from '../stores/editorStore';
 import type { HistoryEntry } from '../types';
 
 export function useHistory() {
@@ -23,11 +23,11 @@ export function useHistory() {
   const handleSelect = useCallback(
     (entry: HistoryEntry) => {
       setContent(entry.content);
-      // Load images if present
+      // Load attachments if present
       if (entry.images) {
         try {
-          const images: EditorImage[] = JSON.parse(entry.images);
-          setImages(images);
+          const attachments: EditorAttachment[] = JSON.parse(entry.images);
+          setImages(attachments);
         } catch {
           clearImages();
         }

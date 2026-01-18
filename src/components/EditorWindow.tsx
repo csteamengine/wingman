@@ -120,30 +120,47 @@ export function EditorWindow() {
   const hasSyntaxHighlighting = isProFeatureEnabled('syntax_highlighting');
   const hasLanguageSelection = isProFeatureEnabled('language_selection');
 
-  // Handle paste for images (PRO feature)
+  // Handle paste for files (PRO feature)
   const handlePaste = useCallback(async (e: ClipboardEvent) => {
     if (!hasImageSupport) return;
 
     const items = e.clipboardData?.items;
     if (!items) return;
 
+    const filesToAdd: File[] = [];
+
+    // Collect all files from clipboard
     for (const item of Array.from(items)) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
+      if (item.kind === 'file') {
         const file = item.getAsFile();
         if (file) {
-          const imageId = await addImage(file);
-          // Insert placeholder at cursor position
-          if (viewRef.current) {
-            const pos = viewRef.current.state.selection.main.head;
-            const placeholder = `[image #${imageId}]`;
-            viewRef.current.dispatch({
-              changes: { from: pos, insert: placeholder },
-              selection: { anchor: pos + placeholder.length },
-            });
-          }
+          filesToAdd.push(file);
         }
-        break; // Only handle first image
+      }
+    }
+
+    // If we have files, prevent default and add them all
+    if (filesToAdd.length > 0) {
+      e.preventDefault();
+
+      let insertText = '';
+      for (const file of filesToAdd) {
+        const fileId = await addImage(file);
+        // Use appropriate placeholder based on file type
+        const isImage = file.type.startsWith('image/');
+        insertText += isImage ? `[image #${fileId}]` : `[file #${fileId}]`;
+        if (filesToAdd.indexOf(file) < filesToAdd.length - 1) {
+          insertText += ' ';
+        }
+      }
+
+      // Insert placeholders at cursor position
+      if (viewRef.current && insertText) {
+        const pos = viewRef.current.state.selection.main.head;
+        viewRef.current.dispatch({
+          changes: { from: pos, insert: insertText },
+          selection: { anchor: pos + insertText.length },
+        });
       }
     }
   }, [hasImageSupport, addImage]);
@@ -192,19 +209,26 @@ export function EditorWindow() {
     if (!hasImageSupport) return;
 
     const files = Array.from(e.dataTransfer.files);
-    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+    if (files.length === 0) return;
 
-    for (const file of imageFiles) {
-      const imageId = await addImage(file);
-      // Insert placeholder at cursor position
-      if (viewRef.current) {
-        const pos = viewRef.current.state.selection.main.head;
-        const placeholder = `[image #${imageId}]`;
-        viewRef.current.dispatch({
-          changes: { from: pos, insert: placeholder },
-          selection: { anchor: pos + placeholder.length },
-        });
+    let insertText = '';
+    for (const file of files) {
+      const fileId = await addImage(file);
+      // Use appropriate placeholder based on file type
+      const isImage = file.type.startsWith('image/');
+      insertText += isImage ? `[image #${fileId}]` : `[file #${fileId}]`;
+      if (files.indexOf(file) < files.length - 1) {
+        insertText += ' ';
       }
+    }
+
+    // Insert placeholders at cursor position
+    if (viewRef.current && insertText) {
+      const pos = viewRef.current.state.selection.main.head;
+      viewRef.current.dispatch({
+        changes: { from: pos, insert: insertText },
+        selection: { anchor: pos + insertText.length },
+      });
     }
   }, [hasImageSupport, addImage]);
 
@@ -299,9 +323,9 @@ export function EditorWindow() {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--editor-bg)]/90 border-2 border-dashed border-[var(--editor-accent)] rounded-lg">
           <div className="text-center">
             <svg className="w-12 h-12 mx-auto mb-2 text-[var(--editor-accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-sm text-[var(--editor-text)]">Drop image to attach</p>
+            <p className="text-sm text-[var(--editor-text)]">Drop files to attach</p>
           </div>
         </div>
       )}
@@ -315,28 +339,49 @@ export function EditorWindow() {
         }}
       />
 
-      {/* Image thumbnails */}
+      {/* Attachments */}
       {images.length > 0 && (
         <div className="border-t border-[var(--editor-border)] px-3 py-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-[var(--editor-muted)]">Images:</span>
-            {images.map((img) => (
-              <div key={img.id} className="relative group">
-                <img
-                  src={img.data}
-                  alt={img.name}
-                  className="h-10 w-auto rounded border border-[var(--editor-border)] object-cover"
-                  title={`[image #${img.id}] - ${img.name}`}
-                />
+            <span className="text-xs text-[var(--editor-muted)]">Attachments:</span>
+            {images.map((attachment) => (
+              <div key={attachment.id} className="relative group">
+                {attachment.type === 'image' ? (
+                  // Image thumbnail
+                  <img
+                    src={attachment.data}
+                    alt={attachment.name}
+                    className="h-10 w-auto rounded border border-[var(--editor-border)] object-cover"
+                    title={`[image #${attachment.id}] - ${attachment.name}`}
+                  />
+                ) : (
+                  // File icon for non-images
+                  <div
+                    className="h-10 w-10 rounded border border-[var(--editor-border)] bg-[var(--editor-surface)] flex items-center justify-center"
+                    title={`[file #${attachment.id}] - ${attachment.name}`}
+                  >
+                    {attachment.type === 'text' ? (
+                      // Text file icon
+                      <svg className="w-5 h-5 text-[var(--editor-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    ) : (
+                      // Generic file icon
+                      <svg className="w-5 h-5 text-[var(--editor-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </div>
+                )}
                 <button
-                  onClick={() => removeImage(img.id)}
+                  onClick={() => removeImage(attachment.id)}
                   className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                  title="Remove image"
+                  title="Remove"
                 >
                   ×
                 </button>
                 <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] px-1 truncate">
-                  #{img.id}
+                  #{attachment.id}
                 </span>
               </div>
             ))}

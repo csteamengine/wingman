@@ -4,13 +4,21 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import type { EditorView } from '@codemirror/view';
 import type { TextStats, PanelType } from '../types';
 
-export interface EditorImage {
+export type AttachmentType = 'image' | 'text' | 'file';
+
+export interface EditorAttachment {
   id: number;
   data: string; // base64 data URL
   name: string;
-  width?: number;
-  height?: number;
+  type: AttachmentType;
+  mimeType: string;
+  size: number;
+  width?: number; // Only for images
+  height?: number; // Only for images
 }
+
+// Keep EditorImage as alias for backwards compatibility with history
+export type EditorImage = EditorAttachment;
 
 interface EditorState {
   content: string;
@@ -19,15 +27,16 @@ interface EditorState {
   activePanel: PanelType;
   isVisible: boolean;
   editorView: EditorView | null;
-  images: EditorImage[];
+  images: EditorAttachment[]; // Keep as 'images' for compatibility
   nextImageId: number;
   setContent: (content: string) => void;
   setLanguage: (language: string) => void;
   setActivePanel: (panel: PanelType) => void;
   setEditorView: (view: EditorView | null) => void;
-  addImage: (file: File) => Promise<number>;
+  addFile: (file: File) => Promise<number>;
+  addImage: (file: File) => Promise<number>; // Alias for addFile
   removeImage: (id: number) => void;
-  setImages: (images: EditorImage[]) => void;
+  setImages: (images: EditorAttachment[]) => void;
   clearImages: () => void;
   updateStats: () => Promise<void>;
   pasteAndClose: () => Promise<void>;
@@ -67,31 +76,70 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ editorView: view });
   },
 
-  addImage: async (file: File): Promise<number> => {
+  addFile: async (file: File): Promise<number> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         const data = e.target?.result as string;
-        const img = new Image();
-        img.onload = () => {
-          const { nextImageId, images } = get();
-          const newImage: EditorImage = {
-            id: nextImageId,
-            data,
-            name: file.name,
-            width: img.width,
-            height: img.height,
+        const { nextImageId, images } = get();
+
+        // Determine attachment type
+        let attachmentType: AttachmentType = 'file';
+        if (file.type.startsWith('image/')) {
+          attachmentType = 'image';
+        } else if (file.type.startsWith('text/') || file.name.match(/\.(txt|md|json|xml|html|css|js|ts|py|rs|go|java|c|cpp|h|hpp)$/i)) {
+          attachmentType = 'text';
+        }
+
+        const baseAttachment: EditorAttachment = {
+          id: nextImageId,
+          data,
+          name: file.name,
+          type: attachmentType,
+          mimeType: file.type || 'application/octet-stream',
+          size: file.size,
+        };
+
+        // If it's an image, get dimensions
+        if (attachmentType === 'image') {
+          const img = new Image();
+          img.onload = () => {
+            const attachment: EditorAttachment = {
+              ...baseAttachment,
+              width: img.width,
+              height: img.height,
+            };
+            set({
+              images: [...images, attachment],
+              nextImageId: nextImageId + 1,
+            });
+            resolve(nextImageId);
           };
+          img.onerror = () => {
+            // Still add even if we can't get dimensions
+            set({
+              images: [...images, baseAttachment],
+              nextImageId: nextImageId + 1,
+            });
+            resolve(nextImageId);
+          };
+          img.src = data;
+        } else {
+          // Non-image file
           set({
-            images: [...images, newImage],
+            images: [...images, baseAttachment],
             nextImageId: nextImageId + 1,
           });
           resolve(nextImageId);
-        };
-        img.src = data;
+        }
       };
       reader.readAsDataURL(file);
     });
+  },
+
+  // Alias for backwards compatibility
+  addImage: async (file: File): Promise<number> => {
+    return get().addFile(file);
   },
 
   removeImage: (id: number) => {
@@ -99,10 +147,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ images: images.filter((img) => img.id !== id) });
   },
 
-  setImages: (images: EditorImage[]) => {
+  setImages: (images: EditorAttachment[]) => {
     // Calculate next ID from the highest existing ID
     const maxId = images.reduce((max, img) => Math.max(max, img.id), 0);
-    set({ images, nextImageId: maxId + 1 });
+    // Ensure backwards compatibility - add missing fields to old history entries
+    const normalizedImages = images.map(img => ({
+      ...img,
+      type: img.type || (img.width ? 'image' : 'file') as AttachmentType,
+      mimeType: img.mimeType || 'application/octet-stream',
+      size: img.size || 0,
+    }));
+    set({ images: normalizedImages, nextImageId: maxId + 1 });
   },
 
   clearImages: () => {
@@ -128,30 +183,55 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { content, images } = get();
     if (content.trim() || images.length > 0) {
       try {
-        // If we have images, write HTML to clipboard so images are included
+        // If we have attachments, write to clipboard with proper format
         if (images.length > 0) {
-          // Replace [image #N] placeholders with actual img tags for HTML clipboard
+          // Separate images from other files
+          const imageAttachments = images.filter(a => a.type === 'image');
+          const otherAttachments = images.filter(a => a.type !== 'image');
+
+          // Build clipboard items
+          const clipboardData: Record<string, Blob> = {};
+
+          // Always include plain text
+          clipboardData['text/plain'] = new Blob([content], { type: 'text/plain' });
+
+          // Build HTML content with embedded images
           let htmlContent = content;
-          images.forEach((img) => {
-            const placeholder = `[image #${img.id}]`;
-            const imgTag = `<img src="${img.data}" alt="${img.name}" style="max-width: 100%;">`;
-            htmlContent = htmlContent.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), imgTag);
+          images.forEach((attachment) => {
+            const imagePlaceholder = `[image #${attachment.id}]`;
+            const filePlaceholder = `[file #${attachment.id}]`;
+            if (attachment.type === 'image') {
+              const imgTag = `<img src="${attachment.data}" alt="${attachment.name}" style="max-width: 100%;">`;
+              htmlContent = htmlContent.replace(new RegExp(imagePlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), imgTag);
+            } else {
+              // For non-image files, replace with filename
+              htmlContent = htmlContent.replace(new RegExp(filePlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `[${attachment.name}]`);
+            }
           });
 
-          // Wrap in basic HTML structure
+          // Add HTML version
           const fullHtml = `<!DOCTYPE html><html><body>${htmlContent.replace(/\n/g, '<br>')}</body></html>`;
+          clipboardData['text/html'] = new Blob([fullHtml], { type: 'text/html' });
 
-          // Use web Clipboard API for HTML
-          const blob = new Blob([fullHtml], { type: 'text/html' });
-          const textBlob = new Blob([content], { type: 'text/plain' });
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              'text/html': blob,
-              'text/plain': textBlob,
-            }),
-          ]);
+          // If there's exactly one image and minimal text, also add raw image data
+          // This allows pasting into image editors and native macOS apps
+          if (imageAttachments.length === 1 && otherAttachments.length === 0) {
+            const img = imageAttachments[0];
+            // Convert base64 data URL to blob
+            const base64Data = img.data.split(',')[1];
+            const mimeType = img.mimeType || 'image/png';
+            const byteString = atob(base64Data);
+            const arrayBuffer = new ArrayBuffer(byteString.length);
+            const uint8Array = new Uint8Array(arrayBuffer);
+            for (let i = 0; i < byteString.length; i++) {
+              uint8Array[i] = byteString.charCodeAt(i);
+            }
+            clipboardData[mimeType] = new Blob([arrayBuffer], { type: mimeType });
+          }
+
+          await navigator.clipboard.write([new ClipboardItem(clipboardData)]);
         } else {
-          // No images - just write plain text
+          // No attachments - just write plain text
           await writeText(content);
         }
 
