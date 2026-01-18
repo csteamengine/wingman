@@ -27,6 +27,7 @@ interface EditorState {
   setEditorView: (view: EditorView | null) => void;
   addImage: (file: File) => Promise<number>;
   removeImage: (id: number) => void;
+  setImages: (images: EditorImage[]) => void;
   clearImages: () => void;
   updateStats: () => Promise<void>;
   pasteAndClose: () => Promise<void>;
@@ -97,6 +98,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ images: images.filter((img) => img.id !== id) });
   },
 
+  setImages: (images: EditorImage[]) => {
+    // Calculate next ID from the highest existing ID
+    const maxId = images.reduce((max, img) => Math.max(max, img.id), 0);
+    set({ images, nextImageId: maxId + 1 });
+  },
+
   clearImages: () => {
     set({ images: [], nextImageId: 1 });
   },
@@ -147,11 +154,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           await writeText(content);
         }
 
-        // Save to history (text only for now)
+        // Save to history (including images)
         await invoke('add_history_entry', {
           content,
           language: get().language,
           tags: null,
+          images: images.length > 0 ? JSON.stringify(images) : null,
         });
 
         // Hide window and auto-paste to previous app

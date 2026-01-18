@@ -69,9 +69,10 @@ fn add_history_entry(
     content: String,
     language: Option<String>,
     tags: Option<String>,
+    images: Option<String>,
 ) -> Result<i64, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
-    add_entry(&conn, &content, language.as_deref(), tags.as_deref()).map_err(|e| e.to_string())
+    add_entry(&conn, &content, language.as_deref(), tags.as_deref(), images.as_deref()).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

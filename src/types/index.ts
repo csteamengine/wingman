@@ -33,6 +33,7 @@ export interface HistoryEntry {
   line_count: number;
   language: string | null;
   tags: string | null;
+  images: string | null; // JSON array of EditorImage objects
 }
 
 export interface HistoryStats {

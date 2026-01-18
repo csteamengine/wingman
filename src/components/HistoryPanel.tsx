@@ -1,10 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { useHistory } from '../hooks/useHistory';
-import { useEditorStore } from '../stores/editorStore';
+import { useEditorStore, type EditorImage } from '../stores/editorStore';
 import { useHistoryStore } from '../stores/historyStore';
 import { useLicenseStore } from '../stores/licenseStore';
 import { ProFeatureGate } from './ProFeatureGate';
 import type { HistoryEntry } from '../types';
+
+// Helper to parse images from history entry
+function parseImages(entry: HistoryEntry): EditorImage[] {
+  if (!entry.images) return [];
+  try {
+    return JSON.parse(entry.images);
+  } catch {
+    return [];
+  }
+}
 
 export function HistoryPanel() {
   return (
@@ -29,6 +39,17 @@ function CodeIcon({ className }: { className?: string }) {
   return (
     <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25">
       <path d="M5.5 4L2 8l3.5 4M10.5 4L14 8l-3.5 4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Image icon for entries with images
+function ImageIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25">
+      <rect x="2" y="2" width="12" height="12" rx="1.5" />
+      <circle cx="5.5" cy="5.5" r="1" />
+      <path d="M2 11l3-3 2 2 4-4 3 3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -229,6 +250,30 @@ function HistoryPanelContent() {
                   </pre>
                 </div>
 
+                {/* Image thumbnails */}
+                {(() => {
+                  const images = parseImages(selectedEntry);
+                  if (images.length === 0) return null;
+                  return (
+                    <div className="mb-4">
+                      <div className="text-xs font-medium text-[var(--editor-muted)] uppercase tracking-wide mb-2">
+                        Images ({images.length})
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        {images.map((img) => (
+                          <img
+                            key={img.id}
+                            src={img.data}
+                            alt={img.name}
+                            className="h-12 w-auto rounded border border-[var(--editor-border)] object-cover"
+                            title={img.name}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Metadata */}
                 <div className="space-y-0.5">
                   <div className="text-xs font-medium text-[var(--editor-muted)] uppercase tracking-wide mb-2">
@@ -290,6 +335,8 @@ interface HistoryItemProps {
 }
 
 function HistoryItem({ entry, index, isSelected, onSelect, onHover, truncate, isCode }: HistoryItemProps) {
+  const hasImages = parseImages(entry).length > 0;
+
   return (
     <div
       data-index={index}
@@ -305,7 +352,7 @@ function HistoryItem({ entry, index, isSelected, onSelect, onHover, truncate, is
     >
       {/* Icon */}
       <div className={`flex-shrink-0 ${isSelected ? 'text-[var(--editor-accent)]' : 'text-[var(--editor-muted)]'}`}>
-        {isCode ? <CodeIcon /> : <DocumentIcon />}
+        {hasImages ? <ImageIcon /> : isCode ? <CodeIcon /> : <DocumentIcon />}
       </div>
 
       {/* Content */}
