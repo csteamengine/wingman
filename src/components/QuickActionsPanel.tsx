@@ -31,7 +31,7 @@ const actionSections: ActionSection[] = [
       { id: 'sort', label: 'Sort Lines', description: 'Sort lines alphabetically', handler: 'transform' },
       { id: 'deduplicate', label: 'Remove Duplicates', description: 'Remove duplicate lines', handler: 'transform' },
       { id: 'reverse', label: 'Reverse Lines', description: 'Reverse line order', handler: 'transform' },
-      { id: 'bulletlist', label: 'Bulleted List', description: 'Add bullet points to each line', handler: 'transform', requiresInput: true },
+      { id: 'bulletlist', label: 'Bulleted List', description: 'Start or add bullet points', handler: 'transform' },
     ],
   },
   {
@@ -76,7 +76,7 @@ const allActions: Action[] = actionSections.flatMap(section =>
 );
 
 export function QuickActionsPanel() {
-  const { setActivePanel, transformText, content, setContent } = useEditorStore();
+  const { setActivePanel, transformText, content, setContent, applyBulletList } = useEditorStore();
   const { isProFeatureEnabled } = useLicenseStore();
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -152,7 +152,12 @@ export function QuickActionsPanel() {
     try {
       switch (action.handler) {
         case 'transform':
-          await transformText(action.id);
+          // Special handling for bulletlist - uses editor selection
+          if (action.id === 'bulletlist') {
+            applyBulletList();
+          } else {
+            await transformText(action.id);
+          }
           break;
 
         case 'format':
@@ -190,7 +195,7 @@ export function QuickActionsPanel() {
     } catch (err) {
       setError(String(err));
     }
-  }, [content, isProFeatureEnabled, setContent, transformText]);
+  }, [content, isProFeatureEnabled, setContent, transformText, applyBulletList]);
 
   // Keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {

@@ -162,17 +162,20 @@ function App() {
           <div className="w-2.5 h-2.5 rounded-full bg-[var(--editor-muted)]" />
         </div>
 
-        {/* Hamburger menu button */}
+        {/* Quick Actions toggle button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             setActivePanel(activePanel === 'actions' ? 'editor' : 'actions');
           }}
-          className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] text-[var(--editor-muted)] hover:text-[var(--editor-text)] transition-colors"
-          title="Quick Actions"
+          className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] transition-colors ${
+            activePanel === 'actions' ? 'text-[var(--editor-accent)]' : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)]'
+          }`}
+          title="Toggle Quick Actions (transforms, formatters, generators)"
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M2 4h12M2 8h12M2 12h12" />
+          {/* Lightning bolt / wand icon */}
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 1L3 9h5l-1 6 6-8H8l1-6z" />
           </svg>
         </button>
       </div>

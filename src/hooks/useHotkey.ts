@@ -61,13 +61,14 @@ export function useKeyboardShortcuts() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMod = e.metaKey || e.ctrlKey;
 
-      // Escape - if in a panel, go back to editor; if in editor, close window
+      // Escape - close window (from editor or actions), or go back to actions from other panels
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (activePanel !== 'editor') {
-          setActivePanel('editor');
-        } else {
+        if (activePanel === 'editor' || activePanel === 'actions') {
           closeWithoutPaste();
+        } else {
+          // From settings/history/snippets, go back to actions (default panel)
+          setActivePanel('actions');
         }
         return;
       }

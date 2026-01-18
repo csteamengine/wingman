@@ -72,16 +72,24 @@ pub fn transform_text(text: &str, transform: TextTransform) -> String {
             lines.into_iter().rev().collect::<Vec<_>>().join("\n")
         }
         TextTransform::BulletList => {
-            text.lines()
-                .map(|line| {
-                    if line.trim().is_empty() {
-                        line.to_string()
-                    } else {
-                        format!("• {}", line)
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join("\n")
+            if text.is_empty() {
+                // Start a new bulleted list
+                "• ".to_string()
+            } else {
+                text.lines()
+                    .map(|line| {
+                        if line.trim().is_empty() {
+                            line.to_string()
+                        } else if line.trim_start().starts_with("• ") {
+                            // Already has bullet, keep as-is
+                            line.to_string()
+                        } else {
+                            format!("• {}", line)
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            }
         }
     }
 }
