@@ -142,6 +142,33 @@
   async function init() {
     await fetchLatestRelease();
     updateDownloadLinks();
+
+    // Setup Stripe checkout for "Buy Wingman Pro" button
+    const buyProBtn = document.getElementById('buy-pro-btn');
+    if (buyProBtn) {
+      buyProBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        buyProBtn.textContent = 'Loading...';
+        buyProBtn.style.pointerEvents = 'none';
+
+        try {
+          const response = await fetch('https://yhpetdqcmqpfwhdtbhat.supabase.co/functions/v1/create-checkout-session', {
+            method: 'POST',
+          });
+          const data = await response.json();
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            throw new Error('No checkout URL returned');
+          }
+        } catch (err) {
+          console.error('Failed to create checkout session:', err);
+          buyProBtn.textContent = 'Buy Wingman Pro';
+          buyProBtn.style.pointerEvents = 'auto';
+          alert('Failed to start checkout. Please try again.');
+        }
+      });
+    }
   }
 
   // Run on DOM ready

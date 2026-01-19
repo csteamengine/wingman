@@ -66,7 +66,19 @@ export function ProFeatureGate({
         This is a Pro feature. Upgrade to Wingman Pro for $4.99 (one-time) to unlock all features.
       </p>
       <button
-        onClick={() => open('https://gumroad.com/l/wingman-pro')}
+        onClick={async () => {
+          try {
+            const response = await fetch('https://yhpetdqcmqpfwhdtbhat.supabase.co/functions/v1/create-checkout-session', {
+              method: 'POST',
+            });
+            const data = await response.json();
+            if (data.url) {
+              open(data.url);
+            }
+          } catch (err) {
+            console.error('Failed to create checkout session:', err);
+          }
+        }}
         className="btn bg-[var(--editor-accent)] text-white px-4 py-2"
       >
         Upgrade to Pro

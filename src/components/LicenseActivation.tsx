@@ -176,7 +176,19 @@ export function LicenseActivation() {
           Don't have a license?
         </p>
         <button
-          onClick={() => open('https://gumroad.com/l/wingman-pro')}
+          onClick={async () => {
+            try {
+              const response = await fetch('https://yhpetdqcmqpfwhdtbhat.supabase.co/functions/v1/create-checkout-session', {
+                method: 'POST',
+              });
+              const data = await response.json();
+              if (data.url) {
+                open(data.url);
+              }
+            } catch (err) {
+              console.error('Failed to create checkout session:', err);
+            }
+          }}
           className="btn w-full text-center text-sm"
         >
           Get Wingman Pro - $4.99
