@@ -22,7 +22,7 @@ export function PremiumFeatureGate({
   showUpgradePrompt = true,
 }: PremiumFeatureGateProps) {
   const { isPremiumFeatureEnabled, isAtTokenLimit, subscriptionStatus } = usePremiumStore();
-  const { tier, status } = useLicenseStore();
+  const { tier } = useLicenseStore();
   const [showModal, setShowModal] = useState(false);
 
   const isEnabled = isPremiumFeatureEnabled(feature);
@@ -44,7 +44,6 @@ export function PremiumFeatureGate({
 
   // Determine why the feature is locked
   const isTokenLimitReached = tier === 'premium' && isAtTokenLimit;
-  const needsPremium = tier !== 'premium';
   const subscriptionExpired = tier === 'premium' && !subscriptionStatus?.is_active;
 
   const handleUpgradeClick = async () => {
@@ -95,7 +94,6 @@ export function PremiumFeatureGate({
             >
               {isTokenLimitReached ? (
                 <TokenLimitContent
-                  resetsAt={subscriptionStatus?.expires_at || ''}
                   onClose={() => setShowModal(false)}
                 />
               ) : subscriptionExpired ? (
@@ -202,10 +200,8 @@ function UpgradeContent({
 }
 
 function TokenLimitContent({
-  resetsAt,
   onClose,
 }: {
-  resetsAt: string;
   onClose: () => void;
 }) {
   // Calculate reset date (1st of next month)

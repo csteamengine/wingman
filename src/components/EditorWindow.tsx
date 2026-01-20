@@ -156,26 +156,33 @@ export function EditorWindow() {
         removeImage
     } = useEditorStore();
     const {settings} = useSettingsStore();
-    const {isProFeatureEnabled, tier} = useLicenseStore();
+    const {isProFeatureEnabled, isPremiumTier} = useLicenseStore();
     const {
         aiLoading,
-        isSubscriptionActive,
         obsidianConfig,
         loadAIConfig,
+        loadObsidianConfig,
+        loadSubscriptionStatus,
         callAIFeature,
         addToObsidian,
         openObsidianNote
     } = usePremiumStore();
 
-    const isPremium = tier === 'premium' && isSubscriptionActive;
+    const isPremium = isPremiumTier();
     const hasObsidianConfigured = obsidianConfig && obsidianConfig.vault_path;
 
-    // Load AI config on mount
+    // Load AI config, Obsidian config, and subscription status on mount for premium users
     useEffect(() => {
         if (isPremium) {
             loadAIConfig();
+            loadObsidianConfig();
+            // Also load subscription status for API calls
+            const licenseKey = localStorage.getItem('wingman_license_key');
+            if (licenseKey) {
+                loadSubscriptionStatus(licenseKey);
+            }
         }
-    }, [isPremium, loadAIConfig]);
+    }, [isPremium, loadAIConfig, loadObsidianConfig, loadSubscriptionStatus]);
 
     const hasImageSupport = isProFeatureEnabled('image_attachments');
 

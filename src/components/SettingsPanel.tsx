@@ -35,7 +35,7 @@ const THEMES: { value: ThemeType; label: string; isPro: boolean }[] = [
 export function SettingsPanel() {
     const {settings, handleUpdate, handleReset} = useSettings();
     const {setActivePanel} = useEditorStore();
-    const {isProFeatureEnabled, tier, status} = useLicenseStore();
+    const {isProFeatureEnabled} = useLicenseStore();
     const [hotkeyInput, setHotkeyInput] = useState('');
     const [isRecording, setIsRecording] = useState(false);
     const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
@@ -351,12 +351,11 @@ function ShortcutRow({keys, description}: { keys: string; description: string })
 }
 
 function PremiumSection() {
-    const {tier, status} = useLicenseStore();
+    const {tier} = useLicenseStore();
     const {
         subscriptionStatus,
         loadSubscriptionStatus,
         loadObsidianConfig,
-        isPremium,
         isSubscriptionActive,
         tokenUsagePercent,
         isNearTokenLimit,
