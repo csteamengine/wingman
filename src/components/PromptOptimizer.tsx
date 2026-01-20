@@ -15,7 +15,7 @@ export function PromptOptimizer({ initialText = '', onOptimized, onClose }: Prom
   const [outputText, setOutputText] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const { callAIFeature, aiLoading, subscriptionStatus, isPremium, isSubscriptionActive } =
+  const { callAIFeature, aiLoading, subscriptionStatus, isSubscriptionActive } =
     usePremiumStore();
   const { tier } = useLicenseStore();
 

@@ -8,7 +8,6 @@ const SUPABASE_ANON_KEY = 'sb_publishable_t4l4DUhI_I2rpT9pMU8dgg_Y2j55oJY';
 
 export function LicenseActivation() {
     const {
-        tier,
         status,
         email,
         daysUntilExpiry,

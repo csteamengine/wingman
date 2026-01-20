@@ -137,6 +137,7 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
           vault_path: '',
           default_location: 'daily_note',
           specific_note_path: null,
+          new_note_folder: null,
           template: null,
         },
       });
@@ -293,7 +294,7 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
 }));
 
 // Helper hook for formatting token usage
-export function formatTokenUsage(tokensUsed: number, tokensRemaining: number): string {
+export function formatTokenUsage(tokensUsed: number, _tokensRemaining: number): string {
   const total = MONTHLY_TOKEN_LIMIT;
   const usedFormatted = tokensUsed.toLocaleString();
   const totalFormatted = total.toLocaleString();
