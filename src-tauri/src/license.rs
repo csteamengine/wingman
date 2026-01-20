@@ -51,6 +51,7 @@ pub enum LicenseError {
 pub enum LicenseTier {
     Free,
     Pro,
+    Premium,
 }
 
 impl Default for LicenseTier {
@@ -302,7 +303,6 @@ pub async fn validate_license_online(
     let response = client
         .post(&url)
         .header("apikey", SUPABASE_PUBLISHABLE_KEY)
-        .header("Authorization", format!("Bearer {}", SUPABASE_PUBLISHABLE_KEY))
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
             "license_key": license_key,
@@ -341,6 +341,7 @@ pub async fn validate_license_online(
     let expires = now + chrono::Duration::days(OFFLINE_CHECK_DAYS);
 
     let tier = match body.tier.as_deref() {
+        Some("premium") => LicenseTier::Premium,
         Some("pro") => LicenseTier::Pro,
         _ => LicenseTier::Free,
     };
@@ -370,7 +371,6 @@ pub async fn deactivate_license_online(license_key: &str) -> Result<(), LicenseE
     let response = client
         .post(&url)
         .header("apikey", SUPABASE_PUBLISHABLE_KEY)
-        .header("Authorization", format!("Bearer {}", SUPABASE_PUBLISHABLE_KEY))
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
             "license_key": license_key,
@@ -502,16 +502,17 @@ pub async fn refresh_license() -> Result<LicenseStatusInfo, LicenseError> {
 
 /// Check if a specific pro feature is enabled
 /// Note: feature param is for API consistency and future granular checks
+/// Premium tier also has access to all Pro features
 pub fn is_feature_enabled(_feature: ProFeature) -> bool {
     let status = match check_license_status() {
         Ok(s) => s,
         Err(_) => return false,
     };
 
-    // Pro features require valid or grace period status
+    // Pro and Premium features require valid or grace period status
     match status.status {
         LicenseStatus::Valid | LicenseStatus::GracePeriod => {
-            matches!(status.tier, LicenseTier::Pro)
+            matches!(status.tier, LicenseTier::Pro | LicenseTier::Premium)
         }
         _ => false,
     }
@@ -529,15 +530,15 @@ pub fn get_feature_status() -> Vec<(ProFeature, bool)> {
         ProFeature::ExportHistory,
     ];
 
-    let is_pro = match check_license_status() {
+    let is_pro_or_premium = match check_license_status() {
         Ok(status) => {
             matches!(status.status, LicenseStatus::Valid | LicenseStatus::GracePeriod)
-                && matches!(status.tier, LicenseTier::Pro)
+                && matches!(status.tier, LicenseTier::Pro | LicenseTier::Premium)
         }
         Err(_) => false,
     };
 
-    features.into_iter().map(|f| (f, is_pro)).collect()
+    features.into_iter().map(|f| (f, is_pro_or_premium)).collect()
 }
 
 #[cfg(test)]

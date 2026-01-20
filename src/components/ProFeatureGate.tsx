@@ -3,6 +3,9 @@ import { open } from '@tauri-apps/plugin-shell';
 import { useLicenseStore } from '../stores/licenseStore';
 import type { ProFeature } from '../types';
 
+const SUPABASE_URL = 'https://yhpetdqcmqpfwhdtbhat.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_t4l4DUhI_I2rpT9pMU8dgg_Y2j55oJY';
+
 interface ProFeatureGateProps {
   feature: ProFeature;
   children: ReactNode;
@@ -68,8 +71,12 @@ export function ProFeatureGate({
       <button
         onClick={async () => {
           try {
-            const response = await fetch('https://yhpetdqcmqpfwhdtbhat.supabase.co/functions/v1/create-checkout-session', {
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout-session`, {
               method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+              },
             });
             const data = await response.json();
             if (data.url) {

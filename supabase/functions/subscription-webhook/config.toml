@@ -1,0 +1,3 @@
+# Allow requests with publishable API key (no JWT required)
+# Handles Stripe webhook events for subscriptions
+verify_jwt = false

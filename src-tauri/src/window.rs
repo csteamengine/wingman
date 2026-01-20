@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Emitter, Manager, Runtime, WebviewWindow};
 use tauri_nspanel::{
     tauri_panel, CollectionBehavior, ManagerExt, PanelHandle, PanelLevel, StyleMask,
@@ -6,6 +7,9 @@ use tauri_nspanel::{
 use thiserror::Error;
 
 pub const MAIN_WINDOW_LABEL: &str = "main";
+
+/// Global flag to prevent panel from hiding during dialog operations
+pub static DIALOG_OPEN: AtomicBool = AtomicBool::new(false);
 
 tauri_panel! {
     panel!(WingmanPanel {
@@ -73,6 +77,13 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
 
         handler.window_did_resign_key(move |_| {
             log::info!("panel resigned key window");
+
+            // Don't hide if a dialog is open (e.g., folder picker)
+            if DIALOG_OPEN.load(Ordering::SeqCst) {
+                log::info!("dialog is open, not hiding panel");
+                return;
+            }
+
             // Hide panel when it loses focus (clicking outside, switching spaces, etc.)
             // Like Raycast behavior - dismiss and re-summon with hotkey
             if let Ok(panel) = app_handle.get_webview_panel(MAIN_WINDOW_LABEL) {

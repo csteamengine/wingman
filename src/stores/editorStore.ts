@@ -210,7 +210,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         // If we have attachments, use native clipboard to write both text and images
         if (images.length > 0) {
           // Build text content: user's text + filenames of attachments
-          let textContent = content;
+          // Remove trailing newlines to avoid extra blank lines
+          let textContent = content.replace(/\n+$/, '');
           if (images.length > 0) {
             const filenames = images.map(a => a.name).join('\n');
             if (textContent.trim()) {
@@ -251,7 +252,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           }
         } else {
           // No attachments - just write plain text
-          await writeText(content);
+          // Remove trailing newlines to avoid extra blank lines
+          await writeText(content.replace(/\n+$/, ''));
         }
 
         // Save to history (including images)
@@ -292,7 +294,59 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   transformText: async (transform: string) => {
     const state = get();
-    // Get content from editor (source of truth) or fall back to store
+    const { editorView } = state;
+
+    if (editorView) {
+      const selection = editorView.state.selection.main;
+      const cursorPos = selection.head; // Save cursor position
+
+      if (!selection.empty) {
+        // Transform only the selected text
+        const selectedText = editorView.state.sliceDoc(selection.from, selection.to);
+        try {
+          const transformed = await invoke<string>('transform_text_cmd', { text: selectedText, transform });
+          // Keep cursor at same position, adjusted for length change
+          const lengthDiff = transformed.length - selectedText.length;
+          const newCursorPos = cursorPos <= selection.from ? cursorPos :
+                              cursorPos + lengthDiff;
+
+          editorView.dispatch({
+            changes: {
+              from: selection.from,
+              to: selection.to,
+              insert: transformed,
+            },
+            selection: { anchor: newCursorPos },
+          });
+          get().updateStats();
+        } catch (error) {
+          console.error('Failed to transform text:', error);
+        }
+        return;
+      }
+
+      // No selection - transform entire content but preserve cursor position
+      const content = editorView.state.doc.toString();
+      try {
+        const transformed = await invoke<string>('transform_text_cmd', { text: content, transform });
+        // Keep cursor at same position, clamped to new content length
+        const newCursorPos = Math.min(cursorPos, transformed.length);
+        editorView.dispatch({
+          changes: {
+            from: 0,
+            to: content.length,
+            insert: transformed,
+          },
+          selection: { anchor: newCursorPos },
+        });
+        get().updateStats();
+      } catch (error) {
+        console.error('Failed to transform text:', error);
+      }
+      return;
+    }
+
+    // Fallback: no editor view, use store content
     const content = getEditorContent(state);
     try {
       const transformed = await invoke<string>('transform_text_cmd', { text: content, transform });
