@@ -1,5 +1,4 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use tauri::{Emitter, Manager, Runtime, WebviewWindow};
 use tauri_nspanel::{
     tauri_panel, CollectionBehavior, ManagerExt, PanelHandle, PanelLevel, StyleMask,

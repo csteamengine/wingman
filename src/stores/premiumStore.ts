@@ -198,8 +198,8 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
       const config = await invoke<AIPresetsConfig>('get_ai_presets');
       // Merge saved presets with defaults (to handle new presets added in updates)
       const savedPresets = config.presets || [];
-      const mergedPresets = DEFAULT_AI_PRESETS.map(defaultPreset => {
-        const savedPreset = savedPresets.find(p => p.id === defaultPreset.id);
+      const mergedPresets = DEFAULT_AI_PRESETS.map((defaultPreset: AIPreset) => {
+        const savedPreset = savedPresets.find((p: AIPreset) => p.id === defaultPreset.id);
         if (savedPreset) {
           // Use saved enabled state but keep other defaults updated
           return { ...defaultPreset, enabled: savedPreset.enabled };

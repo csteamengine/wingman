@@ -3,7 +3,7 @@ import {usePremiumStore} from '../stores/premiumStore';
 import type {AIPreset} from '../types';
 
 export function AIPresetConfig() {
-    const {presets, loadAIPresets, togglePresetEnabled} = usePremiumStore();
+    const {aiPresets, loadAIPresets, togglePresetEnabled} = usePremiumStore();
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -23,7 +23,7 @@ export function AIPresetConfig() {
         );
     }
 
-    if (!presets || presets.length === 0) {
+    if (!aiPresets || aiPresets.length === 0) {
         return (
             <div className="text-sm text-[var(--editor-muted)]">
                 No presets available
@@ -36,7 +36,7 @@ export function AIPresetConfig() {
             <p className="text-xs text-[var(--editor-muted)] mb-3">
                 Enable or disable AI presets to customize your transformation options
             </p>
-            {presets.map((preset) => (
+            {aiPresets.map((preset: AIPreset) => (
                 <div
                     key={preset.id}
                     className="flex items-center justify-between py-2 px-3 bg-[var(--editor-surface)] rounded-md"
