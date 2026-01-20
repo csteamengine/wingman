@@ -185,7 +185,6 @@ export function EditorWindow() {
         loadObsidianConfig,
         loadSubscriptionStatus,
         loadAIPresets,
-        callAIFeature,
         callAIWithPreset,
         getEnabledPresets,
         addToObsidian,
@@ -246,25 +245,6 @@ export function EditorWindow() {
             setAiError('Failed to refine text');
         }
     }, [aiLoading, content, callAIWithPreset, setContent]);
-
-    // Handle legacy AI refine action (default preset)
-    const handleAiRefine = useCallback(async () => {
-        if (aiLoading || !content.trim()) return;
-        setAiError(null);
-
-        const licenseKey = localStorage.getItem('wingman_license_key');
-        if (!licenseKey) {
-            setAiError('License key not found');
-            return;
-        }
-
-        const response = await callAIFeature(licenseKey, content, 'prompt_optimizer');
-        if (response && response.result) {
-            setContent(response.result);
-        } else {
-            setAiError('Failed to refine text');
-        }
-    }, [aiLoading, content, callAIFeature, setContent]);
 
     // Get enabled presets for the popover
     const enabledPresets = getEnabledPresets();

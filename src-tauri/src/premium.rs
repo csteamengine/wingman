@@ -610,6 +610,7 @@ mod tests {
             vault_path: "/Users/test/Documents/Obsidian".to_string(),
             default_location: ObsidianLocation::DailyNote,
             specific_note_path: None,
+            new_note_folder: None,
             template: Some("## {{timestamp}}\n\n{{content}}".to_string()),
         };
 
