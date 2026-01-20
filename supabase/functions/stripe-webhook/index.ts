@@ -51,7 +51,7 @@ async function sendLicenseEmail(email: string, licenseKey: string): Promise<bool
           <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 20px;">Thank you for purchasing Wingman Pro!</h1>
 
           <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-            Your license key is ready. Use it to activate Wingman Pro on up to 2 devices.
+            Your license key is ready. Use it to activate Wingman Pro on up to 3 devices.
           </p>
 
           <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 30px 0; text-align: center;">
@@ -213,11 +213,25 @@ serve(async (req) => {
     // Handle checkout.session.completed
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
+      const mode = session.mode; // "payment" for one-time, "subscription" for recurring
+
+      // Skip subscription checkouts - those are handled by subscription-webhook
+      if (mode === "subscription") {
+        console.log("Skipping subscription checkout - handled by subscription-webhook");
+        return new Response(
+          JSON.stringify({ success: true, message: "Subscription checkout skipped" }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
       const email = session.customer_details?.email?.toLowerCase();
       const sessionId = session.id;
       const customerId = session.customer;
 
-      console.log("Checkout completed:", { email, sessionId, customerId });
+      console.log("Checkout completed (one-time payment):", { email, sessionId, customerId, mode });
 
       if (!email) {
         console.error("No email in checkout session");
@@ -238,14 +252,40 @@ serve(async (req) => {
         .single();
 
       if (existingLicense) {
-        // Resend the email with existing license
-        await sendLicenseEmail(email, existingLicense.license_key);
+        // Resend the email with existing license (only if it's a Pro license)
+        if (existingLicense.tier === "pro") {
+          await sendLicenseEmail(email, existingLicense.license_key);
+        }
 
         return new Response(
           JSON.stringify({
             success: true,
             message: "License already exists, email resent",
             license_key: existingLicense.license_key,
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Check if user already has a Premium license (from subscription-webhook)
+      // Don't send Pro email if they already have Premium
+      const { data: existingPremiumLicense } = await supabase
+        .from("licenses")
+        .select("*")
+        .eq("email", email)
+        .eq("tier", "premium")
+        .single();
+
+      if (existingPremiumLicense) {
+        console.log("User already has Premium license, skipping Pro email:", email);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "User already has Premium license",
+            license_key: existingPremiumLicense.license_key,
           }),
           {
             status: 200,
@@ -265,7 +305,7 @@ serve(async (req) => {
           email,
           is_active: true,
           tier: "pro",
-          max_devices: 2,
+          max_devices: 3,
           stripe_session_id: sessionId,
           stripe_customer_id: customerId,
         })

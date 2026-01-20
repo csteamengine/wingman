@@ -3,6 +3,7 @@ mod history;
 mod hotkey;
 mod license;
 mod native_clipboard;
+mod premium;
 mod storage;
 mod updater;
 #[cfg(target_os = "macos")]
@@ -30,6 +31,12 @@ use license::{
     check_license_status, is_feature_enabled, load_license_cache, refresh_license,
     validate_license_online, deactivate_license_online, clear_license_cache,
     LicenseStatusInfo, ProFeature,
+};
+use premium::{
+    validate_premium_license, get_ai_usage, call_ai_feature,
+    load_obsidian_config, save_obsidian_config, add_to_obsidian_vault, validate_obsidian_vault,
+    load_ai_config, save_ai_config,
+    SubscriptionStatus, UsageStats, AIResponse, ObsidianConfig, ObsidianResult, AIConfig,
 };
 use storage::{
     load_settings, load_snippets, save_settings, save_snippets, AppSettings, Snippet, SnippetsData,
@@ -472,6 +479,138 @@ async fn refresh_license_status() -> Result<LicenseStatusInfo, String> {
     refresh_license().await.map_err(|e| e.to_string())
 }
 
+// Premium commands
+#[tauri::command]
+async fn validate_premium_license_cmd(license_key: String) -> Result<SubscriptionStatus, String> {
+    validate_premium_license(&license_key)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn get_ai_usage_cmd(license_key: String) -> Result<UsageStats, String> {
+    get_ai_usage(&license_key)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn call_ai_feature_cmd(
+    license_key: String,
+    prompt: String,
+    feature: String,
+    system_instructions: Option<String>,
+) -> Result<AIResponse, String> {
+    call_ai_feature(&license_key, &prompt, &feature, system_instructions.as_deref())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// Obsidian commands
+#[tauri::command]
+fn get_obsidian_config() -> Result<ObsidianConfig, String> {
+    load_obsidian_config().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn configure_obsidian(config: ObsidianConfig) -> Result<(), String> {
+    // Validate vault path before saving
+    if !config.vault_path.is_empty() {
+        validate_obsidian_vault(&config.vault_path).map_err(|e| e.to_string())?;
+    }
+    save_obsidian_config(&config).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn validate_obsidian_vault_cmd(vault_path: String) -> Result<bool, String> {
+    validate_obsidian_vault(&vault_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn add_to_obsidian(content: String) -> Result<ObsidianResult, String> {
+    log::info!("add_to_obsidian called with {} chars", content.len());
+
+    let config = load_obsidian_config().map_err(|e| {
+        log::error!("Failed to load Obsidian config: {}", e);
+        e.to_string()
+    })?;
+
+    log::info!("Obsidian config loaded: vault_path={}", config.vault_path);
+
+    if config.vault_path.is_empty() {
+        return Err("Obsidian vault not configured. Please configure in Settings.".to_string());
+    }
+
+    add_to_obsidian_vault(&content, &config).map_err(|e| {
+        log::error!("Failed to add to Obsidian vault: {}", e);
+        e.to_string()
+    })
+}
+
+/// Open a URL (used for opening Obsidian notes from toast notification)
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &url])
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+
+    Ok(())
+}
+
+// AI commands
+#[tauri::command]
+fn get_ai_config() -> Result<AIConfig, String> {
+    load_ai_config().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn configure_ai(config: AIConfig) -> Result<(), String> {
+    save_ai_config(&config).map_err(|e| e.to_string())
+}
+
+// Folder picker command (uses rfd for native dialog)
+#[tauri::command]
+async fn pick_folder(title: Option<String>) -> Result<Option<String>, String> {
+    // Set flag to prevent panel from hiding when dialog takes focus
+    #[cfg(target_os = "macos")]
+    {
+        window::DIALOG_OPEN.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    let dialog = rfd::AsyncFileDialog::new()
+        .set_title(title.as_deref().unwrap_or("Select Folder"));
+
+    let folder = dialog.pick_folder().await;
+
+    // Clear the flag after dialog closes
+    #[cfg(target_os = "macos")]
+    {
+        window::DIALOG_OPEN.store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    Ok(folder.map(|f| f.path().to_string_lossy().to_string()))
+}
+
 // Update commands
 #[tauri::command]
 async fn check_for_app_updates() -> Result<UpdateInfo, String> {
@@ -771,10 +910,25 @@ pub fn run() {
             get_license_status,
             check_feature_enabled,
             refresh_license_status,
+            // Premium
+            validate_premium_license_cmd,
+            get_ai_usage_cmd,
+            call_ai_feature_cmd,
+            // Obsidian
+            get_obsidian_config,
+            configure_obsidian,
+            validate_obsidian_vault_cmd,
+            add_to_obsidian,
+            open_url,
+            // AI
+            get_ai_config,
+            configure_ai,
             // Window
             show_window,
             hide_window,
             hide_and_paste,
+            // Dialogs
+            pick_folder,
             // Updates
             check_for_app_updates,
             get_app_version,

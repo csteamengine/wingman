@@ -77,7 +77,7 @@ const allActions: Action[] = actionSections.flatMap(section =>
 );
 
 export function QuickActionsPanel() {
-  const { setActivePanel, transformText, content, setContent, applyBulletList, applyNumberedList } = useEditorStore();
+  const { setActivePanel, transformText, content, setContent, applyBulletList, applyNumberedList, editorView } = useEditorStore();
   const { isProFeatureEnabled } = useLicenseStore();
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -142,6 +142,48 @@ export function QuickActionsPanel() {
     });
   };
 
+  // Helper to get selected text or full content, plus cursor position
+  const getTextToProcess = useCallback((): { text: string; hasSelection: boolean; from: number; to: number; cursorPos: number } => {
+    if (editorView) {
+      const selection = editorView.state.selection.main;
+      const cursorPos = selection.head;
+      if (!selection.empty) {
+        return {
+          text: editorView.state.sliceDoc(selection.from, selection.to),
+          hasSelection: true,
+          from: selection.from,
+          to: selection.to,
+          cursorPos,
+        };
+      }
+      return { text: editorView.state.doc.toString(), hasSelection: false, from: 0, to: editorView.state.doc.length, cursorPos };
+    }
+    return { text: content, hasSelection: false, from: 0, to: content.length, cursorPos: content.length };
+  }, [editorView, content]);
+
+  // Helper to apply processed text while preserving cursor position
+  const applyProcessedText = useCallback((result: string, hasSelection: boolean, from: number, to: number, cursorPos: number) => {
+    if (editorView) {
+      // Calculate new cursor position
+      let newCursorPos: number;
+      if (hasSelection) {
+        // Cursor was in or around selection, adjust for length change
+        const lengthDiff = result.length - (to - from);
+        newCursorPos = cursorPos <= from ? cursorPos : cursorPos + lengthDiff;
+      } else {
+        // Full content transform, keep cursor at same position clamped to new length
+        newCursorPos = Math.min(cursorPos, result.length);
+      }
+
+      editorView.dispatch({
+        changes: { from, to, insert: result },
+        selection: { anchor: newCursorPos },
+      });
+    } else {
+      setContent(result);
+    }
+  }, [editorView, setContent]);
+
   const handleAction = useCallback(async (action: Action) => {
     setError(null);
 
@@ -163,23 +205,27 @@ export function QuickActionsPanel() {
           }
           break;
 
-        case 'format':
-          if (!content.trim()) {
+        case 'format': {
+          const { text, hasSelection, from, to, cursorPos } = getTextToProcess();
+          if (!text.trim()) {
             setError('No text to format');
             return;
           }
-          const formatted = await invoke<string>(action.id, { text: content });
-          setContent(formatted);
+          const formatted = await invoke<string>(action.id, { text });
+          applyProcessedText(formatted, hasSelection, from, to, cursorPos);
           break;
+        }
 
-        case 'encode':
-          if (!content.trim()) {
+        case 'encode': {
+          const { text, hasSelection, from, to, cursorPos } = getTextToProcess();
+          if (!text.trim()) {
             setError('No text to encode/decode');
             return;
           }
-          const encoded = await invoke<string>(action.id, { text: content });
-          setContent(encoded);
+          const encoded = await invoke<string>(action.id, { text });
+          applyProcessedText(encoded, hasSelection, from, to, cursorPos);
           break;
+        }
 
         case 'generate':
           if (action.id === 'generate_uuid') {
@@ -198,7 +244,7 @@ export function QuickActionsPanel() {
     } catch (err) {
       setError(String(err));
     }
-  }, [content, isProFeatureEnabled, setContent, transformText, applyBulletList, applyNumberedList]);
+  }, [content, isProFeatureEnabled, setContent, transformText, applyBulletList, applyNumberedList, getTextToProcess, applyProcessedText]);
 
   // Keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -242,7 +288,9 @@ export function QuickActionsPanel() {
         title={tooltip}
         className={`flex items-center justify-between px-2 py-1.5 rounded-md text-left text-sm ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[var(--editor-hover)]'} ${isSelected ? 'bg-[var(--editor-hover)] ring-1 ring-[var(--editor-accent)]/50' : ''}`}
       >
-        <span className="text-[var(--editor-text)]">{action.label}</span>
+        <span className="text-[var(--editor-text)]">
+          {action.label}
+        </span>
         {!isPro && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--editor-accent)]/20 text-[var(--editor-accent)]">
             PRO

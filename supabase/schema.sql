@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS licenses (
     email VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT true,
     tier VARCHAR(50) DEFAULT 'pro',
-    max_devices INTEGER DEFAULT 2,
+    max_devices INTEGER DEFAULT 3,
     stripe_session_id VARCHAR(255),
     stripe_customer_id VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

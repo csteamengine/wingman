@@ -75,7 +75,7 @@ export type TextTransform =
 export type PanelType = 'editor' | 'settings' | 'history' | 'snippets' | 'actions';
 
 // License types
-export type LicenseTier = 'free' | 'pro';
+export type LicenseTier = 'free' | 'pro' | 'premium';
 
 export type LicenseStatus = 'valid' | 'grace_period' | 'expired' | 'invalid' | 'not_activated';
 
@@ -91,10 +91,58 @@ export type ProFeature =
   | 'encode_decode'
   | 'image_attachments';
 
+export type PremiumFeature =
+  | 'prompt_optimizer'
+  | 'obsidian_integration'
+  | 'ai_features';
+
 export interface LicenseStatusInfo {
   tier: LicenseTier;
   status: LicenseStatus;
   email: string | null;
   days_until_expiry: number | null;
   needs_revalidation: boolean;
+}
+
+// Premium subscription types
+export interface SubscriptionStatus {
+  tier: string;
+  is_active: boolean;
+  expires_at: string | null;
+  tokens_used: number;
+  tokens_remaining: number;
+}
+
+export interface UsageStats {
+  tokens_used: number;
+  tokens_remaining: number;
+  request_count: number;
+  resets_at: string;
+}
+
+export interface AIResponse {
+  result: string;
+  tokens_used_this_request: number;
+  tokens_remaining: number;
+}
+
+// Obsidian types
+export type ObsidianLocation = 'daily_note' | 'specific_note' | 'new_note';
+
+export interface ObsidianConfig {
+  vault_path: string;
+  default_location: ObsidianLocation;
+  specific_note_path: string | null;
+  new_note_folder: string | null;
+  template: string | null;
+}
+
+export interface ObsidianResult {
+  note_name: string;
+  vault_name: string;
+  open_uri: string;
+}
+
+export interface AIConfig {
+  system_instructions: string;
 }

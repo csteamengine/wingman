@@ -47,7 +47,9 @@ export function useLicense() {
   );
 
   // Derived state helpers
-  const isPro = tier === 'pro' && (status === 'valid' || status === 'grace_period');
+  // Premium tier also has access to all Pro features
+  const isPro = (tier === 'pro' || tier === 'premium') && (status === 'valid' || status === 'grace_period');
+  const isPremium = tier === 'premium' && (status === 'valid' || status === 'grace_period');
   const isGracePeriod = status === 'grace_period';
   const isExpired = status === 'expired';
   const showUpgradePrompt = tier === 'free' || status === 'expired' || status === 'invalid';
@@ -64,6 +66,7 @@ export function useLicense() {
 
     // Derived state
     isPro,
+    isPremium,
     isGracePeriod,
     isExpired,
     showUpgradePrompt,

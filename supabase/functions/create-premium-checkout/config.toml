@@ -1,0 +1,3 @@
+# Allow requests with publishable API key (no JWT required)
+# Creates Stripe checkout sessions for Premium subscriptions
+verify_jwt = false

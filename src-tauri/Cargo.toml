@@ -26,7 +26,9 @@ tauri-plugin-clipboard-manager = "2"
 tauri-plugin-store = "2"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 tauri-plugin-shell = "2"
+tauri-plugin-fs = "2"
 tauri-plugin-updater = "2"
+rfd = "0.15"
 rusqlite = { version = "0.32", features = ["bundled"] }
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5"

@@ -18,6 +18,7 @@ interface LicenseState {
   refreshLicense: () => Promise<boolean>;
   checkFeature: (feature: ProFeature) => Promise<boolean>;
   isProFeatureEnabled: (feature: ProFeature) => boolean;
+  isPremiumTier: () => boolean;
 }
 
 // Default state for free tier
@@ -142,10 +143,18 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
 
   // Synchronous check based on current state (no backend call)
   // Note: feature param is for API consistency and future granular checks
+  // Premium tier also has access to all Pro features
   isProFeatureEnabled: (_feature: ProFeature) => {
     const { tier, status } = get();
-    // Pro features require valid or grace period status with pro tier
-    if (tier !== 'pro') return false;
+    // Pro and Premium features require valid or grace period status
+    if (tier !== 'pro' && tier !== 'premium') return false;
+    return status === 'valid' || status === 'grace_period';
+  },
+
+  // Check if user has Premium tier
+  isPremiumTier: () => {
+    const { tier, status } = get();
+    if (tier !== 'premium') return false;
     return status === 'valid' || status === 'grace_period';
   },
 }));

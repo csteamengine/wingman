@@ -1,5 +1,6 @@
 import {useEffect, useRef, useCallback, useState} from 'react';
-import {EditorView, keymap, placeholder} from '@codemirror/view';
+import {EditorView, keymap, placeholder, Decoration, ViewPlugin} from '@codemirror/view';
+import type {DecorationSet, ViewUpdate} from '@codemirror/view';
 import {EditorState} from '@codemirror/state';
 import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/commands';
 import {javascript} from '@codemirror/lang-javascript';
@@ -13,6 +14,8 @@ import {oneDark} from '@codemirror/theme-one-dark';
 import {useEditorStore} from '../stores/editorStore';
 import {useSettingsStore} from '../stores/settingsStore';
 import {useLicenseStore} from '../stores/licenseStore';
+import {usePremiumStore} from '../stores/premiumStore';
+import type {ObsidianResult} from '../types';
 
 const languages: Record<string, () => ReturnType<typeof javascript>> = {
     javascript: javascript,
@@ -41,11 +44,103 @@ const LANGUAGE_OPTIONS = [
     {value: 'markdown', label: 'Markdown'},
 ];
 
+// Markdown link decoration - hides syntax and shows only link text in blue
+const hiddenMark = Decoration.mark({ class: 'cm-markdown-link-hidden' });
+const linkTextMark = Decoration.mark({ class: 'cm-markdown-link-text' });
+
+// Build decorations for markdown links
+function buildMarkdownLinkDecorations(view: EditorView): DecorationSet {
+    const decorations: {from: number, to: number, decoration: Decoration}[] = [];
+    const doc = view.state.doc;
+    const text = doc.toString();
+    const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+        const start = match.index;
+        const bracketOpen = start; // [
+        const textStart = start + 1; // start of link text
+        const textEnd = textStart + match[1].length; // end of link text
+        const bracketClose = textEnd; // ]
+        const end = start + match[0].length; // end of )
+
+        // Hide the opening bracket [
+        decorations.push({ from: bracketOpen, to: textStart, decoration: hiddenMark });
+        // Style the link text
+        decorations.push({ from: textStart, to: textEnd, decoration: linkTextMark });
+        // Hide the ](url)
+        decorations.push({ from: bracketClose, to: end, decoration: hiddenMark });
+    }
+
+    return Decoration.set(decorations.map(d => d.decoration.range(d.from, d.to)), true);
+}
+
+const markdownLinkPlugin = ViewPlugin.fromClass(
+    class {
+        decorations: DecorationSet;
+        constructor(view: EditorView) {
+            this.decorations = buildMarkdownLinkDecorations(view);
+        }
+        update(update: ViewUpdate) {
+            if (update.docChanged || update.viewportChanged) {
+                this.decorations = buildMarkdownLinkDecorations(update.view);
+            }
+        }
+    },
+    { decorations: (v) => v.decorations }
+);
+
+// CSS theme for markdown links
+const markdownLinkTheme = EditorView.baseTheme({
+    '.cm-markdown-link-hidden': {
+        display: 'none',
+    },
+    '.cm-markdown-link-text': {
+        color: '#3b82f6',
+        textDecoration: 'underline',
+        textDecorationColor: '#3b82f680',
+        cursor: 'pointer',
+    },
+});
+
+// Helper to check if a string is a URL
+const isUrl = (str: string): boolean => {
+    return /^https?:\/\/\S+$/.test(str.trim());
+};
+
+// Paste handler extension for markdown link creation
+const markdownLinkPasteHandler = EditorView.domEventHandlers({
+    paste(event, view) {
+        const pastedText = event.clipboardData?.getData('text/plain');
+        if (!pastedText) return false;
+
+        const selection = view.state.selection.main;
+        if (selection.empty || !isUrl(pastedText)) return false;
+
+        // There's a selection and the paste content is a URL
+        event.preventDefault();
+        const selectedText = view.state.sliceDoc(selection.from, selection.to);
+        const markdownLink = `[${selectedText}](${pastedText.trim()})`;
+
+        view.dispatch({
+            changes: {
+                from: selection.from,
+                to: selection.to,
+                insert: markdownLink,
+            },
+            selection: { anchor: selection.from + markdownLink.length },
+        });
+        return true;
+    },
+});
+
 export function EditorWindow() {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [obsidianToast, setObsidianToast] = useState<ObsidianResult | null>(null);
+    const [aiError, setAiError] = useState<string | null>(null);
     const {
         content,
         setContent,
@@ -53,6 +148,7 @@ export function EditorWindow() {
         setLanguage,
         stats,
         isVisible,
+        activePanel,
         pasteAndClose,
         setEditorView,
         images,
@@ -60,12 +156,112 @@ export function EditorWindow() {
         removeImage
     } = useEditorStore();
     const {settings} = useSettingsStore();
-    const {isProFeatureEnabled} = useLicenseStore();
+    const {isProFeatureEnabled, tier} = useLicenseStore();
+    const {
+        aiLoading,
+        isSubscriptionActive,
+        obsidianConfig,
+        loadAIConfig,
+        callAIFeature,
+        addToObsidian,
+        openObsidianNote
+    } = usePremiumStore();
+
+    const isPremium = tier === 'premium' && isSubscriptionActive;
+    const hasObsidianConfigured = obsidianConfig && obsidianConfig.vault_path;
+
+    // Load AI config on mount
+    useEffect(() => {
+        if (isPremium) {
+            loadAIConfig();
+        }
+    }, [isPremium, loadAIConfig]);
 
     const hasImageSupport = isProFeatureEnabled('image_attachments');
 
-    // Editor keymaps: line operations and auto-list continuation
+    // Auto-hide obsidian toast after 5 seconds
+    useEffect(() => {
+        if (obsidianToast) {
+            const timer = setTimeout(() => setObsidianToast(null), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [obsidianToast]);
+
+    // Auto-hide AI error after 3 seconds
+    useEffect(() => {
+        if (aiError) {
+            const timer = setTimeout(() => setAiError(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [aiError]);
+
+    // Handle AI refine action
+    const handleAiRefine = useCallback(async () => {
+        if (aiLoading || !content.trim()) return;
+        setAiError(null);
+
+        const licenseKey = localStorage.getItem('wingman_license_key');
+        if (!licenseKey) {
+            setAiError('License key not found');
+            return;
+        }
+
+        const response = await callAIFeature(licenseKey, content, 'prompt_optimizer');
+        if (response && response.result) {
+            setContent(response.result);
+        } else {
+            setAiError('Failed to refine text');
+        }
+    }, [aiLoading, content, callAIFeature, setContent]);
+
+    // Handle Obsidian send action
+    const handleObsidianSend = useCallback(async () => {
+        if (!content.trim()) return;
+
+        const result = await addToObsidian(content);
+        if (result) {
+            setObsidianToast(result);
+        }
+    }, [content, addToObsidian]);
+
+    // Handle toast click to open Obsidian note
+    const handleToastClick = useCallback(() => {
+        if (obsidianToast) {
+            openObsidianNote(obsidianToast.open_uri);
+            setObsidianToast(null);
+        }
+    }, [obsidianToast, openObsidianNote]);
+
+    // Helper to wrap selected text with brackets/quotes
+    const wrapSelection = (view: EditorView, open: string, close: string): boolean => {
+        const selection = view.state.selection.main;
+        if (selection.empty) return false; // No selection, let default behavior handle it
+
+        const selectedText = view.state.sliceDoc(selection.from, selection.to);
+        view.dispatch({
+            changes: {
+                from: selection.from,
+                to: selection.to,
+                insert: open + selectedText + close,
+            },
+            selection: { anchor: selection.from + open.length, head: selection.from + open.length + selectedText.length },
+        });
+        return true;
+    };
+
+    // Editor keymaps: line operations, auto-list continuation, and bracket wrapping
     const editorKeymap = keymap.of([
+        // Auto-wrap selection with quotes and brackets
+        { key: '"', run: (view) => wrapSelection(view, '"', '"') },
+        { key: "'", run: (view) => wrapSelection(view, "'", "'") },
+        { key: '[', run: (view) => wrapSelection(view, '[', ']') },
+        { key: ']', run: (view) => wrapSelection(view, '[', ']') },
+        { key: '{', run: (view) => wrapSelection(view, '{', '}') },
+        { key: '}', run: (view) => wrapSelection(view, '{', '}') },
+        { key: '(', run: (view) => wrapSelection(view, '(', ')') },
+        { key: ')', run: (view) => wrapSelection(view, '(', ')') },
+        { key: '<', run: (view) => wrapSelection(view, '<', '>') },
+        { key: '>', run: (view) => wrapSelection(view, '<', '>') },
         // Cmd/Ctrl+D: Duplicate line
         {
             key: 'Mod-d',
@@ -230,7 +426,8 @@ export function EditorWindow() {
     const hasSyntaxHighlighting = isProFeatureEnabled('syntax_highlighting');
     const hasLanguageSelection = isProFeatureEnabled('language_selection');
 
-    // Handle paste for files (PRO feature)
+    // Handle paste for file attachments (PRO feature)
+    // Note: Markdown link pasting is handled by CodeMirror extension (markdownLinkPasteHandler)
     const handlePaste = useCallback(async (e: ClipboardEvent) => {
         if (!hasImageSupport) return;
 
@@ -312,15 +509,24 @@ export function EditorWindow() {
         }
     }, [hasImageSupport, addImage]);
 
-    // Focus editor when window becomes visible
+    // Focus editor when window becomes visible or when returning from other panels
     useEffect(() => {
-        if (isVisible && viewRef.current) {
-            // Small delay to ensure window is fully shown
+        const shouldFocusEditor = isVisible && (activePanel === 'editor' || activePanel === 'actions');
+        if (shouldFocusEditor && viewRef.current) {
+            // Small delay to ensure window/panel transition is complete
             setTimeout(() => {
-                viewRef.current?.focus();
+                const view = viewRef.current;
+                if (view) {
+                    view.focus();
+                    // Move cursor to end of content
+                    const endPos = view.state.doc.length;
+                    view.dispatch({
+                        selection: { anchor: endPos },
+                    });
+                }
             }, 50);
         }
-    }, [isVisible]);
+    }, [isVisible, activePanel]);
 
     const getLanguageExtension = useCallback(() => {
         const langFn = languages[language];
@@ -347,6 +553,10 @@ export function EditorWindow() {
                     setContent(newContent);
                 }
             }),
+            // Markdown link paste handling and styling
+            markdownLinkPasteHandler,
+            markdownLinkPlugin,
+            markdownLinkTheme,
             ...getLanguageExtension(),
         ];
 
@@ -414,6 +624,23 @@ export function EditorWindow() {
                                   d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                         <p className="text-sm text-[var(--editor-text)]">Drop files to attach</p>
+                    </div>
+                </div>
+            )}
+
+            {/* AI Loading overlay */}
+            {aiLoading && (
+                <div
+                    className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--editor-bg)]/95 backdrop-blur-sm rounded-lg">
+                    <div className="text-center">
+                        <svg className="w-10 h-10 mx-auto mb-3 text-purple-400 animate-spin" fill="none"
+                             viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        </svg>
+                        <p className="text-sm font-medium text-purple-300">Refining with AI...</p>
+                        <p className="text-xs text-[var(--editor-text-muted)] mt-1">This may take a moment</p>
                     </div>
                 </div>
             )}
@@ -552,15 +779,79 @@ export function EditorWindow() {
                     </div>
 
                     {/* Action button row */}
-                    <div className="px-3 pb-3">
+                    <div className="px-3 pb-3 flex gap-2">
+                        {/* AI Refine button - green */}
+                        <button
+                            onClick={handleAiRefine}
+                            disabled={!isPremium || !content.trim() || aiLoading}
+                            title="Refine text with AI"
+                            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm transition-colors bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-40"
+                        >
+                            {aiLoading ? (
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+                                    <path d="M7.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
+                                    <path d="M16.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
+                                </svg>
+                            )}
+                            <span>AI</span>
+                        </button>
+
+                        {/* Obsidian button - purple/violet (Obsidian brand color) */}
+                        <button
+                            onClick={handleObsidianSend}
+                            disabled={!isPremium || !hasObsidianConfigured || !content.trim()}
+                            title={!hasObsidianConfigured ? "Configure Obsidian vault in Settings first" : "Send to Obsidian"}
+                            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm transition-colors bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 disabled:opacity-40"
+                        >
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l6.9 3.45L12 11.09 5.1 7.63 12 4.18zM4 8.82l7 3.5v7.36l-7-3.5V8.82zm9 10.86v-7.36l7-3.5v7.36l-7 3.5z"/>
+                            </svg>
+                            <span>Obsidian</span>
+                        </button>
+
+                        {/* Copy to Clipboard - main action */}
                         <button
                             onClick={pasteAndClose}
                             disabled={!content.trim() && images.length === 0}
-                            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-md bg-[var(--editor-surface)] border border-[var(--editor-border)] text-sm text-[var(--editor-text)] hover:bg-[var(--editor-hover)] disabled:opacity-40 transition-colors"
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-md bg-[var(--editor-surface)] border border-[var(--editor-border)] text-sm text-[var(--editor-text)] hover:bg-[var(--editor-hover)] disabled:opacity-40 transition-colors"
                         >
                             <span>Copy to Clipboard</span>
                             <span className="kbd">⌘↵</span>
                         </button>
+                    </div>
+
+                    {/* AI Error message */}
+                    {aiError && (
+                        <div className="mx-3 mb-3 px-3 py-2 text-xs bg-red-500/10 border border-red-500/20 rounded-md text-red-400">
+                            {aiError}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Obsidian Toast Notification */}
+            {obsidianToast && (
+                <div
+                    onClick={handleToastClick}
+                    className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 cursor-pointer animate-slide-up"
+                >
+                    <div className="flex items-center gap-3 px-4 py-3 bg-violet-600/95 rounded-lg shadow-lg border border-violet-500/50 hover:bg-violet-600 transition-colors">
+                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <div className="text-white">
+                            <p className="text-sm font-medium">Saved to Obsidian</p>
+                            <p className="text-xs opacity-80">Click to open "{obsidianToast.note_name}"</p>
+                        </div>
+                        <svg className="w-4 h-4 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                        </svg>
                     </div>
                 </div>
             )}
