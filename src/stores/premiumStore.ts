@@ -250,7 +250,7 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
       const response = await invoke<AIResponse>('call_ai_feature_cmd', {
         licenseKey,
         prompt,
-        feature: 'prompt_optimizer',
+        feature: preset.id, // Use preset ID as feature name
         systemInstructions: preset.systemPrompt,
       });
 
