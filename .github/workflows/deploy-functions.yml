@@ -26,3 +26,4 @@ jobs:
           supabase functions deploy stripe-webhook --no-verify-jwt
           supabase functions deploy create-checkout-session --no-verify-jwt
           supabase functions deploy deactivate-device --no-verify-jwt
+          supabase functions deploy claude-proxy --no-verify-jwt
