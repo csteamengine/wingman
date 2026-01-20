@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { register, unregister, isRegistered } from '@tauri-apps/plugin-global-shortcut';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useEditorStore } from '../stores/editorStore';
@@ -49,19 +49,38 @@ export function useGlobalHotkey() {
 export function useKeyboardShortcuts() {
   const { pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText } = useEditorStore();
   const { isProFeatureEnabled } = useLicenseStore();
+  const { settings } = useSettingsStore();
+  const lastEscapeRef = useRef<number>(0);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMod = e.metaKey || e.ctrlKey;
 
-      // Escape - close window (from editor or actions), or go back to actions from other panels
+      // Escape - handle based on sticky mode and active panel
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (activePanel === 'editor' || activePanel === 'actions') {
-          closeWithoutPaste();
+
+        // If on settings/history/snippets: single Escape always closes and returns to editor
+        if (activePanel !== 'editor' && activePanel !== 'actions') {
+          setActivePanel('editor');
+          return;
+        }
+
+        // If on editor/actions panel:
+        if (settings?.sticky_mode) {
+          // Sticky mode: require double-tap Escape to close window (within 300ms)
+          const now = Date.now();
+          if (now - lastEscapeRef.current < 300) {
+            // Double-tap detected - close window
+            closeWithoutPaste();
+            lastEscapeRef.current = 0;
+          } else {
+            // First tap - record time
+            lastEscapeRef.current = now;
+          }
         } else {
-          // From settings/history/snippets, go back to actions (default panel)
-          setActivePanel('actions');
+          // Normal mode: single Escape closes window
+          closeWithoutPaste();
         }
         return;
       }
@@ -140,5 +159,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isProFeatureEnabled]);
+  }, [pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isProFeatureEnabled, settings?.sticky_mode]);
 }

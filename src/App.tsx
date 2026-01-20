@@ -72,8 +72,8 @@ function App() {
 
   // Apply opacity to window
   useEffect(() => {
-    if (settings?.opacity) {
-      document.body.style.setProperty('--window-opacity', String(settings.opacity));
+    if (settings?.opacity !== undefined) {
+      document.body.style.opacity = String(settings.opacity);
     }
   }, [settings?.opacity]);
 

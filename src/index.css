@@ -269,6 +269,81 @@ body {
   background: var(--editor-hover);
 }
 
+/* CodeMirror search panel styles */
+.cm-editor .cm-panels {
+  background: var(--editor-surface);
+  color: var(--editor-text);
+  border-bottom: 1px solid var(--editor-border);
+}
+
+.cm-editor .cm-panels.cm-panels-top {
+  border-bottom: 1px solid var(--editor-border);
+}
+
+.cm-editor .cm-search {
+  font-size: 13px;
+}
+
+.cm-editor .cm-searchMatch {
+  background: rgba(255, 215, 0, 0.3);
+  outline: 1px solid rgba(255, 215, 0, 0.5);
+}
+
+.cm-editor .cm-searchMatch-selected {
+  background: rgba(255, 215, 0, 0.5);
+  outline: 1px solid rgba(255, 215, 0, 0.8);
+}
+
+.cm-editor .cm-panel input,
+.cm-editor .cm-panel button {
+  font-size: 12px;
+  padding: 4px 8px;
+  margin: 2px;
+  border-radius: 4px;
+  border: 1px solid var(--editor-border);
+  background: var(--editor-bg);
+  color: var(--editor-text);
+}
+
+.cm-editor .cm-panel input {
+  background: var(--editor-bg);
+}
+
+.cm-editor .cm-panel input:focus {
+  outline: none;
+  border-color: var(--editor-accent);
+  box-shadow: 0 0 0 1px var(--editor-accent);
+}
+
+.cm-editor .cm-panel button {
+  background: var(--editor-hover);
+  cursor: pointer;
+}
+
+.cm-editor .cm-panel button:hover {
+  background: var(--editor-accent);
+  color: white;
+  border-color: var(--editor-accent);
+}
+
+.cm-editor .cm-panel label {
+  font-size: 12px;
+  color: var(--editor-muted);
+  margin: 0 4px;
+}
+
+.cm-editor .cm-panel [name="close"] {
+  font-size: 16px;
+  color: var(--editor-muted);
+  background: transparent;
+  border: none;
+}
+
+.cm-editor .cm-panel [name="close"]:hover {
+  color: var(--editor-text);
+  background: var(--editor-hover);
+}
+
 /* Animations */
 @keyframes slideIn {
   from {
@@ -333,4 +408,37 @@ body {
 :focus-visible {
   outline: none;
   box-shadow: 0 0 0 1px var(--editor-accent);
+}
+
+/* Toolbar button styles */
+.toolbar-btn {
+  @apply relative w-8 h-8 flex items-center justify-center rounded-md transition-colors;
+  background: transparent;
+  color: var(--editor-muted);
+  border: none;
+  cursor: pointer;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: var(--editor-hover);
+  color: var(--editor-text);
+}
+
+.toolbar-btn:active:not(:disabled) {
+  background: var(--editor-surface);
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pro-badge {
+  @apply absolute top-0 right-0 text-[6px] w-2.5 h-2.5 flex items-center justify-center rounded-full;
+  background: var(--editor-accent);
+  color: white;
+  font-weight: bold;
+  line-height: 1;
+  padding: 2px;
+  font-size: 6px;
 }

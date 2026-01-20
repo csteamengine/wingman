@@ -1,8 +1,9 @@
 import {useEffect, useRef, useCallback, useState} from 'react';
-import {EditorView, keymap, placeholder, Decoration, ViewPlugin} from '@codemirror/view';
+import {EditorView, keymap, placeholder, Decoration, ViewPlugin, drawSelection, dropCursor} from '@codemirror/view';
 import type {DecorationSet, ViewUpdate} from '@codemirror/view';
 import {EditorState} from '@codemirror/state';
 import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/commands';
+import {search, searchKeymap} from '@codemirror/search';
 import {javascript} from '@codemirror/lang-javascript';
 import {python} from '@codemirror/lang-python';
 import {rust} from '@codemirror/lang-rust';
@@ -11,6 +12,7 @@ import {css} from '@codemirror/lang-css';
 import {json} from '@codemirror/lang-json';
 import {markdown} from '@codemirror/lang-markdown';
 import {oneDark} from '@codemirror/theme-one-dark';
+import {listen} from '@tauri-apps/api/event';
 import {useEditorStore} from '../stores/editorStore';
 import {useSettingsStore} from '../stores/settingsStore';
 import {useLicenseStore} from '../stores/licenseStore';
@@ -141,6 +143,21 @@ export function EditorWindow() {
     const [isDragging, setIsDragging] = useState(false);
     const [obsidianToast, setObsidianToast] = useState<ObsidianResult | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
+    const [showAiPopover, setShowAiPopover] = useState(false);
+    const aiPopoverRef = useRef<HTMLDivElement>(null);
+
+    // Close AI popover when clicking outside
+    useEffect(() => {
+        if (!showAiPopover) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (aiPopoverRef.current && !aiPopoverRef.current.contains(e.target as Node)) {
+                setShowAiPopover(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showAiPopover]);
+
     const {
         content,
         setContent,
@@ -150,10 +167,14 @@ export function EditorWindow() {
         isVisible,
         activePanel,
         pasteAndClose,
+        hideWindow,
         setEditorView,
         images,
         addImage,
-        removeImage
+        removeImage,
+        transformText,
+        applyBulletList,
+        applyNumberedList
     } = useEditorStore();
     const {settings} = useSettingsStore();
     const {isProFeatureEnabled, isPremiumTier} = useLicenseStore();
@@ -163,7 +184,10 @@ export function EditorWindow() {
         loadAIConfig,
         loadObsidianConfig,
         loadSubscriptionStatus,
+        loadAIPresets,
         callAIFeature,
+        callAIWithPreset,
+        getEnabledPresets,
         addToObsidian,
         openObsidianNote
     } = usePremiumStore();
@@ -171,18 +195,19 @@ export function EditorWindow() {
     const isPremium = isPremiumTier();
     const hasObsidianConfigured = obsidianConfig && obsidianConfig.vault_path;
 
-    // Load AI config, Obsidian config, and subscription status on mount for premium users
+    // Load AI config, Obsidian config, presets, and subscription status on mount for premium users
     useEffect(() => {
         if (isPremium) {
             loadAIConfig();
             loadObsidianConfig();
+            loadAIPresets();
             // Also load subscription status for API calls
             const licenseKey = localStorage.getItem('wingman_license_key');
             if (licenseKey) {
                 loadSubscriptionStatus(licenseKey);
             }
         }
-    }, [isPremium, loadAIConfig, loadObsidianConfig, loadSubscriptionStatus]);
+    }, [isPremium, loadAIConfig, loadObsidianConfig, loadAIPresets, loadSubscriptionStatus]);
 
     const hasImageSupport = isProFeatureEnabled('image_attachments');
 
@@ -202,7 +227,27 @@ export function EditorWindow() {
         }
     }, [aiError]);
 
-    // Handle AI refine action
+    // Handle AI refine action with preset
+    const handleAiRefineWithPreset = useCallback(async (preset: { id: string; systemPrompt: string; name: string }) => {
+        if (aiLoading || !content.trim()) return;
+        setAiError(null);
+        setShowAiPopover(false);
+
+        const licenseKey = localStorage.getItem('wingman_license_key');
+        if (!licenseKey) {
+            setAiError('License key not found');
+            return;
+        }
+
+        const response = await callAIWithPreset(licenseKey, content, preset as any);
+        if (response && response.result) {
+            setContent(response.result);
+        } else {
+            setAiError('Failed to refine text');
+        }
+    }, [aiLoading, content, callAIWithPreset, setContent]);
+
+    // Handle legacy AI refine action (default preset)
     const handleAiRefine = useCallback(async () => {
         if (aiLoading || !content.trim()) return;
         setAiError(null);
@@ -221,6 +266,9 @@ export function EditorWindow() {
         }
     }, [aiLoading, content, callAIFeature, setContent]);
 
+    // Get enabled presets for the popover
+    const enabledPresets = getEnabledPresets();
+
     // Handle Obsidian send action
     const handleObsidianSend = useCallback(async () => {
         if (!content.trim()) return;
@@ -232,12 +280,14 @@ export function EditorWindow() {
     }, [content, addToObsidian]);
 
     // Handle toast click to open Obsidian note
-    const handleToastClick = useCallback(() => {
+    const handleToastClick = useCallback(async () => {
         if (obsidianToast) {
-            openObsidianNote(obsidianToast.open_uri);
+            await openObsidianNote(obsidianToast.open_uri);
             setObsidianToast(null);
+            // Close the window even if in sticky mode
+            await hideWindow();
         }
-    }, [obsidianToast, openObsidianNote]);
+    }, [obsidianToast, openObsidianNote, hideWindow]);
 
     // Helper to wrap selected text with brackets/quotes
     const wrapSelection = (view: EditorView, open: string, close: string): boolean => {
@@ -374,10 +424,15 @@ export function EditorWindow() {
                 const line = state.doc.lineAt(state.selection.main.head);
                 const lineText = line.text;
 
-                // Check if current line starts with a bullet
-                if (lineText.trimStart().startsWith('• ')) {
-                    // If line is just "• " (empty bullet), remove it instead of adding new bullet
-                    if (lineText.trim() === '•') {
+                // Check if current line starts with a bullet (•, -, or *)
+                const bulletMatch = lineText.match(/^(\s*)([-*•])\s/);
+                if (bulletMatch) {
+                    const indent = bulletMatch[1];
+                    const bulletChar = bulletMatch[2];
+
+                    // If line is just the bullet with no content after it, remove it
+                    const contentAfterBullet = lineText.slice(bulletMatch[0].length).trim();
+                    if (contentAfterBullet === '') {
                         view.dispatch({
                             changes: {from: line.from, to: line.to, insert: ''},
                         });
@@ -385,12 +440,13 @@ export function EditorWindow() {
                     }
 
                     // Insert newline + bullet
+                    const nextPrefix = `\n${indent}${bulletChar} `;
                     view.dispatch({
                         changes: {
                             from: state.selection.main.head,
-                            insert: '\n• ',
+                            insert: nextPrefix,
                         },
-                        selection: {anchor: state.selection.main.head + 3},
+                        selection: {anchor: state.selection.main.head + nextPrefix.length},
                     });
                     return true;
                 }
@@ -549,9 +605,15 @@ export function EditorWindow() {
 
         const extensions = [
             history(),
+            // Enable multi-cursor support (Cmd+click to add cursors)
+            EditorState.allowMultipleSelections.of(true),
+            drawSelection(),
+            dropCursor(),
             // Custom keymap first so it takes precedence (line ops, auto-list)
             editorKeymap,
-            keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+            keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
+            // Find/Replace (Cmd+F to open)
+            search({ top: true }),
             placeholder('Start typing...'),
             EditorView.lineWrapping,
             EditorView.updateListener.of((update) => {
@@ -596,6 +658,20 @@ export function EditorWindow() {
         };
     }, [language, settings?.theme, setContent, getLanguageExtension]);
 
+    // Listen for refocus events (triggered when workspace changes in sticky mode)
+    useEffect(() => {
+        const unlisten = listen('refocus-editor', () => {
+            console.log('Refocus event received - focusing editor');
+            if (viewRef.current) {
+                viewRef.current.focus();
+            }
+        });
+
+        return () => {
+            unlisten.then(fn => fn());
+        };
+    }, []);
+
     // Update editor content when it changes externally
     useEffect(() => {
         if (viewRef.current) {
@@ -620,6 +696,75 @@ export function EditorWindow() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
         >
+            {/* Text Transformation Toolbar - Top */}
+            <div className="border-b border-[var(--editor-border)] px-2 py-2 overflow-x-auto">
+                <div className="flex items-center gap-0.5 min-w-max">
+                    {/* Text Case Group */}
+                    <button onClick={() => transformText('uppercase')} title="UPPERCASE" className="toolbar-btn">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 18h7l-3-9-3 9z"/><path d="M14 18h7l-3-9-3 9z"/><path d="M5 14h4"/><path d="M16 14h4"/>
+                        </svg>
+                    </button>
+                    <button onClick={() => transformText('lowercase')} title="lowercase" className="toolbar-btn">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="9" cy="15" r="4"/><path d="M13 11v4c0 2.2 1.8 4 4 4s4-1.8 4-4v-4"/>
+                        </svg>
+                    </button>
+                    <button onClick={() => transformText('titlecase')} title="Title Case" className="toolbar-btn">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <text x="2" y="17" fontSize="16" fill="currentColor" fontFamily="sans-serif" fontWeight="bold">Aa</text>
+                        </svg>
+                    </button>
+                    <button onClick={() => transformText('sentencecase')} title="Sentence case" className="toolbar-btn">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <text x="1" y="16" fontSize="14" fill="currentColor" fontFamily="sans-serif">Aa</text>
+                            <circle cx="20" cy="14" r="1.5" fill="currentColor"/>
+                        </svg>
+                    </button>
+                    <div className="w-px h-6 bg-[var(--editor-border)] mx-1"/>
+
+                    {/* Text Formatting Group */}
+                    <button onClick={() => transformText('trim')} title="Trim Whitespace" className="toolbar-btn">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <path d="M6 3v18M18 3v18"/><path d="M9 12h6"/>
+                        </svg>
+                    </button>
+                    <button onClick={() => transformText('sort')} title="Sort Lines A→Z" className="toolbar-btn">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 11h4"/><path d="M11 15h7"/><path d="M11 19h10"/><path d="M3 7l3-3 3 3"/><path d="M6 4v14"/>
+                        </svg>
+                    </button>
+                    <button onClick={() => transformText('deduplicate')} title="Remove Duplicate Lines" className="toolbar-btn">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="5" rx="1"/><rect x="3" y="10" width="18" height="5" rx="1" opacity="0.3"/><line x1="14" y1="18" x2="20" y2="18"/><line x1="17" y1="15" x2="17" y2="21"/>
+                        </svg>
+                    </button>
+                    <button onClick={() => transformText('reverse')} title="Reverse Lines" className="toolbar-btn">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 5h18"/><path d="M3 12h15"/><path d="M3 19h12"/>
+                            <polyline points="17 15 21 19 17 23"/>
+                        </svg>
+                    </button>
+                    <div className="w-px h-6 bg-[var(--editor-border)] mx-1"/>
+
+                    {/* Lists Group */}
+                    <button onClick={applyBulletList} title="Bulleted List" className="toolbar-btn">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/>
+                            <circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/>
+                        </svg>
+                    </button>
+                    <button onClick={applyNumberedList} title="Numbered List" className="toolbar-btn">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/>
+                            <text x="3" y="8" fontSize="7" fill="currentColor" fontFamily="monospace">1</text>
+                            <text x="3" y="14" fontSize="7" fill="currentColor" fontFamily="monospace">2</text>
+                            <text x="3" y="20" fontSize="7" fill="currentColor" fontFamily="monospace">3</text>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
             {/* Drag overlay */}
             {isDragging && (
                 <div
@@ -728,11 +873,11 @@ export function EditorWindow() {
                     )}
                 </div>
             )}
-      
 
+            {/* Stats bar - optional */}
             {settings?.show_status_bar !== false && (
-                <div className="border-t border-[var(--editor-border)] rounded-b-[10px]">
-                    {/* Info row */}
+                <div className="border-t border-[var(--editor-border)]">
+                    {/* Stats info row */}
                     <div className="flex items-center justify-between px-4 py-2 text-xs text-[var(--editor-muted)]">
                         <div className="flex items-center gap-3">
                             {hasStatsDisplay ? (
@@ -784,30 +929,64 @@ export function EditorWindow() {
                             )}
                         </div>
                     </div>
+                </div>
+            )}
 
-                    {/* Action button row */}
-                    <div className="px-3 pb-3 flex gap-2">
-                        {/* AI Refine button - green */}
-                        <button
-                            onClick={handleAiRefine}
-                            disabled={!isPremium || !content.trim() || aiLoading}
-                            title="Refine text with AI"
-                            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm transition-colors bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-40"
-                        >
-                            {aiLoading ? (
-                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+            {/* Action buttons - always visible */}
+            <div className={`${settings?.show_status_bar !== false ? '' : 'border-t border-[var(--editor-border)]'} rounded-b-[10px]`}>
+                {/* Action button row */}
+                <div className="px-3 py-3 flex gap-2">
+                        {/* AI Refine button with popover - green */}
+                        <div className="relative" ref={aiPopoverRef}>
+                            <button
+                                onClick={() => setShowAiPopover(!showAiPopover)}
+                                disabled={!isPremium || !content.trim() || aiLoading}
+                                title="Refine text with AI"
+                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm transition-colors bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-40"
+                            >
+                                {aiLoading ? (
+                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                                    </svg>
+                                ) : (
+                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+                                        <path d="M7.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
+                                        <path d="M16.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
+                                    </svg>
+                                )}
+                                <span>AI</span>
+                                <svg className="w-3 h-3 ml-0.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
                                 </svg>
-                            ) : (
-                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
-                                    <path d="M7.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
-                                    <path d="M16.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
-                                </svg>
+                            </button>
+
+                            {/* AI Presets Popover */}
+                            {showAiPopover && (
+                                <div className="absolute bottom-full mb-2 left-0 bg-[var(--editor-bg)] border border-[var(--editor-border)] rounded-lg shadow-lg z-50 min-w-[220px] py-1 animate-fade-in">
+                                    <div className="px-3 py-2 border-b border-[var(--editor-border)]">
+                                        <p className="text-xs font-medium text-[var(--editor-text)]">Transform with AI</p>
+                                        <p className="text-[10px] text-[var(--editor-muted)]">Select a preset to refine your text</p>
+                                    </div>
+                                    <div className="max-h-[200px] overflow-y-auto">
+                                        {enabledPresets.map((preset) => (
+                                            <button
+                                                key={preset.id}
+                                                onClick={() => handleAiRefineWithPreset(preset)}
+                                                className="w-full text-left px-3 py-2 hover:bg-[var(--editor-hover)] transition-colors"
+                                            >
+                                                <p className="text-xs font-medium text-[var(--editor-text)]">{preset.name}</p>
+                                                <p className="text-[10px] text-[var(--editor-muted)]">{preset.description}</p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {enabledPresets.length === 0 && (
+                                        <p className="px-3 py-2 text-xs text-[var(--editor-muted)]">No presets enabled. Configure in Settings.</p>
+                                    )}
+                                </div>
                             )}
-                            <span>AI</span>
-                        </button>
+                        </div>
 
                         {/* Obsidian button - purple/violet (Obsidian brand color) */}
                         <button
@@ -833,14 +1012,13 @@ export function EditorWindow() {
                         </button>
                     </div>
 
-                    {/* AI Error message */}
-                    {aiError && (
-                        <div className="mx-3 mb-3 px-3 py-2 text-xs bg-red-500/10 border border-red-500/20 rounded-md text-red-400">
-                            {aiError}
-                        </div>
-                    )}
-                </div>
-            )}
+                {/* AI Error message */}
+                {aiError && (
+                    <div className="mx-3 mb-3 px-3 py-2 text-xs bg-red-500/10 border border-red-500/20 rounded-md text-red-400">
+                        {aiError}
+                    </div>
+                )}
+            </div>
 
             {/* Obsidian Toast Notification */}
             {obsidianToast && (

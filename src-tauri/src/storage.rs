@@ -48,6 +48,8 @@ pub struct AppSettings {
     pub launch_at_login: bool,
     pub default_language: String,
     pub window_position: WindowPosition,
+    #[serde(default)]
+    pub sticky_mode: bool,
 }
 
 impl Default for AppSettings {
@@ -71,6 +73,7 @@ impl Default for AppSettings {
             launch_at_login: false,
             default_language: "plaintext".to_string(),
             window_position: WindowPosition::default(),
+            sticky_mode: false,
         }
     }
 }

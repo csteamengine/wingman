@@ -115,6 +115,32 @@ impl Default for AIConfig {
     }
 }
 
+/// AI Preset configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AIPreset {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    #[serde(rename = "systemPrompt")]
+    pub system_prompt: String,
+    pub enabled: bool,
+}
+
+/// AI Presets configuration stored locally
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct AIPresetsConfig {
+    pub presets: Vec<AIPreset>,
+}
+
+impl Default for AIPresetsConfig {
+    fn default() -> Self {
+        Self {
+            presets: vec![],
+        }
+    }
+}
+
 /// Premium feature types for AI calls
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -232,6 +258,42 @@ pub fn save_ai_config(config: &AIConfig) -> Result<(), PremiumError> {
         .map_err(|e| PremiumError::StorageError(e.to_string()))
 }
 
+/// Get the path to the AI presets config file
+fn get_ai_presets_config_path() -> Result<PathBuf, PremiumError> {
+    let data_dir = dirs::data_dir()
+        .ok_or_else(|| PremiumError::StorageError("Cannot find data directory".to_string()))?;
+    let app_dir = data_dir.join("com.wingman.app");
+    fs::create_dir_all(&app_dir)
+        .map_err(|e| PremiumError::StorageError(e.to_string()))?;
+    Ok(app_dir.join("ai_presets.json"))
+}
+
+/// Load AI presets configuration from disk
+pub fn load_ai_presets() -> Result<AIPresetsConfig, PremiumError> {
+    let config_path = get_ai_presets_config_path()?;
+
+    if !config_path.exists() {
+        return Ok(AIPresetsConfig::default());
+    }
+
+    let content = fs::read_to_string(&config_path)
+        .map_err(|e| PremiumError::StorageError(e.to_string()))?;
+
+    serde_json::from_str(&content)
+        .map_err(|e| PremiumError::StorageError(e.to_string()))
+}
+
+/// Save AI presets configuration to disk
+pub fn save_ai_presets(config: &AIPresetsConfig) -> Result<(), PremiumError> {
+    let config_path = get_ai_presets_config_path()?;
+
+    let content = serde_json::to_string_pretty(config)
+        .map_err(|e| PremiumError::StorageError(e.to_string()))?;
+
+    fs::write(&config_path, content)
+        .map_err(|e| PremiumError::StorageError(e.to_string()))
+}
+
 /// Validate that a path is a valid Obsidian vault
 pub fn validate_obsidian_vault(vault_path: &str) -> Result<bool, PremiumError> {
     let path = PathBuf::from(vault_path);
@@ -308,7 +370,8 @@ pub fn add_to_obsidian_vault(content: &str, config: &ObsidianConfig) -> Result<O
             .replace("{{timestamp}}", &now.format("%Y-%m-%d %H:%M").to_string())
             .replace("{{date}}", &now.format("%Y-%m-%d").to_string())
     } else {
-        format!("# Wingman Capture\n\n*{}*\n\n{}", now.format("%Y-%m-%d %H:%M"), content)
+        // Just use the content directly without header or timestamp
+        content.to_string()
     };
 
     // URL encode everything
