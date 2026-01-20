@@ -22,6 +22,7 @@ export interface AppSettings {
   launch_at_login: boolean;
   default_language: string;
   window_position: WindowPosition;
+  sticky_mode: boolean;
 }
 
 export interface HistoryEntry {
@@ -145,4 +146,28 @@ export interface ObsidianResult {
 
 export interface AIConfig {
   system_instructions: string;
+}
+
+// AI Preset types
+export type AIPresetId =
+  | 'email'
+  | 'slack'
+  | 'claude_code'
+  | 'git_commit'
+  | 'jira_ticket'
+  | 'general_refinement'
+  | 'code_review'
+  | 'documentation'
+  | 'pr_description';
+
+export interface AIPreset {
+  id: AIPresetId;
+  name: string;
+  description: string;
+  systemPrompt: string;
+  enabled: boolean;
+}
+
+export interface AIPresetsConfig {
+  presets: AIPreset[];
 }

@@ -21,21 +21,6 @@ interface Action {
 
 const actionSections: ActionSection[] = [
   {
-    title: 'Text Transforms',
-    actions: [
-      { id: 'uppercase', label: 'UPPERCASE', description: 'Convert to uppercase', handler: 'transform' },
-      { id: 'lowercase', label: 'lowercase', description: 'Convert to lowercase', handler: 'transform' },
-      { id: 'titlecase', label: 'Title Case', description: 'Capitalize each word', handler: 'transform' },
-      { id: 'sentencecase', label: 'Sentence case', description: 'Capitalize first letter of sentences', handler: 'transform' },
-      { id: 'trim', label: 'Trim Whitespace', description: 'Remove leading/trailing spaces', handler: 'transform' },
-      { id: 'sort', label: 'Sort Lines', description: 'Sort lines alphabetically', handler: 'transform' },
-      { id: 'deduplicate', label: 'Remove Duplicates', description: 'Remove duplicate lines', handler: 'transform' },
-      { id: 'reverse', label: 'Reverse Lines', description: 'Reverse line order', handler: 'transform' },
-      { id: 'bulletlist', label: 'Bulleted List', description: 'Start or add bullet points', handler: 'transform' },
-      { id: 'numberedlist', label: 'Numbered List', description: 'Start or add numbered list', handler: 'transform' },
-    ],
-  },
-  {
     title: 'JSON/XML',
     proFeature: 'json_xml_formatting',
     actions: [
@@ -249,6 +234,15 @@ export function QuickActionsPanel() {
   // Keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     switch (e.key) {
+      case 'Escape':
+        // If search input is focused and has text, clear it instead of closing panel
+        if (document.activeElement === searchInputRef.current && searchQuery) {
+          e.preventDefault();
+          e.stopPropagation();
+          setSearchQuery('');
+        }
+        // Otherwise, let the escape key close the panel (handled by useKeyboardShortcuts)
+        break;
       case 'ArrowDown':
         e.preventDefault();
         setSelectedIndex(prev =>
@@ -267,7 +261,7 @@ export function QuickActionsPanel() {
         }
         break;
     }
-  }, [visibleActions, selectedIndex, handleAction]);
+  }, [visibleActions, selectedIndex, handleAction, searchQuery]);
 
   const hasContent = content.trim().length > 0;
 

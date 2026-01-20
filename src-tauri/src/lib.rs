@@ -19,7 +19,7 @@ use tauri::{
 #[cfg(target_os = "macos")]
 use tauri_nspanel::ManagerExt;
 #[cfg(target_os = "macos")]
-use window::{WebviewWindowExt, MAIN_WINDOW_LABEL};
+use window::{start_workspace_monitor, WebviewWindowExt, MAIN_WINDOW_LABEL};
 
 use clipboard::{calculate_text_stats, transform_text, TextStats, TextTransform};
 use history::{
@@ -35,8 +35,8 @@ use license::{
 use premium::{
     validate_premium_license, get_ai_usage, call_ai_feature,
     load_obsidian_config, save_obsidian_config, add_to_obsidian_vault, validate_obsidian_vault,
-    load_ai_config, save_ai_config,
-    SubscriptionStatus, UsageStats, AIResponse, ObsidianConfig, ObsidianResult, AIConfig,
+    load_ai_config, save_ai_config, load_ai_presets, save_ai_presets,
+    SubscriptionStatus, UsageStats, AIResponse, ObsidianConfig, ObsidianResult, AIConfig, AIPresetsConfig,
 };
 use storage::{
     load_settings, load_snippets, save_settings, save_snippets, AppSettings, Snippet, SnippetsData,
@@ -588,6 +588,17 @@ fn configure_ai(config: AIConfig) -> Result<(), String> {
     save_ai_config(&config).map_err(|e| e.to_string())
 }
 
+// AI Presets commands
+#[tauri::command]
+fn get_ai_presets() -> Result<AIPresetsConfig, String> {
+    load_ai_presets().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_ai_presets_cmd(config: AIPresetsConfig) -> Result<(), String> {
+    save_ai_presets(&config).map_err(|e| e.to_string())
+}
+
 // Folder picker command (uses rfd for native dialog)
 #[tauri::command]
 async fn pick_folder(title: Option<String>) -> Result<Option<String>, String> {
@@ -623,6 +634,39 @@ fn get_app_version() -> String {
 }
 
 // Window commands
+#[tauri::command]
+async fn toggle_fullscreen(window: tauri::Window) -> Result<(), String> {
+    let is_fullscreen = window.is_fullscreen().map_err(|e| e.to_string())?;
+    window.set_fullscreen(!is_fullscreen).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+async fn update_panel_behavior(window: tauri::Window, sticky_mode: bool) -> Result<(), String> {
+    log::info!("update_panel_behavior called with sticky_mode={}", sticky_mode);
+
+    let app_handle = window.app_handle().clone();
+    let app_handle_inner = app_handle.clone();
+
+    // Run on main thread to avoid foreign exception crashes
+    app_handle
+        .run_on_main_thread(move || {
+            if let Some(webview_window) = app_handle_inner.get_webview_window(MAIN_WINDOW_LABEL) {
+                if let Err(e) = webview_window.update_panel_behavior(sticky_mode) {
+                    log::error!("Failed to update panel behavior: {:?}", e);
+                } else {
+                    log::info!("Panel behavior updated successfully");
+                }
+            } else {
+                log::error!("Failed to get webview window");
+            }
+        })
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 #[tauri::command]
 async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Result<(), String> {
     log::info!("show_window called");
@@ -923,10 +967,15 @@ pub fn run() {
             // AI
             get_ai_config,
             configure_ai,
+            get_ai_presets,
+            save_ai_presets_cmd,
             // Window
             show_window,
             hide_window,
             hide_and_paste,
+            toggle_fullscreen,
+            #[cfg(target_os = "macos")]
+            update_panel_behavior,
             // Dialogs
             pick_folder,
             // Updates
@@ -950,6 +999,19 @@ pub fn run() {
                     log::warn!("Failed to pre-initialize panel: {:?}", e);
                 } else {
                     log::info!("NSPanel pre-initialized successfully");
+
+                    // Apply sticky mode behavior based on saved settings
+                    if let Ok(settings) = load_settings() {
+                        if let Err(e) = window.update_panel_behavior(settings.sticky_mode) {
+                            log::warn!("Failed to apply sticky mode on startup: {:?}", e);
+                        } else {
+                            log::info!("Applied sticky mode on startup: {}", settings.sticky_mode);
+                        }
+                    }
+
+                    // Start workspace monitor to refocus panel in sticky mode
+                    start_workspace_monitor(app.handle().clone());
+                    log::info!("Workspace monitor started");
                 }
             }
 

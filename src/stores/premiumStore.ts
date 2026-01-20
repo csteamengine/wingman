@@ -8,7 +8,10 @@ import type {
   ObsidianResult,
   AIConfig,
   PremiumFeature,
+  AIPreset,
+  AIPresetsConfig,
 } from '../types';
+import { DEFAULT_AI_PRESETS } from '../data/aiPresets';
 
 // Token limit for Premium tier
 const MONTHLY_TOKEN_LIMIT = 1_000_000;
@@ -19,6 +22,7 @@ interface PremiumState {
   usageStats: UsageStats | null;
   obsidianConfig: ObsidianConfig | null;
   aiConfig: AIConfig | null;
+  aiPresets: AIPreset[];
 
   // Loading states
   loading: boolean;
@@ -43,7 +47,12 @@ interface PremiumState {
   validateObsidianVault: (vaultPath: string) => Promise<boolean>;
   loadAIConfig: () => Promise<void>;
   saveAIConfig: (config: AIConfig) => Promise<boolean>;
+  loadAIPresets: () => Promise<void>;
+  saveAIPresets: (presets: AIPreset[]) => Promise<boolean>;
+  togglePresetEnabled: (presetId: string) => Promise<void>;
+  getEnabledPresets: () => AIPreset[];
   callAIFeature: (licenseKey: string, prompt: string, feature: string) => Promise<AIResponse | null>;
+  callAIWithPreset: (licenseKey: string, prompt: string, preset: AIPreset) => Promise<AIResponse | null>;
   addToObsidian: (content: string) => Promise<ObsidianResult | null>;
   openObsidianNote: (openUri: string) => Promise<void>;
   clearObsidianResult: () => void;
@@ -56,6 +65,7 @@ const defaultState = {
   usageStats: null,
   obsidianConfig: null,
   aiConfig: null,
+  aiPresets: DEFAULT_AI_PRESETS,
   loading: false,
   aiLoading: false,
   error: null,
@@ -180,6 +190,96 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
       console.error('Failed to save AI config:', error);
       set({ error: String(error) });
       return false;
+    }
+  },
+
+  loadAIPresets: async () => {
+    try {
+      const config = await invoke<AIPresetsConfig>('get_ai_presets');
+      // Merge saved presets with defaults (to handle new presets added in updates)
+      const savedPresets = config.presets || [];
+      const mergedPresets = DEFAULT_AI_PRESETS.map(defaultPreset => {
+        const savedPreset = savedPresets.find(p => p.id === defaultPreset.id);
+        if (savedPreset) {
+          // Use saved enabled state but keep other defaults updated
+          return { ...defaultPreset, enabled: savedPreset.enabled };
+        }
+        return defaultPreset;
+      });
+      set({ aiPresets: mergedPresets });
+    } catch (error) {
+      console.error('Failed to load AI presets:', error);
+      // Fall back to defaults on error
+      set({ aiPresets: DEFAULT_AI_PRESETS });
+    }
+  },
+
+  saveAIPresets: async (presets: AIPreset[]) => {
+    try {
+      await invoke('save_ai_presets_cmd', { config: { presets } });
+      set({ aiPresets: presets, error: null });
+      return true;
+    } catch (error) {
+      console.error('Failed to save AI presets:', error);
+      set({ error: String(error) });
+      return false;
+    }
+  },
+
+  togglePresetEnabled: async (presetId: string) => {
+    const { aiPresets, saveAIPresets } = get();
+    const updatedPresets = aiPresets.map(preset =>
+      preset.id === presetId ? { ...preset, enabled: !preset.enabled } : preset
+    );
+    await saveAIPresets(updatedPresets);
+  },
+
+  getEnabledPresets: () => {
+    return get().aiPresets.filter(preset => preset.enabled);
+  },
+
+  callAIWithPreset: async (licenseKey: string, prompt: string, preset: AIPreset) => {
+    if (!licenseKey || !prompt.trim()) {
+      set({ error: 'License key and prompt are required' });
+      return null;
+    }
+
+    set({ aiLoading: true, error: null });
+
+    try {
+      const response = await invoke<AIResponse>('call_ai_feature_cmd', {
+        licenseKey,
+        prompt,
+        feature: 'prompt_optimizer',
+        systemInstructions: preset.systemPrompt,
+      });
+
+      // Update token usage after successful call
+      const currentStatus = get().subscriptionStatus;
+      if (currentStatus) {
+        const newTokensUsed = MONTHLY_TOKEN_LIMIT - response.tokens_remaining;
+        const tokenUsagePercent = Math.round((newTokensUsed / MONTHLY_TOKEN_LIMIT) * 100);
+
+        set({
+          subscriptionStatus: {
+            ...currentStatus,
+            tokens_used: newTokensUsed,
+            tokens_remaining: response.tokens_remaining,
+          },
+          tokenUsagePercent,
+          isNearTokenLimit: tokenUsagePercent >= 80,
+          isAtTokenLimit: response.tokens_remaining <= 0,
+          aiLoading: false,
+        });
+      } else {
+        set({ aiLoading: false });
+      }
+
+      return response;
+    } catch (error) {
+      console.error('AI feature call failed:', error);
+      set({ aiLoading: false, error: String(error) });
+      return null;
     }
   },
 

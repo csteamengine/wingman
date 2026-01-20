@@ -26,6 +26,7 @@ const defaultSettings: AppSettings = {
   launch_at_login: false,
   default_language: 'plaintext',
   window_position: { x: 100, y: 100, width: 650, height: 450 },
+  sticky_mode: false,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -53,6 +54,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     try {
       await invoke('update_settings', { settings: updated });
+
+      // If sticky mode changed, update the panel behavior (macOS only)
+      if ('sticky_mode' in newSettings && navigator.platform.includes('Mac')) {
+        try {
+          await invoke('update_panel_behavior', { stickyMode: updated.sticky_mode });
+        } catch (error) {
+          console.error('Failed to update panel behavior:', error);
+        }
+      }
     } catch (error) {
       console.error('Failed to save settings:', error);
       set({ error: String(error) });
@@ -63,6 +73,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ settings: defaultSettings });
     try {
       await invoke('update_settings', { settings: defaultSettings });
+
+      // Reset panel behavior to default (macOS only)
+      if (navigator.platform.includes('Mac')) {
+        try {
+          await invoke('update_panel_behavior', { stickyMode: defaultSettings.sticky_mode });
+        } catch (error) {
+          console.error('Failed to update panel behavior:', error);
+        }
+      }
     } catch (error) {
       console.error('Failed to reset settings:', error);
       set({ error: String(error) });
