@@ -120,9 +120,22 @@ serve(async (req) => {
       );
     }
 
-    // Validate feature
+    // Validate feature - allow any feature if custom system_instructions provided
     const validFeatures = Object.keys(SYSTEM_PROMPTS);
-    if (!feature || !validFeatures.includes(feature)) {
+    if (!feature) {
+      return new Response(
+        JSON.stringify({
+          error: "Feature is required",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Only validate against SYSTEM_PROMPTS if no custom system_instructions
+    if (!system_instructions && !validFeatures.includes(feature)) {
       return new Response(
         JSON.stringify({
           error: `Invalid feature. Valid features: ${validFeatures.join(", ")}`,
