@@ -203,7 +203,18 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
     set({ aiLoading: true, error: null });
 
     try {
-      const { aiConfig } = get();
+      // Ensure AI config is loaded before making the call
+      let { aiConfig } = get();
+      if (!aiConfig) {
+        // Load config from disk if not already loaded
+        try {
+          const config = await invoke<AIConfig>('get_ai_config');
+          set({ aiConfig: config });
+          aiConfig = config;
+        } catch (e) {
+          console.warn('Failed to load AI config, using default:', e);
+        }
+      }
       const systemInstructions = aiConfig?.system_instructions;
 
       const response = await invoke<AIResponse>('call_ai_feature_cmd', {

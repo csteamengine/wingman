@@ -513,71 +513,85 @@ function PremiumSection() {
                 </div>
             )}
 
-            {/* Premium Active - Show status and usage */}
-            {tier === 'premium' && subscriptionStatus && (
+            {/* Premium Active - Show config options */}
+            {tier === 'premium' && (
                 <div className="space-y-4">
-                    {/* Subscription Status */}
-                    <div className="p-3 bg-[var(--editor-surface)] rounded-lg border border-[var(--editor-border)]">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-[var(--editor-muted)]">Status</span>
-                            <span
-                                className={`text-xs font-medium ${isSubscriptionActive ? 'text-green-400' : 'text-orange-400'}`}>
-                {isSubscriptionActive ? 'Active' : 'Cancelled'}
-              </span>
-                        </div>
-                        {subscriptionStatus.expires_at && (
-                            <div className="flex items-center justify-between">
-                <span className="text-xs text-[var(--editor-muted)]">
-                  {isSubscriptionActive ? 'Renews' : 'Access until'}
-                </span>
-                                <span className="text-xs text-[var(--editor-text)]">
-                  {formatExpirationDate(subscriptionStatus.expires_at)}
-                </span>
+                    {/* Subscription Status - only show when loaded */}
+                    {subscriptionStatus ? (
+                        <>
+                            <div className="p-3 bg-[var(--editor-surface)] rounded-lg border border-[var(--editor-border)]">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs text-[var(--editor-muted)]">Status</span>
+                                    <span
+                                        className={`text-xs font-medium ${isSubscriptionActive ? 'text-green-400' : 'text-orange-400'}`}>
+                                        {isSubscriptionActive ? 'Active' : 'Cancelled'}
+                                    </span>
+                                </div>
+                                {subscriptionStatus.expires_at && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-[var(--editor-muted)]">
+                                            {isSubscriptionActive ? 'Renews' : 'Access until'}
+                                        </span>
+                                        <span className="text-xs text-[var(--editor-text)]">
+                                            {formatExpirationDate(subscriptionStatus.expires_at)}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
 
-                    {/* Token Usage */}
-                    <div className="p-3 bg-[var(--editor-surface)] rounded-lg border border-[var(--editor-border)]">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-[var(--editor-muted)]">AI Token Usage</span>
-                            <span className={`text-xs font-medium ${
-                                isAtTokenLimit ? 'text-red-400' : isNearTokenLimit ? 'text-orange-400' : 'text-green-400'
-                            }`}>
-                {tokenUsagePercent}%
-              </span>
+                            {/* Token Usage */}
+                            <div className="p-3 bg-[var(--editor-surface)] rounded-lg border border-[var(--editor-border)]">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs text-[var(--editor-muted)]">AI Token Usage</span>
+                                    <span className={`text-xs font-medium ${
+                                        isAtTokenLimit ? 'text-red-400' : isNearTokenLimit ? 'text-orange-400' : 'text-green-400'
+                                    }`}>
+                                        {tokenUsagePercent}%
+                                    </span>
+                                </div>
+
+                                {/* Progress bar */}
+                                <div className="h-2 bg-[var(--editor-border)] rounded-full overflow-hidden mb-2">
+                                    <div
+                                        className={`h-full rounded-full transition-all duration-300 ${
+                                            isAtTokenLimit ? 'bg-red-500' : isNearTokenLimit ? 'bg-orange-500' : 'bg-green-500'
+                                        }`}
+                                        style={{width: `${Math.min(100, tokenUsagePercent)}%`}}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-[var(--editor-muted)]">
+                                        {formatTokenUsage(subscriptionStatus.tokens_used, subscriptionStatus.tokens_remaining)}
+                                    </span>
+                                    <span className="text-[var(--editor-muted)]">
+                                        Resets {getResetDate()}
+                                    </span>
+                                </div>
+
+                                {isAtTokenLimit && (
+                                    <p className="mt-2 text-xs text-red-400">
+                                        Monthly limit reached. Resets on {getResetDate()}.
+                                    </p>
+                                )}
+                                {isNearTokenLimit && !isAtTokenLimit && (
+                                    <p className="mt-2 text-xs text-orange-400">
+                                        Approaching monthly limit ({tokenUsagePercent}% used)
+                                    </p>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="p-3 bg-[var(--editor-surface)] rounded-lg border border-[var(--editor-border)]">
+                            <div className="flex items-center justify-center gap-2 text-xs text-[var(--editor-muted)]">
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                                </svg>
+                                Loading subscription status...
+                            </div>
                         </div>
-
-                        {/* Progress bar */}
-                        <div className="h-2 bg-[var(--editor-border)] rounded-full overflow-hidden mb-2">
-                            <div
-                                className={`h-full rounded-full transition-all duration-300 ${
-                                    isAtTokenLimit ? 'bg-red-500' : isNearTokenLimit ? 'bg-orange-500' : 'bg-green-500'
-                                }`}
-                                style={{width: `${Math.min(100, tokenUsagePercent)}%`}}
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs">
-              <span className="text-[var(--editor-muted)]">
-                {formatTokenUsage(subscriptionStatus.tokens_used, subscriptionStatus.tokens_remaining)}
-              </span>
-                            <span className="text-[var(--editor-muted)]">
-                Resets {getResetDate()}
-              </span>
-                        </div>
-
-                        {isAtTokenLimit && (
-                            <p className="mt-2 text-xs text-red-400">
-                                Monthly limit reached. Resets on {getResetDate()}.
-                            </p>
-                        )}
-                        {isNearTokenLimit && !isAtTokenLimit && (
-                            <p className="mt-2 text-xs text-orange-400">
-                                Approaching monthly limit ({tokenUsagePercent}% used)
-                            </p>
-                        )}
-                    </div>
+                    )}
 
                     {/* AI Configuration */}
                     <div>
