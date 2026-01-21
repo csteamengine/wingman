@@ -223,6 +223,9 @@ fn write_native_clipboard(
 // JSON/XML formatting commands
 #[tauri::command]
 fn format_json(text: String) -> Result<String, String> {
+    if !is_feature_enabled(ProFeature::JsonXmlFormatting) {
+        return Err("This feature requires a Pro license".to_string());
+    }
     let parsed: serde_json::Value = serde_json::from_str(&text)
         .map_err(|e| format!("Invalid JSON: {}", e))?;
     serde_json::to_string_pretty(&parsed)
@@ -231,6 +234,9 @@ fn format_json(text: String) -> Result<String, String> {
 
 #[tauri::command]
 fn minify_json(text: String) -> Result<String, String> {
+    if !is_feature_enabled(ProFeature::JsonXmlFormatting) {
+        return Err("This feature requires a Pro license".to_string());
+    }
     let parsed: serde_json::Value = serde_json::from_str(&text)
         .map_err(|e| format!("Invalid JSON: {}", e))?;
     serde_json::to_string(&parsed)
@@ -239,6 +245,9 @@ fn minify_json(text: String) -> Result<String, String> {
 
 #[tauri::command]
 fn format_xml(text: String) -> Result<String, String> {
+    if !is_feature_enabled(ProFeature::JsonXmlFormatting) {
+        return Err("This feature requires a Pro license".to_string());
+    }
     // Simple XML formatter - add indentation
     let mut result = String::new();
     let mut indent = 0;
@@ -291,13 +300,19 @@ fn format_xml(text: String) -> Result<String, String> {
 
 // Encoding/decoding commands
 #[tauri::command]
-fn encode_base64(text: String) -> String {
+fn encode_base64(text: String) -> Result<String, String> {
+    if !is_feature_enabled(ProFeature::EncodeDecode) {
+        return Err("This feature requires a Pro license".to_string());
+    }
     use base64::{Engine as _, engine::general_purpose::STANDARD};
-    STANDARD.encode(text.as_bytes())
+    Ok(STANDARD.encode(text.as_bytes()))
 }
 
 #[tauri::command]
 fn decode_base64(text: String) -> Result<String, String> {
+    if !is_feature_enabled(ProFeature::EncodeDecode) {
+        return Err("This feature requires a Pro license".to_string());
+    }
     use base64::{Engine as _, engine::general_purpose::STANDARD};
     let bytes = STANDARD.decode(text.trim())
         .map_err(|e| format!("Invalid Base64: {}", e))?;
@@ -306,20 +321,29 @@ fn decode_base64(text: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn encode_url(text: String) -> String {
-    urlencoding::encode(&text).into_owned()
+fn encode_url(text: String) -> Result<String, String> {
+    if !is_feature_enabled(ProFeature::EncodeDecode) {
+        return Err("This feature requires a Pro license".to_string());
+    }
+    Ok(urlencoding::encode(&text).into_owned())
 }
 
 #[tauri::command]
 fn decode_url(text: String) -> Result<String, String> {
+    if !is_feature_enabled(ProFeature::EncodeDecode) {
+        return Err("This feature requires a Pro license".to_string());
+    }
     urlencoding::decode(&text)
         .map(|s| s.into_owned())
         .map_err(|e| format!("Invalid URL encoding: {}", e))
 }
 
 #[tauri::command]
-fn encode_html(text: String) -> String {
-    text.chars()
+fn encode_html(text: String) -> Result<String, String> {
+    if !is_feature_enabled(ProFeature::EncodeDecode) {
+        return Err("This feature requires a Pro license".to_string());
+    }
+    Ok(text.chars()
         .map(|c| match c {
             '&' => "&amp;".to_string(),
             '<' => "&lt;".to_string(),
@@ -328,12 +352,15 @@ fn encode_html(text: String) -> String {
             '\'' => "&#x27;".to_string(),
             _ => c.to_string(),
         })
-        .collect()
+        .collect())
 }
 
 #[tauri::command]
-fn decode_html(text: String) -> String {
-    text.replace("&amp;", "&")
+fn decode_html(text: String) -> Result<String, String> {
+    if !is_feature_enabled(ProFeature::EncodeDecode) {
+        return Err("This feature requires a Pro license".to_string());
+    }
+    Ok(text.replace("&amp;", "&")
         .replace("&lt;", "<")
         .replace("&gt;", ">")
         .replace("&quot;", "\"")
@@ -342,7 +369,7 @@ fn decode_html(text: String) -> String {
         .replace("&apos;", "'")
         .replace("&#x2F;", "/")
         .replace("&#47;", "/")
-        .replace("&nbsp;", " ")
+        .replace("&nbsp;", " "))
 }
 
 // UUID generator command
