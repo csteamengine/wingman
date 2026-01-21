@@ -187,23 +187,21 @@ function App() {
           {/* Dev mode tier switcher (only visible in dev mode) */}
           <DevModeTierSwitcher />
 
-          {/* Clipboard toggle button */}
+          {/* Quick Actions toggle button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               setActivePanel(activePanel === 'actions' ? 'editor' : 'actions');
             }}
-            className={`h-8 px-2 flex items-center gap-1.5 rounded-md hover:bg-[var(--editor-hover)] transition-colors ${
+            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] transition-colors ${
               activePanel === 'actions' ? 'text-[var(--editor-accent)]' : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)]'
             }`}
-            title="Toggle Clipboard & Quick Actions"
+            title="Clipboard & Quick Actions"
           >
-            {/* Clipboard icon */}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-              <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+            {/* Lightning bolt icon */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
-            <span className="text-xs font-medium">Clipboard</span>
           </button>
         </div>
       </div>
