@@ -777,16 +777,48 @@ async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Resul
         return Ok(());
     }
 
-    // On non-macOS, use standard window behavior
+    // On non-macOS, use standard window behavior with enhanced Linux support
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = window.center();
+        log::info!("show_window: Starting non-macOS window show sequence");
 
+        // Center the window first
+        if let Err(e) = window.center() {
+            log::warn!("Failed to center window: {}", e);
+        }
+
+        // On Linux, we need to be more aggressive about showing the window
+        // due to different window manager behaviors
+        #[cfg(target_os = "linux")]
+        {
+            log::info!("Linux: Using enhanced show sequence");
+
+            // First, ensure window is not minimized
+            if let Err(e) = window.unminimize() {
+                log::warn!("Failed to unminimize window: {}", e);
+            }
+
+            // Set always on top to help with visibility on different WMs
+            if let Err(e) = window.set_always_on_top(true) {
+                log::warn!("Failed to set always on top: {}", e);
+            }
+        }
+
+        // Show the window
         log::info!("Showing window...");
         window.show().map_err(|e| {
             log::error!("Failed to show window: {}", e);
             e.to_string()
         })?;
+
+        // On Linux, request attention first then set focus
+        #[cfg(target_os = "linux")]
+        {
+            // Request user attention - helps on some WMs
+            if let Err(e) = window.request_user_attention(Some(tauri::window::UserAttentionType::Critical)) {
+                log::warn!("Failed to request user attention: {}", e);
+            }
+        }
 
         log::info!("Setting focus...");
         window.set_focus().map_err(|e| {

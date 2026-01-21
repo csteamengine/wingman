@@ -17,6 +17,7 @@ import {useEditorStore} from '../stores/editorStore';
 import {useSettingsStore} from '../stores/settingsStore';
 import {useLicenseStore} from '../stores/licenseStore';
 import {usePremiumStore} from '../stores/premiumStore';
+import {useDragStore} from '../stores/dragStore';
 import type {ObsidianResult} from '../types';
 
 const languages: Record<string, () => ReturnType<typeof javascript>> = {
@@ -136,6 +137,41 @@ const markdownLinkPasteHandler = EditorView.domEventHandlers({
     },
 });
 
+// Note: HTML5 drag and drop doesn't work properly in Tauri on macOS
+// We use mouse-based drag instead (see useEffect in EditorWindow)
+// Keeping this for potential future use or other platforms
+const clipboardDropHandler = EditorView.domEventHandlers({
+    drop(event, view) {
+        const isClipboardItem = event.dataTransfer?.types.includes('application/x-clipboard-item-id');
+        if (!isClipboardItem) return false;
+
+        const droppedText = event.dataTransfer?.getData('text/plain');
+        if (!droppedText) return false;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+        const insertPos = pos ?? view.state.selection.main.head;
+
+        view.dispatch({
+            changes: { from: insertPos, to: insertPos, insert: droppedText },
+            selection: { anchor: insertPos + droppedText.length },
+        });
+        view.focus();
+        return true;
+    },
+    dragover(event, _view) {
+        const isClipboardItem = event.dataTransfer?.types.includes('application/x-clipboard-item-id');
+        if (isClipboardItem) {
+            event.preventDefault();
+            event.dataTransfer!.dropEffect = 'copy';
+            return true;
+        }
+        return false;
+    },
+});
+
 export function EditorWindow() {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
@@ -145,6 +181,7 @@ export function EditorWindow() {
     const [aiError, setAiError] = useState<string | null>(null);
     const [showAiPopover, setShowAiPopover] = useState(false);
     const aiPopoverRef = useRef<HTMLDivElement>(null);
+
 
     // Close AI popover when clicking outside
     useEffect(() => {
@@ -157,6 +194,20 @@ export function EditorWindow() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showAiPopover]);
+
+    // Get drag store state and functions
+    const {
+        isDraggingClipboardItem,
+        draggedContent,
+        cursorPosition,
+        editorInsertPosition,
+        endDrag,
+        updateCursorPosition,
+        clearCursor,
+    } = useDragStore();
+
+    // Ref for the editor container to calculate relative positions
+    const editorContainerRef = useRef<HTMLDivElement>(null);
 
     const {
         content,
@@ -178,6 +229,70 @@ export function EditorWindow() {
     } = useEditorStore();
     const {settings} = useSettingsStore();
     const {isProFeatureEnabled, isPremiumTier} = useLicenseStore();
+
+    // Check if clipboard drag/drop is enabled (PRO feature - uses history feature gate)
+    const hasClipboardDragDrop = isProFeatureEnabled('history');
+
+    // Handle mouse-based drag over the editor (since HTML5 drag doesn't work in Tauri on macOS)
+    useEffect(() => {
+        if (!isDraggingClipboardItem || !hasClipboardDragDrop) return;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            // Check if mouse is over the editor
+            if (editorContainerRef.current && viewRef.current) {
+                const rect = editorContainerRef.current.getBoundingClientRect();
+                const isOverEditor = (
+                    e.clientX >= rect.left &&
+                    e.clientX <= rect.right &&
+                    e.clientY >= rect.top &&
+                    e.clientY <= rect.bottom
+                );
+
+                if (isOverEditor) {
+                    // Get editor position from mouse coordinates
+                    const pos = viewRef.current.posAtCoords({ x: e.clientX, y: e.clientY });
+                    updateCursorPosition(e.clientX, e.clientY, pos ?? null);
+                } else {
+                    clearCursor();
+                }
+            }
+        };
+
+        const handleMouseUp = (e: MouseEvent) => {
+            // Check if drop is over the editor
+            if (editorContainerRef.current && viewRef.current && draggedContent) {
+                const rect = editorContainerRef.current.getBoundingClientRect();
+                const isOverEditor = (
+                    e.clientX >= rect.left &&
+                    e.clientX <= rect.right &&
+                    e.clientY >= rect.top &&
+                    e.clientY <= rect.bottom
+                );
+
+                if (isOverEditor) {
+                    const view = viewRef.current;
+                    const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
+                    const insertPos = pos ?? view.state.selection.main.head;
+
+                    view.dispatch({
+                        changes: { from: insertPos, to: insertPos, insert: draggedContent },
+                        selection: { anchor: insertPos + draggedContent.length },
+                    });
+                    view.focus();
+                    endDrag();
+                }
+            }
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDraggingClipboardItem, hasClipboardDragDrop, draggedContent, updateCursorPosition, clearCursor, endDrag]);
+
     const {
         aiLoading,
         obsidianConfig,
@@ -513,7 +628,8 @@ export function EditorWindow() {
     const handleDragEnter = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (hasImageSupport && e.dataTransfer.types.includes('Files')) {
+        const hasFiles = e.dataTransfer.types.includes('Files');
+        if (hasImageSupport && hasFiles) {
             setIsDragging(true);
         }
     }, [hasImageSupport]);
@@ -521,7 +637,8 @@ export function EditorWindow() {
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (hasImageSupport && e.dataTransfer.types.includes('Files')) {
+        const hasFiles = e.dataTransfer.types.includes('Files');
+        if (hasImageSupport && hasFiles) {
             e.dataTransfer.dropEffect = 'copy';
             setIsDragging(true);
         }
@@ -530,13 +647,7 @@ export function EditorWindow() {
     const handleDragLeave = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        // Only set dragging to false if we're leaving the main container
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = e.clientX;
-        const y = e.clientY;
-        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-            setIsDragging(false);
-        }
+        setIsDragging(false);
     }, []);
 
     const handleDrop = useCallback(async (e: React.DragEvent) => {
@@ -544,6 +655,7 @@ export function EditorWindow() {
         e.stopPropagation();
         setIsDragging(false);
 
+        // Handle file drops (PRO feature)
         if (!hasImageSupport) return;
 
         const files = Array.from(e.dataTransfer.files);
@@ -609,6 +721,8 @@ export function EditorWindow() {
             markdownLinkPasteHandler,
             markdownLinkPlugin,
             markdownLinkTheme,
+            // Clipboard item drop handling
+            clipboardDropHandler,
             ...getLanguageExtension(),
         ];
 
@@ -748,7 +862,7 @@ export function EditorWindow() {
                 </div>
             </div>
 
-            {/* Drag overlay */}
+            {/* Drag overlay for files */}
             {isDragging && (
                 <div
                     className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--editor-bg)]/90 border-2 border-dashed border-[var(--editor-accent)] rounded-lg">
@@ -758,9 +872,67 @@ export function EditorWindow() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                                   d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
-                        <p className="text-sm text-[var(--editor-text)]">Drop files to attach</p>
+                        <p className="text-sm text-[var(--editor-text)]">Drop to insert</p>
                     </div>
                 </div>
+            )}
+
+            {/* Clipboard drag indicator - floating badge that follows cursor */}
+            {isDraggingClipboardItem && hasClipboardDragDrop && cursorPosition && (
+                <>
+                    {/* Floating drag badge */}
+                    <div
+                        className="fixed z-[100] pointer-events-none"
+                        style={{
+                            left: cursorPosition.x + 16,
+                            top: cursorPosition.y + 16,
+                        }}
+                    >
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--editor-accent)] text-white text-xs font-medium shadow-lg">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                            </svg>
+                            <span>+</span>
+                        </div>
+                    </div>
+                    {/* Insert cursor line - snapped to actual character position */}
+                    {editorContainerRef.current && viewRef.current && editorInsertPosition !== null && (() => {
+                        const rect = editorContainerRef.current!.getBoundingClientRect();
+                        const isOverEditor = (
+                            cursorPosition.x >= rect.left &&
+                            cursorPosition.x <= rect.right &&
+                            cursorPosition.y >= rect.top &&
+                            cursorPosition.y <= rect.bottom
+                        );
+                        if (!isOverEditor) return null;
+
+                        // Get the actual pixel coordinates of the character position
+                        const coords = viewRef.current!.coordsAtPos(editorInsertPosition);
+                        if (!coords) return null;
+
+                        // Get the line height for proper cursor sizing
+                        const lineHeight = viewRef.current!.defaultLineHeight;
+
+                        return (
+                            <div
+                                className="fixed z-[100] pointer-events-none"
+                                style={{
+                                    left: coords.left,
+                                    top: coords.top,
+                                }}
+                            >
+                                <div
+                                    className="bg-[var(--editor-accent)] animate-pulse"
+                                    style={{
+                                        width: '2px',
+                                        height: `${lineHeight}px`,
+                                    }}
+                                />
+                            </div>
+                        );
+                    })()}
+                </>
             )}
 
             {/* AI Loading overlay */}
@@ -781,7 +953,10 @@ export function EditorWindow() {
             )}
 
             <div
-                ref={editorRef}
+                ref={(el) => {
+                    editorRef.current = el;
+                    editorContainerRef.current = el;
+                }}
                 className="flex-1 overflow-hidden"
                 style={{
                     fontFamily: settings?.font_family || 'monospace',

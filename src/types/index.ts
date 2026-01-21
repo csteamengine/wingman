@@ -173,3 +173,11 @@ export interface AIPreset {
 export interface AIPresetsConfig {
   presets: AIPreset[];
 }
+
+// Clipboard tracker types
+export interface ClipboardItem {
+  id: string;
+  content: string;
+  timestamp: number;
+  preview: string; // First 100 chars for display
+}
