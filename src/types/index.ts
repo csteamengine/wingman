@@ -87,14 +87,16 @@ export type ProFeature =
   | 'custom_themes'
   | 'stats_display'
   | 'export_history'
-  | 'language_selection'
   | 'json_xml_formatting'
   | 'encode_decode'
-  | 'image_attachments';
+  | 'image_attachments'
+  | 'obsidian_integration'
+  | 'font_customization'
+  | 'opacity_control'
+  | 'sticky_mode';
 
 export type PremiumFeature =
   | 'prompt_optimizer'
-  | 'obsidian_integration'
   | 'ai_features';
 
 export interface LicenseStatusInfo {

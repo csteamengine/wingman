@@ -20,10 +20,13 @@ const FEATURE_NAMES: Record<ProFeature, string> = {
   custom_themes: 'Custom Themes',
   stats_display: 'Stats Display',
   export_history: 'Export History',
-  language_selection: 'Language Selection',
   json_xml_formatting: 'JSON/XML Formatting',
   encode_decode: 'Encode/Decode',
   image_attachments: 'Image Attachments',
+  obsidian_integration: 'Obsidian Integration',
+  font_customization: 'Font Customization',
+  opacity_control: 'Opacity Control',
+  sticky_mode: 'Sticky Window Mode',
 };
 
 export function ProFeatureGate({
@@ -101,4 +104,22 @@ export function ProFeatureGate({
 export function useProFeature(feature: ProFeature): boolean {
   const { isProFeatureEnabled } = useLicenseStore();
   return isProFeatureEnabled(feature);
+}
+
+// Badge component for showing Pro lock on features
+export function ProBadge({ className = '' }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium text-green-400 bg-green-500/10 rounded border border-green-500/20 ${className}`}
+    >
+      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+        <path
+          fillRule="evenodd"
+          d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+          clipRule="evenodd"
+        />
+      </svg>
+      Pro
+    </span>
+  );
 }

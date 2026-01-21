@@ -7,3 +7,4 @@ export { StatsDisplay } from './StatsDisplay';
 export { ProFeatureGate, useProFeature } from './ProFeatureGate';
 export { LicenseActivation } from './LicenseActivation';
 export { LicenseStatusBanner } from './LicenseStatusBanner';
+export { DevModeTierSwitcher } from './DevModeTierSwitcher';
