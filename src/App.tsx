@@ -63,9 +63,6 @@ function App() {
   }, [openSettingsTab]);
 
   // Listen for panel-hidden event from Rust (when panel loses focus on macOS)
-  // This syncs the frontend isVisible state with the actual panel visibility
-  // Note: We don't use onFocusChanged because Rust already handles hiding via resign_key
-  // Note: We preserve activePanel state so it's restored when window reopens
   useEffect(() => {
     const unlisten = listen('panel-hidden', () => {
       useEditorStore.setState({ isVisible: false });
@@ -80,7 +77,6 @@ function App() {
   // Apply theme class to root element
   useEffect(() => {
     const root = document.documentElement;
-    // Remove all theme classes
     root.classList.remove(
       'theme-light',
       'theme-dark',
@@ -90,7 +86,6 @@ function App() {
       'theme-dracula',
       'theme-nord'
     );
-    // Add the current theme class (dark is default/no class needed)
     if (settings?.theme && settings.theme !== 'dark') {
       root.classList.add(`theme-${settings.theme}`);
     }
@@ -103,12 +98,12 @@ function App() {
     }
   }, [settings?.opacity]);
 
-  // Handle window drag
-  const handleDragStart = useCallback(async (e: React.MouseEvent) => {
+  // Handle window drag - uses native Tauri drag
+  const handleTitleBarDrag = useCallback(async (e: React.MouseEvent) => {
     // Only drag if clicking directly on the drag region, not on children
     if (e.target === e.currentTarget || (e.target as HTMLElement).closest('.window-drag-region')) {
-      const window = getCurrentWindow();
-      await window.startDragging();
+      const win = getCurrentWindow();
+      await win.startDragging();
     }
   }, []);
 
@@ -121,8 +116,6 @@ function App() {
     };
     await (win as any).startResizeDragging(directionMap[direction]);
   }, []);
-
-  // Don't block on loading - show the app immediately
 
   return (
     <div className="h-screen w-screen flex flex-col editor-container relative">
@@ -163,7 +156,7 @@ function App() {
       {/* Title bar / drag region */}
       <div
         className="h-11 flex items-center justify-between px-3 cursor-move select-none rounded-t-[10px]"
-        onMouseDown={handleDragStart}
+        onMouseDown={handleTitleBarDrag}
       >
         {/* Settings cog button */}
         <button
@@ -194,21 +187,23 @@ function App() {
           {/* Dev mode tier switcher (only visible in dev mode) */}
           <DevModeTierSwitcher />
 
-          {/* Quick Actions toggle button */}
+          {/* Clipboard toggle button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               setActivePanel(activePanel === 'actions' ? 'editor' : 'actions');
             }}
-            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] transition-colors ${
+            className={`h-8 px-2 flex items-center gap-1.5 rounded-md hover:bg-[var(--editor-hover)] transition-colors ${
               activePanel === 'actions' ? 'text-[var(--editor-accent)]' : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)]'
             }`}
-            title="Toggle Quick Actions (transforms, formatters, generators)"
+            title="Toggle Clipboard & Quick Actions"
           >
-            {/* Lightning bolt / wand icon */}
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 1L3 9h5l-1 6 6-8H8l1-6z" />
+            {/* Clipboard icon */}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
             </svg>
+            <span className="text-xs font-medium">Clipboard</span>
           </button>
         </div>
       </div>
