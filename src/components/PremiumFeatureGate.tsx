@@ -119,7 +119,6 @@ export function PremiumFeatureGate({
 function FeatureLabel({ feature }: { feature: PremiumFeature }) {
   const labels: Record<PremiumFeature, string> = {
     prompt_optimizer: 'AI Prompt Optimizer',
-    obsidian_integration: 'Obsidian Integration',
     ai_features: 'AI Features',
   };
   return <span>{labels[feature]}</span>;
@@ -169,7 +168,7 @@ function UpgradeContent({
         </li>
         <li className="flex items-center gap-2 text-sm text-gray-300">
           <span className="text-green-400">✓</span>
-          Obsidian Integration - Quick capture to your vault
+          AI Presets - Email, Slack, Git commits, and more
         </li>
         <li className="flex items-center gap-2 text-sm text-gray-300">
           <span className="text-green-400">✓</span>

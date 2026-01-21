@@ -1017,10 +1017,24 @@ pub fn run() {
 
             // Create system tray menu
             let show_item = MenuItem::with_id(app, "show", "Show Wingman", true, None::<&str>)?;
+            let separator1 = tauri::menu::PredefinedMenuItem::separator(app)?;
+            let hotkeys_item = MenuItem::with_id(app, "hotkeys", "Hotkeys...", true, None::<&str>)?;
             let settings_item = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
+            let separator2 = tauri::menu::PredefinedMenuItem::separator(app)?;
+            let updates_item = MenuItem::with_id(app, "check_updates", "Check for Updates...", true, None::<&str>)?;
+            let separator3 = tauri::menu::PredefinedMenuItem::separator(app)?;
             let quit_item = MenuItem::with_id(app, "quit", "Quit Wingman", true, None::<&str>)?;
 
-            let menu = Menu::with_items(app, &[&show_item, &settings_item, &quit_item])?;
+            let menu = Menu::with_items(app, &[
+                &show_item,
+                &separator1,
+                &hotkeys_item,
+                &settings_item,
+                &separator2,
+                &updates_item,
+                &separator3,
+                &quit_item,
+            ])?;
 
             // Build tray icon - menu shows on left-click
             // Use custom tray icon (light version with colors for menu bar)
@@ -1060,6 +1074,30 @@ pub fn run() {
                                 }
                             }
                         }
+                        "hotkeys" => {
+                            #[cfg(target_os = "macos")]
+                            {
+                                if let Some(window) = app.get_webview_window("main") {
+                                    let panel = app
+                                        .get_webview_panel(MAIN_WINDOW_LABEL)
+                                        .or_else(|_| window.to_wingman_panel());
+
+                                    if let Ok(panel) = panel {
+                                        window.center_at_cursor_monitor().ok();
+                                        panel.show_and_make_key();
+                                        window.emit("open-hotkeys", ()).ok();
+                                    }
+                                }
+                            }
+                            #[cfg(not(target_os = "macos"))]
+                            {
+                                if let Some(window) = app.get_webview_window("main") {
+                                    window.show().ok();
+                                    window.set_focus().ok();
+                                    window.emit("open-hotkeys", ()).ok();
+                                }
+                            }
+                        }
                         "settings" => {
                             #[cfg(target_os = "macos")]
                             {
@@ -1081,6 +1119,30 @@ pub fn run() {
                                     window.show().ok();
                                     window.set_focus().ok();
                                     window.emit("open-settings", ()).ok();
+                                }
+                            }
+                        }
+                        "check_updates" => {
+                            #[cfg(target_os = "macos")]
+                            {
+                                if let Some(window) = app.get_webview_window("main") {
+                                    let panel = app
+                                        .get_webview_panel(MAIN_WINDOW_LABEL)
+                                        .or_else(|_| window.to_wingman_panel());
+
+                                    if let Ok(panel) = panel {
+                                        window.center_at_cursor_monitor().ok();
+                                        panel.show_and_make_key();
+                                        window.emit("check-updates", ()).ok();
+                                    }
+                                }
+                            }
+                            #[cfg(not(target_os = "macos"))]
+                            {
+                                if let Some(window) = app.get_webview_window("main") {
+                                    window.show().ok();
+                                    window.set_focus().ok();
+                                    window.emit("check-updates", ()).ok();
                                 }
                             }
                         }

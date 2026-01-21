@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { usePremiumStore } from '../stores/premiumStore';
 import { useLicenseStore } from '../stores/licenseStore';
 import { useEditorStore } from '../stores/editorStore';
-import { PremiumBadge } from './PremiumFeatureGate';
+import { ProBadge } from './ProFeatureGate';
 import type { ObsidianConfig as ObsidianConfigType, ObsidianLocation } from '../types';
 
 interface ObsidianConfigProps {
@@ -19,10 +19,9 @@ export function ObsidianConfig({ onClose }: ObsidianConfigProps) {
     validateObsidianVault,
     error: storeError,
   } = usePremiumStore();
-  const { tier } = useLicenseStore();
-  const { isSubscriptionActive } = usePremiumStore();
+  const { isProFeatureEnabled } = useLicenseStore();
 
-  const isPremium = tier === 'premium' && isSubscriptionActive;
+  const hasObsidianAccess = isProFeatureEnabled('obsidian_integration');
 
   const [config, setConfig] = useState<ObsidianConfigType>({
     vault_path: '',
@@ -116,7 +115,7 @@ export function ObsidianConfig({ onClose }: ObsidianConfigProps) {
     setConfig((prev) => ({ ...prev, default_location: location }));
   };
 
-  if (!isPremium) {
+  if (!hasObsidianAccess) {
     return (
       <div className="p-6 bg-gray-900 rounded-lg border border-gray-700">
         <div className="flex items-center gap-2 mb-4">
@@ -134,10 +133,10 @@ export function ObsidianConfig({ onClose }: ObsidianConfigProps) {
             />
           </svg>
           <h3 className="text-lg font-semibold text-white">Obsidian Integration</h3>
-          <PremiumBadge />
+          <ProBadge />
         </div>
         <p className="text-gray-400 mb-4">
-          Quick capture to your Obsidian vault with a keyboard-only workflow. Upgrade to Premium to
+          Quick capture to your Obsidian vault with a keyboard-only workflow. Upgrade to Pro to
           unlock this feature.
         </p>
       </div>
@@ -391,16 +390,15 @@ export function ObsidianCaptureButton({
   disabled?: boolean;
 }) {
   const { addToObsidian, obsidianConfig } = usePremiumStore();
-  const { tier } = useLicenseStore();
-  const { isSubscriptionActive } = usePremiumStore();
+  const { isProFeatureEnabled } = useLicenseStore();
   const [capturing, setCapturing] = useState(false);
   const [captured, setCaptured] = useState(false);
 
-  const isPremium = tier === 'premium' && isSubscriptionActive;
+  const hasObsidianAccess = isProFeatureEnabled('obsidian_integration');
   const isConfigured = obsidianConfig && obsidianConfig.vault_path;
 
   const handleCapture = async () => {
-    if (!content.trim() || !isPremium || !isConfigured) return;
+    if (!content.trim() || !hasObsidianAccess || !isConfigured) return;
 
     setCapturing(true);
     const success = await addToObsidian(content);
@@ -412,12 +410,12 @@ export function ObsidianCaptureButton({
     }
   };
 
-  if (!isPremium) {
+  if (!hasObsidianAccess) {
     return (
       <button
         disabled
         className="flex items-center gap-1.5 px-2 py-1 rounded text-sm text-gray-500"
-        title="Premium feature - Send to Obsidian"
+        title="Pro feature - Send to Obsidian"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
@@ -427,7 +425,7 @@ export function ObsidianCaptureButton({
             d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
           />
         </svg>
-        <PremiumBadge className="ml-1" />
+        <ProBadge className="ml-1" />
       </button>
     );
   }

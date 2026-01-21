@@ -192,13 +192,17 @@ export function EditorWindow() {
     } = usePremiumStore();
 
     const isPremium = isPremiumTier();
+    const hasObsidianAccess = isProFeatureEnabled('obsidian_integration');
     const hasObsidianConfigured = obsidianConfig && obsidianConfig.vault_path;
 
-    // Load AI config, Obsidian config, presets, and subscription status on mount for premium users
+    // Load AI config, presets, and subscription status on mount for premium users
+    // Load Obsidian config for Pro users (or higher)
     useEffect(() => {
+        if (hasObsidianAccess) {
+            loadObsidianConfig();
+        }
         if (isPremium) {
             loadAIConfig();
-            loadObsidianConfig();
             loadAIPresets();
             // Also load subscription status for API calls
             const licenseKey = localStorage.getItem('wingman_license_key');
@@ -206,7 +210,7 @@ export function EditorWindow() {
                 loadSubscriptionStatus(licenseKey);
             }
         }
-    }, [isPremium, loadAIConfig, loadObsidianConfig, loadAIPresets, loadSubscriptionStatus]);
+    }, [isPremium, hasObsidianAccess, loadAIConfig, loadObsidianConfig, loadAIPresets, loadSubscriptionStatus]);
 
     const hasImageSupport = isProFeatureEnabled('image_attachments');
 
@@ -466,8 +470,7 @@ export function EditorWindow() {
     ]);
 
     const hasStatsDisplay = isProFeatureEnabled('stats_display');
-    const hasSyntaxHighlighting = isProFeatureEnabled('syntax_highlighting');
-    const hasLanguageSelection = isProFeatureEnabled('language_selection');
+    // Language selection is free for all users
 
     // Handle paste for file attachments (PRO feature)
     // Note: Markdown link pasting is handled by CodeMirror extension (markdownLinkPasteHandler)
@@ -872,40 +875,33 @@ export function EditorWindow() {
                                 <span className="opacity-60">Pro: Stats</span>
                             )}
                         </div>
-                        {/* Language Selector */}
+                        {/* Language Selector - Free for all users */}
                         <div className="relative">
-                            {hasLanguageSelection && hasSyntaxHighlighting ? (
-                                <>
-                                    <button
-                                        onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                                        className="text-xs px-2 py-1 rounded-md hover:bg-[var(--editor-hover)] transition-colors"
-                                    >
-                                        {LANGUAGE_OPTIONS.find(l => l.value === language)?.label || 'Plain Text'}
-                                        <span className="ml-1 opacity-40">▾</span>
-                                    </button>
-                                    {showLanguageDropdown && (
-                                        <div
-                                            className="absolute bottom-full mb-1 right-0 bg-[var(--editor-bg)] border border-[var(--editor-border)] rounded-md shadow-lg z-50 min-w-[140px] max-h-[200px] overflow-y-auto py-1">
-                                            {LANGUAGE_OPTIONS.map((lang) => (
-                                                <button
-                                                    key={lang.value}
-                                                    onClick={() => {
-                                                        setLanguage(lang.value);
-                                                        setShowLanguageDropdown(false);
-                                                    }}
-                                                    className={`w-full text-left text-xs px-3 py-1.5 hover:bg-[var(--editor-hover)] ${
-                                                        language === lang.value ? 'text-[var(--editor-accent)]' : ''
-                                                    }`}
-                                                >
-                                                    {lang.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </>
-                            ) : (
-                                <span
-                                    className="opacity-60 text-[10px] px-1.5 py-0.5 rounded bg-[var(--editor-accent)]/20 text-[var(--editor-accent)]">PRO</span>
+                            <button
+                                onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                                className="text-xs px-2 py-1 rounded-md hover:bg-[var(--editor-hover)] transition-colors"
+                            >
+                                {LANGUAGE_OPTIONS.find(l => l.value === language)?.label || 'Plain Text'}
+                                <span className="ml-1 opacity-40">▾</span>
+                            </button>
+                            {showLanguageDropdown && (
+                                <div
+                                    className="absolute bottom-full mb-1 right-0 bg-[var(--editor-bg)] border border-[var(--editor-border)] rounded-md shadow-lg z-50 min-w-[140px] max-h-[200px] overflow-y-auto py-1">
+                                    {LANGUAGE_OPTIONS.map((lang) => (
+                                        <button
+                                            key={lang.value}
+                                            onClick={() => {
+                                                setLanguage(lang.value);
+                                                setShowLanguageDropdown(false);
+                                            }}
+                                            className={`w-full text-left text-xs px-3 py-1.5 hover:bg-[var(--editor-hover)] ${
+                                                language === lang.value ? 'text-[var(--editor-accent)]' : ''
+                                            }`}
+                                        >
+                                            {lang.label}
+                                        </button>
+                                    ))}
+                                </div>
                             )}
                         </div>
                     </div>
@@ -968,11 +964,11 @@ export function EditorWindow() {
                             )}
                         </div>
 
-                        {/* Obsidian button - purple/violet (Obsidian brand color) */}
+                        {/* Obsidian button - purple/violet (Obsidian brand color) - Pro feature */}
                         <button
                             onClick={handleObsidianSend}
-                            disabled={!isPremium || !hasObsidianConfigured || !content.trim()}
-                            title={!hasObsidianConfigured ? "Configure Obsidian vault in Settings first" : "Send to Obsidian"}
+                            disabled={!hasObsidianAccess || !hasObsidianConfigured || !content.trim()}
+                            title={!hasObsidianAccess ? "Pro feature - Send to Obsidian" : (!hasObsidianConfigured ? "Configure Obsidian vault in Settings first" : "Send to Obsidian")}
                             className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm transition-colors bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 disabled:opacity-40"
                         >
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">

@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import type { LicenseTier, LicenseStatus, LicenseStatusInfo, ProFeature } from '../types';
 
+// Check if running in development mode
+export const isDev = import.meta.env.DEV;
+
 interface LicenseState {
   tier: LicenseTier;
   status: LicenseStatus;
@@ -11,6 +14,9 @@ interface LicenseState {
   loading: boolean;
   error: string | null;
 
+  // Dev mode tier override (only works in dev mode)
+  devTierOverride: LicenseTier | null;
+
   // Actions
   loadLicenseStatus: () => Promise<void>;
   activateLicense: (licenseKey: string, email: string) => Promise<boolean>;
@@ -19,6 +25,8 @@ interface LicenseState {
   checkFeature: (feature: ProFeature) => Promise<boolean>;
   isProFeatureEnabled: (feature: ProFeature) => boolean;
   isPremiumTier: () => boolean;
+  setDevTierOverride: (tier: LicenseTier | null) => void;
+  getEffectiveTier: () => LicenseTier;
 }
 
 // Default state for free tier
@@ -28,6 +36,7 @@ const defaultLicenseState = {
   email: null,
   daysUntilExpiry: null,
   needsRevalidation: false,
+  devTierOverride: null as LicenseTier | null,
 };
 
 export const useLicenseStore = create<LicenseState>((set, get) => ({
@@ -141,20 +150,47 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
     }
   },
 
+  // Get the effective tier (considering dev override)
+  getEffectiveTier: () => {
+    const { tier, devTierOverride } = get();
+    // In dev mode, use override if set
+    if (isDev && devTierOverride !== null) {
+      return devTierOverride;
+    }
+    return tier;
+  },
+
+  // Set dev tier override (only works in dev mode)
+  setDevTierOverride: (tier: LicenseTier | null) => {
+    if (isDev) {
+      set({ devTierOverride: tier });
+    }
+  },
+
   // Synchronous check based on current state (no backend call)
   // Note: feature param is for API consistency and future granular checks
   // Premium tier also has access to all Pro features
   isProFeatureEnabled: (_feature: ProFeature) => {
-    const { tier, status } = get();
+    const { status, getEffectiveTier } = get();
+    const effectiveTier = getEffectiveTier();
+    // In dev mode with override, simulate valid status
+    if (isDev && get().devTierOverride !== null) {
+      return effectiveTier === 'pro' || effectiveTier === 'premium';
+    }
     // Pro and Premium features require valid or grace period status
-    if (tier !== 'pro' && tier !== 'premium') return false;
+    if (effectiveTier !== 'pro' && effectiveTier !== 'premium') return false;
     return status === 'valid' || status === 'grace_period';
   },
 
   // Check if user has Premium tier
   isPremiumTier: () => {
-    const { tier, status } = get();
-    if (tier !== 'premium') return false;
+    const { status, getEffectiveTier } = get();
+    const effectiveTier = getEffectiveTier();
+    // In dev mode with override, simulate valid status
+    if (isDev && get().devTierOverride !== null) {
+      return effectiveTier === 'premium';
+    }
+    if (effectiveTier !== 'premium') return false;
     return status === 'valid' || status === 'grace_period';
   },
 }));

@@ -4,6 +4,8 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import type { EditorView } from '@codemirror/view';
 import type { TextStats, PanelType } from '../types';
 
+export type SettingsTab = 'settings' | 'hotkeys' | 'license';
+
 export type AttachmentType = 'image' | 'text' | 'file';
 
 export interface EditorAttachment {
@@ -29,6 +31,9 @@ interface EditorState {
   editorView: EditorView | null;
   images: EditorAttachment[]; // Keep as 'images' for compatibility
   nextImageId: number;
+  // Settings panel navigation state
+  initialSettingsTab: SettingsTab | null;
+  shouldCheckUpdates: boolean;
   setContent: (content: string) => void;
   setLanguage: (language: string) => void;
   setActivePanel: (panel: PanelType) => void;
@@ -47,6 +52,9 @@ interface EditorState {
   applyNumberedList: () => void;
   showWindow: () => Promise<void>;
   hideWindow: () => Promise<void>;
+  // Navigate to settings with specific tab or update check
+  openSettingsTab: (tab: SettingsTab, checkUpdates?: boolean) => void;
+  clearSettingsNavigation: () => void;
 }
 
 // Helper to safely get current editor content from editorView or fall back to store
@@ -78,6 +86,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   editorView: null,
   images: [],
   nextImageId: 1,
+  initialSettingsTab: null,
+  shouldCheckUpdates: false,
 
   setContent: (content: string) => {
     set({ content });
@@ -546,5 +556,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     } catch (error) {
       console.error('Failed to hide window:', error);
     }
+  },
+
+  openSettingsTab: (tab: SettingsTab, checkUpdates = false) => {
+    set({
+      activePanel: 'settings',
+      initialSettingsTab: tab,
+      shouldCheckUpdates: checkUpdates,
+    });
+  },
+
+  clearSettingsNavigation: () => {
+    set({
+      initialSettingsTab: null,
+      shouldCheckUpdates: false,
+    });
   },
 }));

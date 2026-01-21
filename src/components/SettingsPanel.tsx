@@ -6,6 +6,7 @@ import {useEditorStore} from '../stores/editorStore';
 import {useLicenseStore} from '../stores/licenseStore';
 import {LicenseActivation} from './LicenseActivation';
 import {ObsidianConfig} from './ObsidianConfig';
+import {ProBadge} from './ProFeatureGate';
 import type {ThemeType} from '../types';
 
 const THEMES: { value: ThemeType; label: string; isPro: boolean }[] = [
@@ -41,8 +42,8 @@ type TabType = 'settings' | 'hotkeys' | 'license';
 
 export function SettingsPanel() {
     const {settings, handleUpdate, handleReset} = useSettings();
-    const {setActivePanel} = useEditorStore();
-    const {isProFeatureEnabled, isPremiumTier} = useLicenseStore();
+    const {setActivePanel, initialSettingsTab, shouldCheckUpdates, clearSettingsNavigation} = useEditorStore();
+    const {isProFeatureEnabled} = useLicenseStore();
     const [activeTab, setActiveTab] = useState<TabType>('settings');
     const [hotkeyInput, setHotkeyInput] = useState('');
     const [isRecording, setIsRecording] = useState(false);
@@ -53,12 +54,33 @@ export function SettingsPanel() {
     const [obsidianExpanded, setObsidianExpanded] = useState(false);
 
     const hasCustomThemes = isProFeatureEnabled('custom_themes');
-    const isPremium = isPremiumTier();
+    const hasFontCustomization = isProFeatureEnabled('font_customization');
+    const hasOpacityControl = isProFeatureEnabled('opacity_control');
+    const hasStickyMode = isProFeatureEnabled('sticky_mode');
+    const hasStatsDisplay = isProFeatureEnabled('stats_display');
+    const hasObsidianAccess = isProFeatureEnabled('obsidian_integration');
 
     // Get app version on mount
     useEffect(() => {
         invoke<string>('get_app_version').then(setAppVersion).catch(console.error);
     }, []);
+
+    // Handle navigation from tray menu (open specific tab or check updates)
+    useEffect(() => {
+        if (initialSettingsTab) {
+            setActiveTab(initialSettingsTab);
+        }
+        if (shouldCheckUpdates) {
+            // Always go to license tab when checking updates, and trigger the check
+            setActiveTab('license');
+            // Use setTimeout to ensure state update happens first
+            setTimeout(() => checkForUpdates(), 0);
+        }
+        // Clear the navigation flags after handling
+        if (initialSettingsTab || shouldCheckUpdates) {
+            clearSettingsNavigation();
+        }
+    }, [initialSettingsTab, shouldCheckUpdates, clearSettingsNavigation]);
 
     const checkForUpdates = async () => {
         setIsCheckingUpdate(true);
@@ -219,13 +241,19 @@ export function SettingsPanel() {
                             </div>
                         </div>
 
-                        {/* Font Family */}
+                        {/* Font Family - Pro */}
                         <div>
-                            <label className="block text-sm font-medium mb-2">Font Family</label>
+                            <label className="block text-sm font-medium mb-2 flex items-center gap-2">
+                                Font Family
+                                {!hasFontCustomization && <ProBadge />}
+                            </label>
                             <select
                                 value={settings.font_family}
                                 onChange={(e) => handleUpdate({font_family: e.target.value})}
-                                className="w-full px-3 py-2 text-sm bg-[var(--editor-surface)] border border-[var(--editor-border)] rounded-md text-[var(--editor-text)] focus:outline-none focus:border-[var(--editor-accent)]"
+                                disabled={!hasFontCustomization}
+                                className={`w-full px-3 py-2 text-sm bg-[var(--editor-surface)] border border-[var(--editor-border)] rounded-md text-[var(--editor-text)] focus:outline-none focus:border-[var(--editor-accent)] ${
+                                    !hasFontCustomization ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
                             >
                                 {FONT_FAMILIES.map((font) => (
                                     <option key={font} value={font}>
@@ -240,11 +268,14 @@ export function SettingsPanel() {
                             </select>
                         </div>
 
-                        {/* Font Size and Opacity - Side by Side */}
+                        {/* Font Size and Opacity - Side by Side - Pro */}
                         <div className="grid grid-cols-2 gap-4">
-                            {/* Font Size */}
+                            {/* Font Size - Pro */}
                             <div>
-                                <label className="block text-sm font-medium mb-2">Font Size</label>
+                                <label className="block text-sm font-medium mb-2 flex items-center gap-2">
+                                    Font Size
+                                    {!hasFontCustomization && <ProBadge />}
+                                </label>
                                 <div className="relative">
                                     <input
                                         type="number"
@@ -257,16 +288,20 @@ export function SettingsPanel() {
                                                 handleUpdate({font_size: val});
                                             }
                                         }}
-                                        className="w-full px-3 py-2 pr-8 text-sm bg-[var(--editor-surface)] border border-[var(--editor-border)] rounded-md text-[var(--editor-text)] focus:outline-none focus:border-[var(--editor-accent)]"
+                                        disabled={!hasFontCustomization}
+                                        className={`w-full px-3 py-2 pr-8 text-sm bg-[var(--editor-surface)] border border-[var(--editor-border)] rounded-md text-[var(--editor-text)] focus:outline-none focus:border-[var(--editor-accent)] ${
+                                            !hasFontCustomization ? 'opacity-50 cursor-not-allowed' : ''
+                                        }`}
                                     />
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--editor-muted)]">px</span>
                                 </div>
                             </div>
 
-                            {/* Opacity */}
+                            {/* Opacity - Pro */}
                             <div>
-                                <label className="block text-sm font-medium mb-2">
+                                <label className="block text-sm font-medium mb-2 flex items-center gap-2">
                                     Opacity: {Math.round(settings.opacity * 100)}%
+                                    {!hasOpacityControl && <ProBadge />}
                                 </label>
                                 <input
                                     type="range"
@@ -275,24 +310,29 @@ export function SettingsPanel() {
                                     step="0.05"
                                     value={settings.opacity}
                                     onChange={(e) => handleUpdate({opacity: parseFloat(e.target.value)})}
-                                    className="w-full"
+                                    disabled={!hasOpacityControl}
+                                    className={`w-full ${!hasOpacityControl ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 />
                             </div>
                         </div>
 
                         {/* Toggles */}
                         <div className="space-y-3">
-                            {/* Stats Bar */}
-                            <div className="flex items-center justify-between py-2">
+                            {/* Stats Bar - Pro */}
+                            <div className={`flex items-center justify-between py-2 ${!hasStatsDisplay ? 'opacity-60' : ''}`}>
                                 <div className="flex-1">
-                                    <label className="block text-sm font-medium text-[var(--editor-text)]">Show Stats Bar</label>
+                                    <label className="flex items-center gap-2 text-sm font-medium text-[var(--editor-text)]">
+                                        Show Stats Bar
+                                        {!hasStatsDisplay && <ProBadge />}
+                                    </label>
                                     <p className="text-xs text-[var(--editor-muted)] mt-0.5">Display character, word, and line counts</p>
                                 </div>
                                 <button
-                                    onClick={() => handleUpdate({show_status_bar: !settings.show_status_bar})}
+                                    onClick={() => hasStatsDisplay && handleUpdate({show_status_bar: !settings.show_status_bar})}
+                                    disabled={!hasStatsDisplay}
                                     className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
                                         settings.show_status_bar ? 'bg-[var(--editor-accent)]' : 'bg-[var(--editor-border)]'
-                                    }`}
+                                    } ${!hasStatsDisplay ? 'cursor-not-allowed' : ''}`}
                                 >
                                     <span
                                         className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -302,19 +342,23 @@ export function SettingsPanel() {
                                 </button>
                             </div>
 
-                            {/* Sticky Mode */}
-                            <div className="flex items-center justify-between py-2">
+                            {/* Sticky Mode - Pro */}
+                            <div className={`flex items-center justify-between py-2 ${!hasStickyMode ? 'opacity-60' : ''}`}>
                                 <div className="flex-1">
-                                    <label className="block text-sm font-medium text-[var(--editor-text)]">Sticky Window Mode</label>
+                                    <label className="flex items-center gap-2 text-sm font-medium text-[var(--editor-text)]">
+                                        Sticky Window Mode
+                                        {!hasStickyMode && <ProBadge />}
+                                    </label>
                                     <p className="text-xs text-[var(--editor-muted)] mt-0.5">
                                         Prevent auto-hide on focus loss{settings.sticky_mode ? ' • Double-tap Esc to close' : ''}
                                     </p>
                                 </div>
                                 <button
-                                    onClick={() => handleUpdate({sticky_mode: !settings.sticky_mode})}
+                                    onClick={() => hasStickyMode && handleUpdate({sticky_mode: !settings.sticky_mode})}
+                                    disabled={!hasStickyMode}
                                     className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
                                         settings.sticky_mode ? 'bg-[var(--editor-accent)]' : 'bg-[var(--editor-border)]'
-                                    }`}
+                                    } ${!hasStickyMode ? 'cursor-not-allowed' : ''}`}
                                 >
                                     <span
                                         className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
@@ -345,8 +389,8 @@ export function SettingsPanel() {
                             </div>
                         </div>
 
-                        {/* Obsidian Integration - Premium only - Collapsible */}
-                        {isPremium && (
+                        {/* Obsidian Integration - Pro feature - Collapsible */}
+                        {hasObsidianAccess && (
                             <div className="pt-3 border-t border-[var(--editor-border)]">
                                 <button
                                     onClick={() => setObsidianExpanded(!obsidianExpanded)}

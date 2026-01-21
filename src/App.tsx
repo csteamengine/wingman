@@ -8,6 +8,7 @@ import {
   SnippetsPanel,
   QuickActionsPanel,
   LicenseStatusBanner,
+  DevModeTierSwitcher,
 } from './components';
 import { useGlobalHotkey, useKeyboardShortcuts, useSettings, useLicense } from './hooks';
 import { useEditorStore } from './stores/editorStore';
@@ -25,6 +26,9 @@ function App() {
   // Initialize keyboard shortcuts
   useKeyboardShortcuts();
 
+  // Get openSettingsTab for tray menu navigation
+  const { openSettingsTab } = useEditorStore();
+
   // Listen for open-settings event from tray
   useEffect(() => {
     const unlisten = listen('open-settings', () => {
@@ -35,6 +39,28 @@ function App() {
       unlisten.then(fn => fn());
     };
   }, [setActivePanel]);
+
+  // Listen for open-hotkeys event from tray
+  useEffect(() => {
+    const unlisten = listen('open-hotkeys', () => {
+      openSettingsTab('hotkeys');
+    });
+
+    return () => {
+      unlisten.then(fn => fn());
+    };
+  }, [openSettingsTab]);
+
+  // Listen for check-updates event from tray
+  useEffect(() => {
+    const unlisten = listen('check-updates', () => {
+      openSettingsTab('license', true);
+    });
+
+    return () => {
+      unlisten.then(fn => fn());
+    };
+  }, [openSettingsTab]);
 
   // Listen for panel-hidden event from Rust (when panel loses focus on macOS)
   // This syncs the frontend isVisible state with the actual panel visibility
@@ -139,8 +165,22 @@ function App() {
         className="h-11 flex items-center justify-between px-3 cursor-move select-none rounded-t-[10px]"
         onMouseDown={handleDragStart}
       >
-        {/* Left spacer for balance */}
-        <div className="w-8" />
+        {/* Settings cog button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setActivePanel(activePanel === 'settings' ? 'editor' : 'settings');
+          }}
+          className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] transition-colors ${
+            activePanel === 'settings' ? 'text-[var(--editor-accent)]' : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)]'
+          }`}
+          title="Settings"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
 
         {/* Center dots */}
         <div className="flex items-center gap-1.5 pointer-events-none opacity-40">
@@ -149,22 +189,28 @@ function App() {
           <div className="w-2.5 h-2.5 rounded-full bg-[var(--editor-muted)]" />
         </div>
 
-        {/* Quick Actions toggle button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setActivePanel(activePanel === 'actions' ? 'editor' : 'actions');
-          }}
-          className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] transition-colors ${
-            activePanel === 'actions' ? 'text-[var(--editor-accent)]' : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)]'
-          }`}
-          title="Toggle Quick Actions (transforms, formatters, generators)"
-        >
-          {/* Lightning bolt / wand icon */}
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 1L3 9h5l-1 6 6-8H8l1-6z" />
-          </svg>
-        </button>
+        {/* Right side: Dev tier switcher + Quick Actions */}
+        <div className="flex items-center gap-2">
+          {/* Dev mode tier switcher (only visible in dev mode) */}
+          <DevModeTierSwitcher />
+
+          {/* Quick Actions toggle button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActivePanel(activePanel === 'actions' ? 'editor' : 'actions');
+            }}
+            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] transition-colors ${
+              activePanel === 'actions' ? 'text-[var(--editor-accent)]' : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)]'
+            }`}
+            title="Toggle Quick Actions (transforms, formatters, generators)"
+          >
+            {/* Lightning bolt / wand icon */}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 1L3 9h5l-1 6 6-8H8l1-6z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* License status banner (shows when in grace period or expired) */}
