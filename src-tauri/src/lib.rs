@@ -695,6 +695,7 @@ async fn update_panel_behavior(window: tauri::Window, sticky_mode: bool) -> Resu
 }
 
 #[tauri::command]
+#[allow(unused_variables)]
 async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Result<(), String> {
     log::info!("show_window called");
 
@@ -815,7 +816,7 @@ async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Resul
         #[cfg(target_os = "linux")]
         {
             // Request user attention - helps on some WMs
-            if let Err(e) = window.request_user_attention(Some(tauri::window::UserAttentionType::Critical)) {
+            if let Err(e) = window.request_user_attention(Some(tauri::UserAttentionType::Critical)) {
                 log::warn!("Failed to request user attention: {}", e);
             }
         }
@@ -857,6 +858,7 @@ async fn hide_window(window: tauri::Window) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[allow(unused_variables)]
 async fn hide_and_paste(window: tauri::Window, state: State<'_, AppState>) -> Result<(), String> {
     // Get the stored previous app (extract just the name, ignore timestamp)
     #[cfg(target_os = "macos")]
@@ -942,6 +944,7 @@ pub fn run() {
     #[cfg(not(target_os = "macos"))]
     let app_state = AppState { db: Mutex::new(db) };
 
+    #[allow(unused_mut)]
     let mut builder = tauri::Builder::default()
         .manage(app_state)
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
