@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -149,4 +150,43 @@ pub fn save_snippets(data: &SnippetsData) -> Result<(), StorageError> {
     let content = serde_json::to_string_pretty(data)?;
     fs::write(path, content)?;
     Ok(())
+}
+
+/// Per-monitor window positions
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MonitorPositions {
+    /// Map of monitor name -> window position
+    pub positions: HashMap<String, WindowPosition>,
+}
+
+pub fn load_monitor_positions() -> Result<MonitorPositions, StorageError> {
+    let dir = ensure_app_data_dir()?;
+    let path = dir.join("monitor_positions.json");
+
+    if path.exists() {
+        let content = fs::read_to_string(&path)?;
+        Ok(serde_json::from_str(&content)?)
+    } else {
+        Ok(MonitorPositions::default())
+    }
+}
+
+pub fn save_monitor_positions(data: &MonitorPositions) -> Result<(), StorageError> {
+    let dir = ensure_app_data_dir()?;
+    let path = dir.join("monitor_positions.json");
+    let content = serde_json::to_string_pretty(data)?;
+    fs::write(path, content)?;
+    Ok(())
+}
+
+pub fn get_position_for_monitor(monitor_name: &str) -> Option<WindowPosition> {
+    load_monitor_positions()
+        .ok()
+        .and_then(|mp| mp.positions.get(monitor_name).cloned())
+}
+
+pub fn save_position_for_monitor(monitor_name: &str, position: WindowPosition) -> Result<(), StorageError> {
+    let mut data = load_monitor_positions().unwrap_or_default();
+    data.positions.insert(monitor_name.to_string(), position);
+    save_monitor_positions(&data)
 }

@@ -41,10 +41,10 @@ export function AIConfig() {
   };
 
   return (
-    <div className="p-4 bg-[var(--editor-bg)] rounded-lg border border-[var(--editor-border)] space-y-4">
+    <div className="p-4 bg-[var(--ui-surface)] rounded-lg border border-[var(--ui-border)] space-y-4">
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-medium text-[var(--editor-text)]">
+          <label className="text-sm font-medium text-[var(--ui-text)]">
             System Instructions
           </label>
           <button
@@ -54,14 +54,14 @@ export function AIConfig() {
             Reset to Default
           </button>
         </div>
-        <p className="text-xs text-[var(--editor-muted)] mb-2">
+        <p className="text-xs text-[var(--ui-text-muted)] mb-2">
           Customize how the AI refines your text. This instruction tells the AI how to process and improve your content.
         </p>
         <textarea
           value={systemInstructions}
           onChange={(e) => setSystemInstructions(e.target.value)}
           rows={6}
-          className="w-full px-3 py-2 text-sm bg-[var(--editor-surface)] text-[var(--editor-text)] border border-[var(--editor-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
+          className="w-full px-3 py-2 text-sm bg-[var(--ui-surface)] text-[var(--ui-text)] border border-[var(--ui-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
           placeholder="Enter system instructions for the AI..."
         />
       </div>
@@ -87,12 +87,12 @@ export function AIConfig() {
         </button>
       </div>
 
-      <div className="pt-3 border-t border-[var(--editor-border)]">
-        <p className="text-xs text-[var(--editor-muted)] leading-relaxed">
+      <div className="pt-3 border-t border-[var(--ui-border)]">
+        <p className="text-xs text-[var(--ui-text-muted)] leading-relaxed">
           <strong>Tip:</strong> The AI button refines your text based on these instructions.
           You can customize this for different use cases:
         </p>
-        <ul className="mt-2 space-y-1 text-xs text-[var(--editor-muted)] list-disc list-inside">
+        <ul className="mt-2 space-y-1 text-xs text-[var(--ui-text-muted)] list-disc list-inside">
           <li>Optimizing prompts for Claude Code</li>
           <li>Converting notes to professional emails</li>
           <li>Formatting documentation</li>

@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
 import {
   EditorWindow,
   SettingsPanel,
@@ -73,30 +74,42 @@ function App() {
     };
   }, []);
 
-
-  // Apply theme class to root element
+  // Apply theme mode - controls vibrancy material, UI styling, and theme-specific colors
   useEffect(() => {
+    const lightThemes = ['light', 'solarized-light'];
+    const allThemes = ['dark', 'light', 'high-contrast', 'solarized-dark', 'solarized-light', 'dracula', 'nord'];
+    const currentTheme = settings?.theme || 'dark';
+    const isLightTheme = lightThemes.includes(currentTheme);
     const root = document.documentElement;
-    root.classList.remove(
-      'theme-light',
-      'theme-dark',
-      'theme-high-contrast',
-      'theme-solarized-dark',
-      'theme-solarized-light',
-      'theme-dracula',
-      'theme-nord'
-    );
-    if (settings?.theme && settings.theme !== 'dark') {
-      root.classList.add(`theme-${settings.theme}`);
+
+    // Remove all theme classes first
+    allThemes.forEach(t => root.classList.remove(`theme-${t}`));
+    root.classList.remove('theme-light');
+
+    // Apply base light theme class for light themes (for shared light styling)
+    if (isLightTheme) {
+      root.classList.add('theme-light');
     }
+
+    // Apply specific theme class for theme-specific colors
+    root.classList.add(`theme-${currentTheme}`);
+
+    // Update native macOS vibrancy material
+    invoke('set_vibrancy_mode', { isDark: !isLightTheme }).catch((err) => {
+      console.warn('Failed to update vibrancy mode:', err);
+    });
   }, [settings?.theme]);
 
-  // Apply opacity to window
+  // Apply opacity to window - uses CSS variable for background alpha
   useEffect(() => {
     if (settings?.opacity !== undefined) {
-      document.body.style.opacity = String(settings.opacity);
+      // Set CSS variable for background alpha - controls all theme backgrounds
+      document.documentElement.style.setProperty('--bg-alpha', String(settings.opacity));
     }
   }, [settings?.opacity]);
+
+  // Native macOS vibrancy is applied at startup in Rust (see lib.rs setup)
+  // No frontend call needed - NSVisualEffectView persists through show/hide cycles
 
   // Handle window drag - uses native Tauri drag
   const handleTitleBarDrag = useCallback(async (e: React.MouseEvent) => {
@@ -164,8 +177,9 @@ function App() {
             e.stopPropagation();
             setActivePanel(activePanel === 'settings' ? 'editor' : 'settings');
           }}
-          className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] transition-colors ${
-            activePanel === 'settings' ? 'text-[var(--editor-accent)]' : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)]'
+          tabIndex={-1}
+          className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
+            activePanel === 'settings' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
           }`}
           title="Settings"
         >
@@ -177,9 +191,9 @@ function App() {
 
         {/* Center dots */}
         <div className="flex items-center gap-1.5 pointer-events-none opacity-40">
-          <div className="w-2.5 h-2.5 rounded-full bg-[var(--editor-muted)]" />
-          <div className="w-2.5 h-2.5 rounded-full bg-[var(--editor-muted)]" />
-          <div className="w-2.5 h-2.5 rounded-full bg-[var(--editor-muted)]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[var(--ui-text-muted)]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[var(--ui-text-muted)]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[var(--ui-text-muted)]" />
         </div>
 
         {/* Right side: Dev tier switcher + Quick Actions */}
@@ -193,8 +207,9 @@ function App() {
               e.stopPropagation();
               setActivePanel(activePanel === 'actions' ? 'editor' : 'actions');
             }}
-            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] transition-colors ${
-              activePanel === 'actions' ? 'text-[var(--editor-accent)]' : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)]'
+            tabIndex={-1}
+            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
+              activePanel === 'actions' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
             }`}
             title="Clipboard & Quick Actions"
           >
@@ -240,7 +255,7 @@ function App() {
         )}
 
         {activePanel === 'actions' && (
-          <div className="w-80 border-l border-[var(--editor-border)]">
+          <div className="w-80 border-l border-[var(--ui-border)]">
             <QuickActionsPanel />
           </div>
         )}

@@ -19,7 +19,7 @@ use tauri::{
 #[cfg(target_os = "macos")]
 use tauri_nspanel::ManagerExt;
 #[cfg(target_os = "macos")]
-use window::{start_workspace_monitor, WebviewWindowExt, MAIN_WINDOW_LABEL};
+use window::{start_workspace_monitor, set_window_blur, update_vibrancy_material, get_cursor_monitor_name, WebviewWindowExt, MAIN_WINDOW_LABEL};
 
 use clipboard::{calculate_text_stats, transform_text, TextStats, TextTransform};
 use history::{
@@ -47,6 +47,8 @@ pub struct AppState {
     db: Mutex<Connection>,
     #[cfg(target_os = "macos")]
     previous_app: Mutex<Option<(String, std::time::Instant)>>,
+    /// Track if window has been shown/positioned this session (don't re-center after first show)
+    pub has_been_shown: std::sync::atomic::AtomicBool,
 }
 
 // Settings commands
@@ -668,6 +670,78 @@ async fn toggle_fullscreen(window: tauri::Window) -> Result<(), String> {
     Ok(())
 }
 
+/// Set window blur effect (vibrancy) - PRO feature
+#[cfg(target_os = "macos")]
+#[tauri::command]
+async fn set_window_blur_cmd(window: tauri::WebviewWindow, enabled: bool) -> Result<(), String> {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    log::info!("set_window_blur_cmd called with enabled={}", enabled);
+
+    // Must run on main thread to avoid Cocoa exceptions
+    let (tx, rx) = mpsc::channel();
+    let app_handle = window.app_handle().clone();
+    let app_handle_inner = app_handle.clone();
+
+    app_handle
+        .run_on_main_thread(move || {
+            let result = if let Some(webview_window) = app_handle_inner.get_webview_window(MAIN_WINDOW_LABEL) {
+                set_window_blur(&webview_window, enabled)
+            } else {
+                Err("Window not found".to_string())
+            };
+            let _ = tx.send(result);
+        })
+        .map_err(|e| e.to_string())?;
+
+    // Wait with timeout to avoid hanging
+    rx.recv_timeout(Duration::from_secs(5))
+        .map_err(|e| format!("Timeout waiting for blur operation: {}", e))?
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+async fn set_window_blur_cmd(_window: tauri::WebviewWindow, _enabled: bool) -> Result<(), String> {
+    // Blur effect is only available on macOS
+    Ok(())
+}
+
+/// Update vibrancy material for light/dark theme
+#[cfg(target_os = "macos")]
+#[tauri::command]
+async fn set_vibrancy_mode(window: tauri::WebviewWindow, is_dark: bool) -> Result<(), String> {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    log::info!("set_vibrancy_mode called with is_dark={}", is_dark);
+
+    let (tx, rx) = mpsc::channel();
+    let app_handle = window.app_handle().clone();
+    let app_handle_inner = app_handle.clone();
+
+    app_handle
+        .run_on_main_thread(move || {
+            let result = if let Some(webview_window) = app_handle_inner.get_webview_window(MAIN_WINDOW_LABEL) {
+                update_vibrancy_material(&webview_window, is_dark)
+            } else {
+                Err("Window not found".to_string())
+            };
+            let _ = tx.send(result);
+        })
+        .map_err(|e| e.to_string())?;
+
+    rx.recv_timeout(Duration::from_secs(5))
+        .map_err(|e| format!("Timeout waiting for vibrancy update: {}", e))?
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+async fn set_vibrancy_mode(_window: tauri::WebviewWindow, _is_dark: bool) -> Result<(), String> {
+    // Vibrancy is only available on macOS
+    Ok(())
+}
+
 #[cfg(target_os = "macos")]
 #[tauri::command]
 async fn update_panel_behavior(window: tauri::Window, sticky_mode: bool) -> Result<(), String> {
@@ -732,9 +806,9 @@ async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Resul
                     }
                 };
 
-                // Center at cursor monitor and show
-                if let Err(e) = webview_window.center_at_cursor_monitor() {
-                    log::warn!("Failed to center at cursor monitor: {}", e);
+                // Always move to cursor's monitor, restoring saved position if available
+                if let Err(e) = webview_window.move_to_cursor_monitor() {
+                    log::warn!("Failed to move to cursor monitor: {}", e);
                 }
 
                 panel.show_and_make_key();
@@ -783,10 +857,16 @@ async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Resul
     {
         log::info!("show_window: Starting non-macOS window show sequence");
 
-        // Center the window first
-        if let Err(e) = window.center() {
-            log::warn!("Failed to center window: {}", e);
+        // Only center on first show - remember position after that
+        if is_first_show {
+            if let Err(e) = window.center() {
+                log::warn!("Failed to center window: {}", e);
+            }
+            log::info!("First show - centered window");
         }
+
+        // Mark as shown
+        state.has_been_shown.store(true, std::sync::atomic::Ordering::SeqCst);
 
         // On Linux, we need to be more aggressive about showing the window
         // due to different window manager behaviors
@@ -843,6 +923,17 @@ async fn hide_window(window: tauri::Window) -> Result<(), String> {
             .run_on_main_thread(move || {
                 if let Ok(panel) = app_handle_inner.get_webview_panel(MAIN_WINDOW_LABEL) {
                     if panel.is_visible() {
+                        // Save position before hiding
+                        if let Some(webview_window) = app_handle_inner.get_webview_window(MAIN_WINDOW_LABEL) {
+                            if let Some(monitor_name) = get_cursor_monitor_name() {
+                                if let Err(e) = webview_window.save_position_for_current_monitor(&monitor_name) {
+                                    log::warn!("Failed to save position on hide: {:?}", e);
+                                } else {
+                                    log::info!("Saved position for {} before hiding", monitor_name);
+                                }
+                            }
+                        }
+
                         panel.hide();
                     }
                 }
@@ -873,6 +964,15 @@ async fn hide_and_paste(window: tauri::Window, state: State<'_, AppState>) -> Re
             .run_on_main_thread(move || {
                 if let Ok(panel) = app_handle_inner.get_webview_panel(MAIN_WINDOW_LABEL) {
                     if panel.is_visible() {
+                        // Save position before hiding
+                        if let Some(webview_window) = app_handle_inner.get_webview_window(MAIN_WINDOW_LABEL) {
+                            if let Some(monitor_name) = get_cursor_monitor_name() {
+                                if let Err(e) = webview_window.save_position_for_current_monitor(&monitor_name) {
+                                    log::warn!("Failed to save position on hide: {:?}", e);
+                                }
+                            }
+                        }
+
                         panel.hide();
                     }
                 }
@@ -940,9 +1040,13 @@ pub fn run() {
     let app_state = AppState {
         db: Mutex::new(db),
         previous_app: Mutex::new(None),
+        has_been_shown: std::sync::atomic::AtomicBool::new(false),
     };
     #[cfg(not(target_os = "macos"))]
-    let app_state = AppState { db: Mutex::new(db) };
+    let app_state = AppState {
+        db: Mutex::new(db),
+        has_been_shown: std::sync::atomic::AtomicBool::new(false),
+    };
 
     #[allow(unused_mut)]
     let mut builder = tauri::Builder::default()
@@ -1036,6 +1140,8 @@ pub fn run() {
             hide_window,
             hide_and_paste,
             toggle_fullscreen,
+            set_window_blur_cmd,
+            set_vibrancy_mode,
             #[cfg(target_os = "macos")]
             update_panel_behavior,
             // Dialogs
@@ -1061,6 +1167,13 @@ pub fn run() {
                     log::warn!("Failed to pre-initialize panel: {:?}", e);
                 } else {
                     log::info!("NSPanel pre-initialized successfully");
+
+                    // Apply transparency at startup
+                    if let Err(e) = set_window_blur(&window, true) {
+                        log::warn!("Failed to apply transparency on startup: {:?}", e);
+                    } else {
+                        log::info!("Transparency applied on startup");
+                    }
 
                     // Apply sticky mode behavior based on saved settings
                     if let Ok(settings) = load_settings() {
@@ -1117,13 +1230,13 @@ pub fn run() {
                             #[cfg(target_os = "macos")]
                             {
                                 if let Some(window) = app.get_webview_window("main") {
-                                    // Get or create the panel
                                     let panel = app
                                         .get_webview_panel(MAIN_WINDOW_LABEL)
                                         .or_else(|_| window.to_wingman_panel());
 
                                     if let Ok(panel) = panel {
-                                        window.center_at_cursor_monitor().ok();
+                                        // Always move to cursor's monitor with saved position
+                                        window.move_to_cursor_monitor().ok();
                                         panel.show_and_make_key();
                                     }
                                 }
@@ -1131,6 +1244,7 @@ pub fn run() {
                             #[cfg(not(target_os = "macos"))]
                             {
                                 if let Some(window) = app.get_webview_window("main") {
+                                    window.center().ok();
                                     window.show().ok();
                                     window.set_focus().ok();
                                 }
@@ -1145,7 +1259,7 @@ pub fn run() {
                                         .or_else(|_| window.to_wingman_panel());
 
                                     if let Ok(panel) = panel {
-                                        window.center_at_cursor_monitor().ok();
+                                        window.move_to_cursor_monitor().ok();
                                         panel.show_and_make_key();
                                         window.emit("open-hotkeys", ()).ok();
                                     }
@@ -1154,6 +1268,7 @@ pub fn run() {
                             #[cfg(not(target_os = "macos"))]
                             {
                                 if let Some(window) = app.get_webview_window("main") {
+                                    window.center().ok();
                                     window.show().ok();
                                     window.set_focus().ok();
                                     window.emit("open-hotkeys", ()).ok();
@@ -1169,7 +1284,7 @@ pub fn run() {
                                         .or_else(|_| window.to_wingman_panel());
 
                                     if let Ok(panel) = panel {
-                                        window.center_at_cursor_monitor().ok();
+                                        window.move_to_cursor_monitor().ok();
                                         panel.show_and_make_key();
                                         window.emit("open-settings", ()).ok();
                                     }
@@ -1178,6 +1293,7 @@ pub fn run() {
                             #[cfg(not(target_os = "macos"))]
                             {
                                 if let Some(window) = app.get_webview_window("main") {
+                                    window.center().ok();
                                     window.show().ok();
                                     window.set_focus().ok();
                                     window.emit("open-settings", ()).ok();
@@ -1193,7 +1309,7 @@ pub fn run() {
                                         .or_else(|_| window.to_wingman_panel());
 
                                     if let Ok(panel) = panel {
-                                        window.center_at_cursor_monitor().ok();
+                                        window.move_to_cursor_monitor().ok();
                                         panel.show_and_make_key();
                                         window.emit("check-updates", ()).ok();
                                     }
@@ -1202,6 +1318,7 @@ pub fn run() {
                             #[cfg(not(target_os = "macos"))]
                             {
                                 if let Some(window) = app.get_webview_window("main") {
+                                    window.center().ok();
                                     window.show().ok();
                                     window.set_focus().ok();
                                     window.emit("check-updates", ()).ok();

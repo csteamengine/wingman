@@ -3,75 +3,155 @@
 @tailwind utilities;
 
 :root {
-  /* Dark theme (default) - Raycast-inspired */
-  --editor-bg: rgba(25, 25, 25, 0.98);
+  /* UI colors - Dark theme (default) */
+  --ui-text: #EBEBEB;
+  --ui-text-muted: #7A7A7A;
+  --ui-border: rgba(255, 255, 255, 0.08);
+  --ui-accent: #FF6363;
+  --ui-surface: rgba(255, 255, 255, 0.05);
+  --ui-surface-solid: rgba(30, 30, 30, 0.95);
+  --ui-hover: rgba(255, 255, 255, 0.08);
+  --ui-overlay: rgba(0, 0, 0, 0.3);
+
+  /* Button colors - Dark theme */
+  --btn-ai-bg: rgba(16, 185, 129, 0.15);
+  --btn-ai-border: rgba(16, 185, 129, 0.4);
+  --btn-ai-text: #6ee7b7;
+  --btn-ai-hover: rgba(16, 185, 129, 0.25);
+  --btn-obsidian-bg: rgba(168, 85, 247, 0.15);
+  --btn-obsidian-border: rgba(168, 85, 247, 0.4);
+  --btn-obsidian-text: #c4b5fd;
+  --btn-obsidian-hover: rgba(168, 85, 247, 0.25);
+  --btn-primary-bg: rgba(255, 255, 255, 0.1);
+  --btn-primary-border: rgba(255, 255, 255, 0.2);
+  --btn-primary-text: #EBEBEB;
+  --btn-primary-hover: rgba(255, 255, 255, 0.15);
+
+  /* Editor theme colors */
+  --editor-bg: transparent;
   --editor-text: #EBEBEB;
-  --editor-border: rgba(255, 255, 255, 0.08);
-  --editor-accent: #FF6363;
-  --editor-muted: #7A7A7A;
-  --editor-surface: rgba(38, 38, 38, 0.95);
-  --editor-hover: rgba(255, 255, 255, 0.06);
+  --editor-gutter: transparent;
+  --editor-line-highlight: rgba(255, 255, 255, 0.03);
 }
 
-.theme-light {
-  --editor-bg: rgba(255, 255, 255, 0.98);
-  --editor-text: #1A1A1A;
-  --editor-border: rgba(0, 0, 0, 0.08);
-  --editor-accent: #E5484D;
-  --editor-muted: #8B8B8B;
-  --editor-surface: rgba(248, 248, 248, 0.95);
-  --editor-hover: rgba(0, 0, 0, 0.04);
+/* ===== DARK THEMES ===== */
+
+/* Default dark theme */
+.theme-dark {
+  --ui-accent: #FF6363;
+  --editor-bg: rgba(40, 42, 54, 0.3);
 }
 
+/* High contrast dark */
 .theme-high-contrast {
-  --editor-bg: rgba(0, 0, 0, 1);
-  --editor-text: #ffffff;
-  --editor-border: rgba(255, 255, 255, 0.2);
-  --editor-accent: #FFD60A;
-  --editor-muted: #A0A0A0;
-  --editor-surface: rgba(20, 20, 20, 1);
-  --editor-hover: rgba(255, 255, 255, 0.08);
+  --ui-text: #FFFFFF;
+  --ui-text-muted: #AAAAAA;
+  --ui-border: rgba(255, 255, 255, 0.15);
+  --ui-accent: #00FF88;
+  --editor-bg: rgba(0, 0, 0, 0.5);
+  --editor-line-highlight: rgba(255, 255, 255, 0.08);
 }
 
-/* Pro themes */
-.theme-solarized-dark {
-  --editor-bg: rgba(0, 43, 54, 0.98);
-  --editor-text: #93a1a1;
-  --editor-border: rgba(147, 161, 161, 0.15);
-  --editor-accent: #268bd2;
-  --editor-muted: #657b83;
-  --editor-surface: rgba(7, 54, 66, 0.95);
-  --editor-hover: rgba(147, 161, 161, 0.1);
-}
-
-.theme-solarized-light {
-  --editor-bg: rgba(253, 246, 227, 0.98);
-  --editor-text: #586e75;
-  --editor-border: rgba(101, 123, 131, 0.15);
-  --editor-accent: #268bd2;
-  --editor-muted: #93a1a1;
-  --editor-surface: rgba(238, 232, 213, 0.95);
-  --editor-hover: rgba(101, 123, 131, 0.08);
-}
-
+/* Dracula theme */
 .theme-dracula {
-  --editor-bg: rgba(40, 42, 54, 0.98);
-  --editor-text: #f8f8f2;
-  --editor-border: rgba(248, 248, 242, 0.1);
-  --editor-accent: #bd93f9;
-  --editor-muted: #6272a4;
-  --editor-surface: rgba(68, 71, 90, 0.95);
-  --editor-hover: rgba(248, 248, 242, 0.06);
+  --ui-accent: #ff79c6;
+  --ui-text: #f8f8f2;
+  --ui-text-muted: #6272a4;
+  --editor-bg: rgba(40, 42, 54, 0.4);
+  --btn-ai-text: #50fa7b;
+  --btn-ai-border: rgba(80, 250, 123, 0.4);
+  --btn-ai-bg: rgba(80, 250, 123, 0.15);
+  --btn-obsidian-text: #bd93f9;
+  --btn-obsidian-border: rgba(189, 147, 249, 0.4);
+  --btn-obsidian-bg: rgba(189, 147, 249, 0.15);
 }
 
+/* Nord theme */
 .theme-nord {
-  --editor-bg: rgba(46, 52, 64, 0.98);
-  --editor-text: #eceff4;
-  --editor-border: rgba(236, 239, 244, 0.1);
-  --editor-accent: #88c0d0;
-  --editor-muted: #4c566a;
-  --editor-surface: rgba(59, 66, 82, 0.95);
-  --editor-hover: rgba(236, 239, 244, 0.06);
+  --ui-accent: #88c0d0;
+  --ui-text: #eceff4;
+  --ui-text-muted: #4c566a;
+  --editor-bg: rgba(46, 52, 64, 0.4);
+  --btn-ai-text: #a3be8c;
+  --btn-ai-border: rgba(163, 190, 140, 0.4);
+  --btn-ai-bg: rgba(163, 190, 140, 0.15);
+  --btn-obsidian-text: #b48ead;
+  --btn-obsidian-border: rgba(180, 142, 173, 0.4);
+  --btn-obsidian-bg: rgba(180, 142, 173, 0.15);
+}
+
+/* Solarized dark */
+.theme-solarized-dark {
+  --ui-accent: #b58900;
+  --ui-text: #839496;
+  --ui-text-muted: #586e75;
+  --editor-bg: rgba(0, 43, 54, 0.4);
+  --btn-ai-text: #859900;
+  --btn-ai-border: rgba(133, 153, 0, 0.4);
+  --btn-ai-bg: rgba(133, 153, 0, 0.15);
+  --btn-obsidian-text: #6c71c4;
+  --btn-obsidian-border: rgba(108, 113, 196, 0.4);
+  --btn-obsidian-bg: rgba(108, 113, 196, 0.15);
+}
+
+/* ===== LIGHT THEMES ===== */
+
+/* Base light theme overrides */
+.theme-light {
+  --ui-text: #111111;
+  --ui-text-muted: #444444;
+  --ui-border: rgba(0, 0, 0, 0.15);
+  --ui-accent: #2563eb;
+  --ui-surface: rgba(0, 0, 0, 0.06);
+  --ui-surface-solid: rgba(250, 250, 250, 0.95);
+  --ui-hover: rgba(0, 0, 0, 0.1);
+  --ui-overlay: rgba(255, 255, 255, 0.35);
+
+  /* Button colors - Light theme (bold and clearly enabled) */
+  --btn-ai-bg: #d1fae5;
+  --btn-ai-border: #059669;
+  --btn-ai-text: #047857;
+  --btn-ai-hover: #a7f3d0;
+  --btn-obsidian-bg: #ede9fe;
+  --btn-obsidian-border: #7c3aed;
+  --btn-obsidian-text: #6d28d9;
+  --btn-obsidian-hover: #ddd6fe;
+  --btn-primary-bg: #e5e7eb;
+  --btn-primary-border: #6b7280;
+  --btn-primary-text: #111827;
+  --btn-primary-hover: #d1d5db;
+
+  --editor-bg: rgba(255, 255, 255, 0.3);
+  --editor-text: #111111;
+  --editor-line-highlight: rgba(0, 0, 0, 0.04);
+}
+
+/* Solarized light */
+.theme-solarized-light {
+  --ui-text: #073642;
+  --ui-text-muted: #586e75;
+  --ui-border: rgba(0, 0, 0, 0.12);
+  --ui-accent: #268bd2;
+  --ui-surface: rgba(238, 232, 213, 0.3);
+  --ui-surface-solid: rgba(253, 246, 227, 0.95);
+  --ui-hover: rgba(0, 0, 0, 0.08);
+  --ui-overlay: rgba(253, 246, 227, 0.4);
+
+  --btn-ai-bg: #e0e8c0;
+  --btn-ai-border: #859900;
+  --btn-ai-text: #5c6b00;
+  --btn-ai-hover: #d0dc9c;
+  --btn-obsidian-bg: #e0dff0;
+  --btn-obsidian-border: #6c71c4;
+  --btn-obsidian-text: #5a5ea8;
+  --btn-obsidian-hover: #d0cee8;
+  --btn-primary-bg: #e8e4d4;
+  --btn-primary-border: #586e75;
+  --btn-primary-text: #073642;
+  --btn-primary-hover: #dcd6c4;
+
+  --editor-bg: rgba(253, 246, 227, 0.35);
+  --editor-text: #073642;
 }
 
 * {
@@ -84,14 +164,15 @@ html, body {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background: transparent;
+  /* Required for window-vibrancy to work properly */
+  background: transparent !important;
 }
 
 #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background: transparent;
+  background: transparent !important;
   border-radius: 10px;
 }
 
@@ -122,33 +203,39 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--editor-muted);
+  background: var(--ui-text-muted);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--editor-accent);
+  background: var(--ui-accent);
 }
 
 /* Editor styles */
 .editor-container {
-  background: var(--editor-bg);
-  color: var(--editor-text);
-  border: 1px solid var(--editor-border);
+  /* Semi-transparent overlay on top of native macOS vibrancy */
+  background: var(--ui-overlay);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
   border-radius: 10px;
   overflow: hidden;
   isolation: isolate;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.1),
     0 8px 40px rgba(0, 0, 0, 0.35);
 }
 
+/* Adjust box shadow for light theme */
+.theme-light .editor-container {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 8px 40px rgba(0, 0, 0, 0.15);
+}
+
 /* Panel styles */
 .panel {
-  background: var(--editor-surface);
-  border: 1px solid var(--editor-border);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
   border-radius: 6px;
 }
 
@@ -156,27 +243,27 @@ body {
 .btn {
   @apply px-3 py-1.5 text-sm font-medium transition-all duration-100;
   background: transparent;
-  color: var(--editor-text);
+  color: var(--ui-text);
   border: none;
   border-radius: 6px;
 }
 
 .btn:hover {
-  background: var(--editor-hover);
+  background: var(--ui-hover);
 }
 
 .btn:active {
-  background: var(--editor-surface);
+  background: var(--ui-surface);
 }
 
 .btn-primary {
-  background: var(--editor-accent);
+  background: var(--ui-accent);
   color: white;
 }
 
 .btn-primary:hover {
   filter: brightness(1.1);
-  background: var(--editor-accent);
+  background: var(--ui-accent);
 }
 
 .btn-primary:active {
@@ -186,20 +273,20 @@ body {
 /* Input styles */
 .input {
   @apply w-full px-3 py-2.5 text-sm;
-  background: var(--editor-surface);
-  color: var(--editor-text);
+  background: var(--ui-surface);
+  color: var(--ui-text);
   border: 1px solid transparent;
   border-radius: 6px;
 }
 
 .input::placeholder {
-  color: var(--editor-muted);
+  color: var(--ui-text-muted);
 }
 
 .input:focus {
   outline: none;
-  background: var(--editor-bg);
-  box-shadow: 0 0 0 1px var(--editor-accent);
+  background: transparent;
+  box-shadow: 0 0 0 1px var(--ui-accent);
 }
 
 /* List item styles */
@@ -211,15 +298,15 @@ body {
 }
 
 .list-item:hover {
-  background: var(--editor-hover);
+  background: var(--ui-hover);
 }
 
 .list-item.selected {
-  background: var(--editor-surface);
+  background: var(--ui-surface);
 }
 
 .list-item.active {
-  background: var(--editor-accent);
+  background: var(--ui-accent);
   color: white;
 }
 
@@ -227,16 +314,16 @@ body {
 .status-bar {
   @apply flex items-center justify-between px-4 py-2 text-xs;
   background: transparent;
-  color: var(--editor-muted);
-  border-top: 1px solid var(--editor-border);
+  color: var(--ui-text-muted);
+  border-top: 1px solid var(--ui-border);
   border-radius: 0 0 10px 10px;
 }
 
 /* Keyboard shortcut badge */
 .kbd {
   @apply inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium;
-  background: var(--editor-hover);
-  color: var(--editor-muted);
+  background: var(--ui-hover);
+  color: var(--ui-text-muted);
   border-radius: 4px;
   min-width: 20px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -246,10 +333,16 @@ body {
 .cm-editor {
   height: 100%;
   font-size: inherit;
+  background: transparent !important;
 }
 
 .cm-editor .cm-scroller {
   font-family: inherit;
+  background: transparent !important;
+}
+
+.cm-editor .cm-content {
+  background: transparent !important;
 }
 
 .cm-editor.cm-focused {
@@ -258,26 +351,26 @@ body {
 
 .cm-editor .cm-gutters {
   background: transparent;
-  border-right: 1px solid var(--editor-border);
+  border-right: 1px solid var(--ui-border);
 }
 
 .cm-editor .cm-activeLineGutter {
-  background: var(--editor-hover);
+  background: var(--editor-line-highlight);
 }
 
 .cm-editor .cm-activeLine {
-  background: var(--editor-hover);
+  background: var(--editor-line-highlight);
 }
 
 /* CodeMirror search panel styles */
 .cm-editor .cm-panels {
-  background: var(--editor-surface);
-  color: var(--editor-text);
-  border-bottom: 1px solid var(--editor-border);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  border-bottom: 1px solid var(--ui-border);
 }
 
 .cm-editor .cm-panels.cm-panels-top {
-  border-bottom: 1px solid var(--editor-border);
+  border-bottom: 1px solid var(--ui-border);
 }
 
 .cm-editor .cm-search {
@@ -300,48 +393,48 @@ body {
   padding: 4px 8px;
   margin: 2px;
   border-radius: 4px;
-  border: 1px solid var(--editor-border);
-  background: var(--editor-bg);
-  color: var(--editor-text);
+  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  color: var(--ui-text);
 }
 
 .cm-editor .cm-panel input {
-  background: var(--editor-bg);
+  background: var(--ui-surface);
 }
 
 .cm-editor .cm-panel input:focus {
   outline: none;
-  border-color: var(--editor-accent);
-  box-shadow: 0 0 0 1px var(--editor-accent);
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 1px var(--ui-accent);
 }
 
 .cm-editor .cm-panel button {
-  background: var(--editor-hover);
+  background: var(--ui-hover);
   cursor: pointer;
 }
 
 .cm-editor .cm-panel button:hover {
-  background: var(--editor-accent);
+  background: var(--ui-accent);
   color: white;
-  border-color: var(--editor-accent);
+  border-color: var(--ui-accent);
 }
 
 .cm-editor .cm-panel label {
   font-size: 12px;
-  color: var(--editor-muted);
+  color: var(--ui-text-muted);
   margin: 0 4px;
 }
 
 .cm-editor .cm-panel [name="close"] {
   font-size: 16px;
-  color: var(--editor-muted);
+  color: var(--ui-text-muted);
   background: transparent;
   border: none;
 }
 
 .cm-editor .cm-panel [name="close"]:hover {
-  color: var(--editor-text);
-  background: var(--editor-hover);
+  color: var(--ui-text);
+  background: var(--ui-hover);
 }
 
 /* Animations */
@@ -422,25 +515,25 @@ body {
 /* Focus visible */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 1px var(--editor-accent);
+  box-shadow: 0 0 0 1px var(--ui-accent);
 }
 
 /* Toolbar button styles */
 .toolbar-btn {
   @apply relative w-8 h-8 flex items-center justify-center rounded-md transition-colors;
   background: transparent;
-  color: var(--editor-muted);
+  color: var(--ui-text-muted);
   border: none;
   cursor: pointer;
 }
 
 .toolbar-btn:hover:not(:disabled) {
-  background: var(--editor-hover);
-  color: var(--editor-text);
+  background: var(--ui-hover);
+  color: var(--ui-text);
 }
 
 .toolbar-btn:active:not(:disabled) {
-  background: var(--editor-surface);
+  background: var(--ui-surface);
 }
 
 .toolbar-btn:disabled {
@@ -450,10 +543,49 @@ body {
 
 .pro-badge {
   @apply absolute top-0 right-0 text-[6px] w-2.5 h-2.5 flex items-center justify-center rounded-full;
-  background: var(--editor-accent);
+  background: var(--ui-accent);
   color: white;
   font-weight: bold;
   line-height: 1;
   padding: 2px;
   font-size: 6px;
+}
+
+/* AI button (green/emerald) */
+.btn-ai {
+  background: var(--btn-ai-bg);
+  border: 1px solid var(--btn-ai-border);
+  color: var(--btn-ai-text);
+}
+
+.btn-ai:hover:not(:disabled) {
+  background: var(--btn-ai-hover);
+}
+
+/* Obsidian button (purple/violet) */
+.btn-obsidian {
+  background: var(--btn-obsidian-bg);
+  border: 1px solid var(--btn-obsidian-border);
+  color: var(--btn-obsidian-text);
+}
+
+.btn-obsidian:hover:not(:disabled) {
+  background: var(--btn-obsidian-hover);
+}
+
+/* Primary button (Copy to Clipboard) */
+.btn-primary {
+  background: var(--btn-primary-bg);
+  border: 1px solid var(--btn-primary-border);
+  color: var(--btn-primary-text);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--btn-primary-hover);
+}
+
+/* Editor pane background - shows theme colors */
+.editor-pane {
+  background: var(--editor-bg);
+  border-radius: 6px;
 }
