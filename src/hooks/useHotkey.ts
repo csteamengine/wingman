@@ -6,7 +6,7 @@ import { useLicenseStore } from '../stores/licenseStore';
 
 export function useGlobalHotkey() {
   const { settings } = useSettingsStore();
-  const { showWindow } = useEditorStore();
+  const { toggleWindow } = useEditorStore();
 
   useEffect(() => {
     if (!settings?.hotkey) return;
@@ -22,11 +22,11 @@ export function useGlobalHotkey() {
           await unregister(shortcut);
         }
 
-        // Register the hotkey - always shows the window (summon behavior)
-        // User can dismiss with Escape or clicking outside
+        // Register the hotkey - toggles window visibility (like Spotlight/Raycast)
+        // If visible, hides; if hidden, shows
         await register(shortcut, (event) => {
           if (event.state === 'Pressed') {
-            showWindow();
+            toggleWindow();
           }
         });
         registered = true;
@@ -43,7 +43,7 @@ export function useGlobalHotkey() {
         unregister(shortcut).catch(console.error);
       }
     };
-  }, [settings?.hotkey, showWindow]);
+  }, [settings?.hotkey, toggleWindow]);
 }
 
 export function useKeyboardShortcuts() {

@@ -11,6 +11,23 @@ import {html} from '@codemirror/lang-html';
 import {css} from '@codemirror/lang-css';
 import {json} from '@codemirror/lang-json';
 import {markdown} from '@codemirror/lang-markdown';
+import {sql} from '@codemirror/lang-sql';
+import {yaml} from '@codemirror/lang-yaml';
+import {xml} from '@codemirror/lang-xml';
+import {java} from '@codemirror/lang-java';
+import {go} from '@codemirror/lang-go';
+import {php} from '@codemirror/lang-php';
+import {cpp} from '@codemirror/lang-cpp';
+import {StreamLanguage} from '@codemirror/language';
+import {shell} from '@codemirror/legacy-modes/mode/shell';
+import {ruby} from '@codemirror/legacy-modes/mode/ruby';
+import {swift} from '@codemirror/legacy-modes/mode/swift';
+import {csharp} from '@codemirror/legacy-modes/mode/clike';
+import {kotlin} from '@codemirror/legacy-modes/mode/clike';
+import {bracketMatching} from '@codemirror/language';
+import {autocompletion, closeBrackets, closeBracketsKeymap} from '@codemirror/autocomplete';
+import {linter, lintGutter} from '@codemirror/lint';
+import type {Diagnostic} from '@codemirror/lint';
 import {oneDark} from '@codemirror/theme-one-dark';
 import {listen} from '@tauri-apps/api/event';
 import {useEditorStore} from '../stores/editorStore';
@@ -20,7 +37,8 @@ import {usePremiumStore} from '../stores/premiumStore';
 import {useDragStore} from '../stores/dragStore';
 import type {ObsidianResult} from '../types';
 
-const languages: Record<string, () => ReturnType<typeof javascript>> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const languages: Record<string, () => any> = {
     javascript: javascript,
     typescript: () => javascript({typescript: true}),
     jsx: () => javascript({jsx: true}),
@@ -31,21 +49,119 @@ const languages: Record<string, () => ReturnType<typeof javascript>> = {
     css: css,
     json: json,
     markdown: markdown,
+    // Primary languages (free)
+    sql: sql,
+    yaml: yaml,
+    xml: xml,
+    bash: () => StreamLanguage.define(shell),
+    java: java,
+    go: go,
+    php: php,
+    c: cpp,
+    cpp: cpp,
+    // Secondary languages (PRO)
+    ruby: () => StreamLanguage.define(ruby),
+    swift: () => StreamLanguage.define(swift),
+    kotlin: () => StreamLanguage.define(kotlin),
+    csharp: () => StreamLanguage.define(csharp),
 };
 
-const LANGUAGE_OPTIONS = [
+interface LanguageOption {
+    value: string;
+    label: string;
+    isPro?: boolean;
+}
+
+const LANGUAGE_OPTIONS: LanguageOption[] = [
+    // Text formats
     {value: 'plaintext', label: 'Plain Text'},
+    {value: 'markdown', label: 'Markdown'},
+    // Web languages
     {value: 'javascript', label: 'JavaScript'},
     {value: 'typescript', label: 'TypeScript'},
     {value: 'jsx', label: 'JSX'},
     {value: 'tsx', label: 'TSX'},
-    {value: 'python', label: 'Python'},
-    {value: 'rust', label: 'Rust'},
     {value: 'html', label: 'HTML'},
     {value: 'css', label: 'CSS'},
     {value: 'json', label: 'JSON'},
-    {value: 'markdown', label: 'Markdown'},
+    // Primary languages (free)
+    {value: 'sql', label: 'SQL'},
+    {value: 'yaml', label: 'YAML'},
+    {value: 'xml', label: 'XML'},
+    {value: 'bash', label: 'Bash/Shell'},
+    {value: 'python', label: 'Python'},
+    {value: 'java', label: 'Java'},
+    {value: 'go', label: 'Go'},
+    {value: 'php', label: 'PHP'},
+    {value: 'c', label: 'C'},
+    {value: 'cpp', label: 'C++'},
+    {value: 'rust', label: 'Rust'},
+    // Secondary languages (PRO)
+    {value: 'ruby', label: 'Ruby', isPro: true},
+    {value: 'swift', label: 'Swift', isPro: true},
+    {value: 'kotlin', label: 'Kotlin', isPro: true},
+    {value: 'csharp', label: 'C#', isPro: true},
 ];
+
+// JSON Linter - validates JSON syntax and reports errors
+function jsonLinter(view: EditorView): Diagnostic[] {
+    const doc = view.state.doc.toString();
+    if (!doc.trim()) return [];
+
+    try {
+        JSON.parse(doc);
+        return [];
+    } catch (e) {
+        if (e instanceof SyntaxError) {
+            // Try to extract line/column from error message
+            const match = e.message.match(/at position (\d+)/);
+            let pos = 0;
+            if (match) {
+                pos = parseInt(match[1], 10);
+            }
+            // Clamp position to document bounds
+            pos = Math.min(pos, doc.length);
+
+            return [{
+                from: pos,
+                to: Math.min(pos + 1, doc.length),
+                severity: 'error',
+                message: e.message,
+            }];
+        }
+        return [];
+    }
+}
+
+// YAML Linter - basic validation for common YAML issues
+function yamlLinter(view: EditorView): Diagnostic[] {
+    const diagnostics: Diagnostic[] = [];
+    const doc = view.state.doc;
+
+    for (let i = 1; i <= doc.lines; i++) {
+        const line = doc.line(i);
+        const text = line.text;
+
+        // Check for tabs (YAML should use spaces)
+        if (text.includes('\t')) {
+            const tabPos = text.indexOf('\t');
+            diagnostics.push({
+                from: line.from + tabPos,
+                to: line.from + tabPos + 1,
+                severity: 'warning',
+                message: 'YAML should use spaces, not tabs for indentation',
+            });
+        }
+
+        // Check for trailing colons without values on same line (common mistake)
+        const colonMatch = text.match(/:\s*$/);
+        if (colonMatch && !text.trim().endsWith(':') && text.trim().length > 1) {
+            // This is valid YAML (multi-line value), skip
+        }
+    }
+
+    return diagnostics;
+}
 
 // Markdown link decoration - hides syntax and shows only link text in blue
 const hiddenMark = Decoration.mark({ class: 'cm-markdown-link-hidden' });
@@ -180,6 +296,7 @@ export function EditorWindow() {
     const [obsidianToast, setObsidianToast] = useState<ObsidianResult | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
     const [showAiPopover, setShowAiPopover] = useState(false);
+    const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const aiPopoverRef = useRef<HTMLDivElement>(null);
 
 
@@ -367,6 +484,34 @@ export function EditorWindow() {
 
     // Get enabled presets for the popover
     const enabledPresets = getEnabledPresets();
+
+    // Load selected preset from localStorage on mount
+    useEffect(() => {
+        const savedPresetId = localStorage.getItem('wingman_selected_ai_preset');
+        if (savedPresetId) {
+            setSelectedPresetId(savedPresetId);
+        }
+    }, []);
+
+    // Get the currently selected preset (or first enabled preset as default)
+    const selectedPreset = enabledPresets.find(p => p.id === selectedPresetId) || enabledPresets[0] || null;
+
+    // Handle selecting a preset as the default
+    const handleSelectPreset = useCallback((presetId: string) => {
+        setSelectedPresetId(presetId);
+        localStorage.setItem('wingman_selected_ai_preset', presetId);
+        setShowAiPopover(false);
+    }, []);
+
+    // Handle clicking the main AI button (triggers refinement with selected preset)
+    const handleAiButtonClick = useCallback(async () => {
+        if (!selectedPreset) {
+            // No preset selected, show the popover to select one
+            setShowAiPopover(true);
+            return;
+        }
+        await handleAiRefineWithPreset(selectedPreset);
+    }, [selectedPreset, handleAiRefineWithPreset]);
 
     // Handle Obsidian send action
     const handleObsidianSend = useCallback(async () => {
@@ -585,7 +730,7 @@ export function EditorWindow() {
     ]);
 
     const hasStatsDisplay = isProFeatureEnabled('stats_display');
-    // Language selection is free for all users
+    const hasProEditorFeatures = isProFeatureEnabled('syntax_highlighting'); // PRO editor enhancements
 
     // Handle paste for file attachments (PRO feature)
     // Note: Markdown link pasting is handled by CodeMirror extension (markdownLinkPasteHandler)
@@ -730,10 +875,58 @@ export function EditorWindow() {
             ...getLanguageExtension(),
         ];
 
-        // Add dark theme for dark-ish themes (CodeMirror's oneDark works well for these)
-        const darkThemes = ['dark', 'high-contrast', 'solarized-dark', 'dracula', 'nord'];
-        if (!settings?.theme || darkThemes.includes(settings.theme)) {
+        // PRO Editor Features: bracket matching, auto-closing brackets, autocomplete
+        if (hasProEditorFeatures) {
+            extensions.push(
+                bracketMatching(),
+                closeBrackets(),
+                keymap.of(closeBracketsKeymap),
+                autocompletion({
+                    activateOnTyping: true,
+                    maxRenderedOptions: 10,
+                })
+            );
+
+            // PRO Linting: Add language-specific linters
+            if (language === 'json') {
+                extensions.push(
+                    lintGutter(),
+                    linter(jsonLinter, { delay: 300 })
+                );
+            } else if (language === 'yaml') {
+                extensions.push(
+                    lintGutter(),
+                    linter(yamlLinter, { delay: 300 })
+                );
+            }
+        }
+
+        // Add theme based on light/dark setting
+        const lightThemes = ['light', 'solarized-light'];
+        const isLightTheme = settings?.theme && lightThemes.includes(settings.theme);
+
+        if (!isLightTheme) {
+            // Dark themes use oneDark
             extensions.push(oneDark);
+        }
+
+        // Override background to transparent for native macOS vibrancy
+        extensions.push(EditorView.theme({
+            '&': { backgroundColor: 'transparent' },
+            '.cm-scroller': { backgroundColor: 'transparent' },
+            '.cm-content': { backgroundColor: 'transparent' },
+            '.cm-gutters': { backgroundColor: 'transparent' },
+        }));
+
+        // Add light theme overrides for text visibility
+        if (isLightTheme) {
+            extensions.push(EditorView.theme({
+                '.cm-content': { color: '#1a1a1a' },
+                '.cm-gutters': { color: '#666666' },
+                '.cm-cursor': { borderLeftColor: '#1a1a1a' },
+                '.cm-activeLine': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
+                '.cm-activeLineGutter': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
+            }));
         }
 
         // Use contentRef to get latest content even when effect re-runs
@@ -759,7 +952,7 @@ export function EditorWindow() {
         };
     // Note: editorKeymap and setEditorView are stable references, intentionally omitted
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [language, settings?.theme, setContent, getLanguageExtension]);
+    }, [language, settings?.theme, setContent, getLanguageExtension, hasProEditorFeatures]);
 
     // Listen for refocus events (triggered when workspace changes in sticky mode)
     useEffect(() => {
@@ -800,69 +993,107 @@ export function EditorWindow() {
             onDrop={handleDrop}
         >
             {/* Text Transformation Toolbar - Top */}
-            <div className="border-b border-[var(--editor-border)] px-2 py-2 overflow-x-auto">
+            <div className="border-b border-[var(--ui-border)] px-2 py-2 overflow-x-auto">
                 <div className="flex items-center gap-0.5 min-w-max">
                     {/* Text Case Group */}
                     <button onClick={() => transformText('uppercase')} title="UPPERCASE" className="toolbar-btn">
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3 18h7l-3-9-3 9z"/><path d="M14 18h7l-3-9-3 9z"/><path d="M5 14h4"/><path d="M16 14h4"/>
+                        {/* A with up arrow */}
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 18l4-12h2l4 12"/>
+                            <path d="M5 14h6"/>
+                            <path d="M18 4v8"/>
+                            <path d="M15 7l3-3 3 3"/>
                         </svg>
                     </button>
                     <button onClick={() => transformText('lowercase')} title="lowercase" className="toolbar-btn">
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="9" cy="15" r="4"/><path d="M13 11v4c0 2.2 1.8 4 4 4s4-1.8 4-4v-4"/>
+                        {/* a with down arrow */}
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="7" cy="14" r="4"/>
+                            <path d="M11 10v8"/>
+                            <path d="M18 12v8"/>
+                            <path d="M15 17l3 3 3-3"/>
                         </svg>
                     </button>
                     <button onClick={() => transformText('titlecase')} title="Title Case" className="toolbar-btn">
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <text x="2" y="17" fontSize="16" fill="currentColor" fontFamily="sans-serif" fontWeight="bold">Aa</text>
+                        {/* T with underline */}
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M5 6h14"/>
+                            <path d="M12 6v10"/>
+                            <path d="M7 20h10"/>
                         </svg>
                     </button>
                     <button onClick={() => transformText('sentencecase')} title="Sentence case" className="toolbar-btn">
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <text x="1" y="16" fontSize="14" fill="currentColor" fontFamily="sans-serif">Aa</text>
-                            <circle cx="20" cy="14" r="1.5" fill="currentColor"/>
+                        {/* Capital A with period - sentence starts with capital, ends with period */}
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M5 18l5-14h2l5 14"/>
+                            <path d="M7 13h8"/>
+                            <circle cx="20" cy="17" r="1.5" fill="currentColor"/>
                         </svg>
                     </button>
-                    <div className="w-px h-6 bg-[var(--editor-border)] mx-1"/>
+                    <div className="w-px h-6 bg-[var(--ui-border)] mx-1"/>
 
                     {/* Text Formatting Group */}
                     <button onClick={() => transformText('trim')} title="Trim Whitespace" className="toolbar-btn">
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                            <path d="M6 3v18M18 3v18"/><path d="M9 12h6"/>
+                        {/* Scissors */}
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="6" cy="6" r="3"/>
+                            <circle cx="6" cy="18" r="3"/>
+                            <path d="M8.12 8.12L12 12"/>
+                            <path d="M20 4L8.12 15.88"/>
+                            <path d="M14.47 14.48L20 20"/>
+                            <path d="M8.12 8.12L12 12"/>
                         </svg>
                     </button>
                     <button onClick={() => transformText('sort')} title="Sort Lines A→Z" className="toolbar-btn">
+                        {/* Bars ascending with arrow */}
                         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M11 11h4"/><path d="M11 15h7"/><path d="M11 19h10"/><path d="M3 7l3-3 3 3"/><path d="M6 4v14"/>
+                            <path d="M4 6h4"/>
+                            <path d="M4 12h7"/>
+                            <path d="M4 18h11"/>
+                            <path d="M18 6v12"/>
+                            <path d="M15 15l3 3 3-3"/>
                         </svg>
                     </button>
                     <button onClick={() => transformText('deduplicate')} title="Remove Duplicate Lines" className="toolbar-btn">
+                        {/* Two lines, one crossed out */}
                         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="3" width="18" height="5" rx="1"/><rect x="3" y="10" width="18" height="5" rx="1" opacity="0.3"/><line x1="14" y1="18" x2="20" y2="18"/><line x1="17" y1="15" x2="17" y2="21"/>
+                            <path d="M4 8h16"/>
+                            <path d="M4 14h16"/>
+                            <path d="M3 18l18-12"/>
                         </svg>
                     </button>
                     <button onClick={() => transformText('reverse')} title="Reverse Lines" className="toolbar-btn">
+                        {/* Vertical flip arrows */}
                         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 5h18"/><path d="M3 12h15"/><path d="M3 19h12"/>
-                            <polyline points="17 15 21 19 17 23"/>
+                            <path d="M8 3l4 4-4 4"/>
+                            <path d="M4 7h12"/>
+                            <path d="M16 21l-4-4 4-4"/>
+                            <path d="M20 17H8"/>
                         </svg>
                     </button>
-                    <div className="w-px h-6 bg-[var(--editor-border)] mx-1"/>
+                    <div className="w-px h-6 bg-[var(--ui-border)] mx-1"/>
 
                     {/* Lists Group */}
                     <button onClick={applyBulletList} title="Bulleted List" className="toolbar-btn">
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                            <line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/>
-                            <circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/>
+                        {/* Lucide: list */}
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"/>
+                            <line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/>
+                            <line x1="3" y1="12" x2="3.01" y2="12"/>
+                            <line x1="3" y1="18" x2="3.01" y2="18"/>
                         </svg>
                     </button>
                     <button onClick={applyNumberedList} title="Numbered List" className="toolbar-btn">
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                            <line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/>
-                            <text x="3" y="8" fontSize="7" fill="currentColor" fontFamily="monospace">1</text>
-                            <text x="3" y="14" fontSize="7" fill="currentColor" fontFamily="monospace">2</text>
-                            <text x="3" y="20" fontSize="7" fill="currentColor" fontFamily="monospace">3</text>
+                        {/* Lucide: list-ordered */}
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="10" y1="6" x2="21" y2="6"/>
+                            <line x1="10" y1="12" x2="21" y2="12"/>
+                            <line x1="10" y1="18" x2="21" y2="18"/>
+                            <path d="M4 6h1v4"/>
+                            <path d="M4 10h2"/>
+                            <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>
                         </svg>
                     </button>
                 </div>
@@ -871,14 +1102,14 @@ export function EditorWindow() {
             {/* Drag overlay for files */}
             {isDragging && (
                 <div
-                    className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--editor-bg)]/90 border-2 border-dashed border-[var(--editor-accent)] rounded-lg">
+                    className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--ui-surface)]/90 border-2 border-dashed border-[var(--ui-accent)] rounded-lg">
                     <div className="text-center">
-                        <svg className="w-12 h-12 mx-auto mb-2 text-[var(--editor-accent)]" fill="none"
+                        <svg className="w-12 h-12 mx-auto mb-2 text-[var(--ui-accent)]" fill="none"
                              stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                                   d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
-                        <p className="text-sm text-[var(--editor-text)]">Drop to insert</p>
+                        <p className="text-sm text-[var(--ui-text)]">Drop to insert</p>
                     </div>
                 </div>
             )}
@@ -894,7 +1125,7 @@ export function EditorWindow() {
                             top: cursorPosition.y + 16,
                         }}
                     >
-                        <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--editor-accent)] text-white text-xs font-medium shadow-lg">
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--ui-accent)] text-white text-xs font-medium shadow-lg">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
                                 <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
@@ -929,7 +1160,7 @@ export function EditorWindow() {
                                 }}
                             >
                                 <div
-                                    className="bg-[var(--editor-accent)] animate-pulse"
+                                    className="bg-[var(--ui-accent)] animate-pulse"
                                     style={{
                                         width: '2px',
                                         height: `${lineHeight}px`,
@@ -944,7 +1175,7 @@ export function EditorWindow() {
             {/* AI Loading overlay */}
             {aiLoading && (
                 <div
-                    className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--editor-bg)]/95 backdrop-blur-sm rounded-lg">
+                    className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--ui-surface)]/95 backdrop-blur-sm rounded-lg">
                     <div className="text-center">
                         <svg className="w-10 h-10 mx-auto mb-3 text-purple-400 animate-spin" fill="none"
                              viewBox="0 0 24 24">
@@ -953,7 +1184,7 @@ export function EditorWindow() {
                                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                         </svg>
                         <p className="text-sm font-medium text-purple-300">Refining with AI...</p>
-                        <p className="text-xs text-[var(--editor-text-muted)] mt-1">This may take a moment</p>
+                        <p className="text-xs text-[var(--ui-text-muted)] mt-1">This may take a moment</p>
                     </div>
                 </div>
             )}
@@ -963,7 +1194,7 @@ export function EditorWindow() {
                     editorRef.current = el;
                     editorContainerRef.current = el;
                 }}
-                className="flex-1 overflow-hidden"
+                className="flex-1 overflow-hidden editor-pane"
                 style={{
                     fontFamily: settings?.font_family || 'monospace',
                     fontSize: `${settings?.font_size || 14}px`,
@@ -972,9 +1203,9 @@ export function EditorWindow() {
 
             {/* Attachments */}
             {images.length > 0 && (
-                <div className="border-t border-[var(--editor-border)] px-3 py-2">
+                <div className="border-t border-[var(--ui-border)] px-3 py-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-[var(--editor-muted)]">Attachments:</span>
+                        <span className="text-xs text-[var(--ui-text-muted)]">Attachments:</span>
                         {images.map((attachment) => (
                             <div key={attachment.id} className="relative group">
                                 {attachment.type === 'image' ? (
@@ -982,25 +1213,25 @@ export function EditorWindow() {
                                     <img
                                         src={attachment.data}
                                         alt={attachment.name}
-                                        className="h-10 w-auto rounded border border-[var(--editor-border)] object-cover"
+                                        className="h-10 w-auto rounded border border-[var(--ui-border)] object-cover"
                                         title={`[image #${attachment.id}] - ${attachment.name}`}
                                     />
                                 ) : (
                                     // File icon for non-images
                                     <div
-                                        className="h-10 w-10 rounded border border-[var(--editor-border)] bg-[var(--editor-surface)] flex items-center justify-center"
+                                        className="h-10 w-10 rounded border border-[var(--ui-border)] bg-[var(--ui-surface)] flex items-center justify-center"
                                         title={`[file #${attachment.id}] - ${attachment.name}`}
                                     >
                                         {attachment.type === 'text' ? (
                                             // Text file icon
-                                            <svg className="w-5 h-5 text-[var(--editor-muted)]" fill="none"
+                                            <svg className="w-5 h-5 text-[var(--ui-text-muted)]" fill="none"
                                                  stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                                                       d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                             </svg>
                                         ) : (
                                             // Generic file icon
-                                            <svg className="w-5 h-5 text-[var(--editor-muted)]" fill="none"
+                                            <svg className="w-5 h-5 text-[var(--ui-text-muted)]" fill="none"
                                                  stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                                                       d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
@@ -1025,7 +1256,7 @@ export function EditorWindow() {
                     {/* Info notice when both text and files present */}
                     {content.trim() && (
                         <div
-                            className="mt-2 flex items-start gap-1.5 text-[10px] text-[var(--editor-muted)] opacity-70">
+                            className="mt-2 flex items-start gap-1.5 text-[10px] text-[var(--ui-text-muted)] opacity-70">
                             <svg className="w-3 h-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
                                  viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -1040,9 +1271,9 @@ export function EditorWindow() {
 
             {/* Stats bar - optional */}
             {settings?.show_status_bar !== false && (
-                <div className="border-t border-[var(--editor-border)]">
+                <div className="border-t border-[var(--ui-border)]">
                     {/* Stats info row */}
-                    <div className="flex items-center justify-between px-4 py-2 text-xs text-[var(--editor-muted)]">
+                    <div className="flex items-center justify-between px-4 py-2 text-xs text-[var(--ui-text-muted)]">
                         <div className="flex items-center gap-3">
                             {hasStatsDisplay ? (
                                 <>
@@ -1056,32 +1287,45 @@ export function EditorWindow() {
                                 <span className="opacity-60">Pro: Stats</span>
                             )}
                         </div>
-                        {/* Language Selector - Free for all users */}
+                        {/* Language Selector */}
                         <div className="relative">
                             <button
                                 onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                                className="text-xs px-2 py-1 rounded-md hover:bg-[var(--editor-hover)] transition-colors"
+                                className="text-xs px-2 py-1 rounded-md hover:bg-[var(--ui-hover)] transition-colors"
                             >
                                 {LANGUAGE_OPTIONS.find(l => l.value === language)?.label || 'Plain Text'}
+                                {LANGUAGE_OPTIONS.find(l => l.value === language)?.isPro && (
+                                    <span className="ml-1 text-[9px] text-[var(--ui-accent)]">PRO</span>
+                                )}
                                 <span className="ml-1 opacity-40">▾</span>
                             </button>
                             {showLanguageDropdown && (
                                 <div
-                                    className="absolute bottom-full mb-1 right-0 bg-[var(--editor-bg)] border border-[var(--editor-border)] rounded-md shadow-lg z-50 min-w-[140px] max-h-[200px] overflow-y-auto py-1">
-                                    {LANGUAGE_OPTIONS.map((lang) => (
-                                        <button
-                                            key={lang.value}
-                                            onClick={() => {
-                                                setLanguage(lang.value);
-                                                setShowLanguageDropdown(false);
-                                            }}
-                                            className={`w-full text-left text-xs px-3 py-1.5 hover:bg-[var(--editor-hover)] ${
-                                                language === lang.value ? 'text-[var(--editor-accent)]' : ''
-                                            }`}
-                                        >
-                                            {lang.label}
-                                        </button>
-                                    ))}
+                                    className="absolute bottom-full mb-1 right-0 bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] rounded-md shadow-lg z-50 min-w-[140px] max-h-[280px] overflow-y-auto py-1">
+                                    {LANGUAGE_OPTIONS.map((lang) => {
+                                        const isProLang = lang.isPro;
+                                        const hasAccess = !isProLang || isProFeatureEnabled('syntax_highlighting');
+                                        return (
+                                            <button
+                                                key={lang.value}
+                                                onClick={() => {
+                                                    if (hasAccess) {
+                                                        setLanguage(lang.value);
+                                                        setShowLanguageDropdown(false);
+                                                    }
+                                                }}
+                                                disabled={!hasAccess}
+                                                className={`w-full text-left text-xs px-3 py-1.5 flex items-center justify-between ${
+                                                    hasAccess ? 'hover:bg-[var(--ui-hover)]' : 'opacity-50 cursor-not-allowed'
+                                                } ${language === lang.value ? 'text-[var(--ui-accent)]' : ''}`}
+                                            >
+                                                <span>{lang.label}</span>
+                                                {isProLang && (
+                                                    <span className="text-[9px] text-[var(--ui-accent)] ml-2">PRO</span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -1090,16 +1334,17 @@ export function EditorWindow() {
             )}
 
             {/* Action buttons - always visible */}
-            <div className={`${settings?.show_status_bar !== false ? '' : 'border-t border-[var(--editor-border)]'} rounded-b-[10px]`}>
+            <div className={`${settings?.show_status_bar !== false ? '' : 'border-t border-[var(--ui-border)]'} rounded-b-[10px]`}>
                 {/* Action button row */}
                 <div className="px-3 py-3 flex gap-2">
-                        {/* AI Refine button with popover - green */}
-                        <div className="relative" ref={aiPopoverRef}>
+                        {/* AI Refine split button - green */}
+                        <div className="relative flex" ref={aiPopoverRef}>
+                            {/* Main button - triggers refinement with selected preset */}
                             <button
-                                onClick={() => setShowAiPopover(!showAiPopover)}
+                                onClick={handleAiButtonClick}
                                 disabled={!isPremium || !content.trim() || aiLoading}
-                                title="Refine text with AI"
-                                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm transition-colors bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-40"
+                                title={selectedPreset ? `Refine with ${selectedPreset.name}` : "Refine text with AI"}
+                                className="btn-ai flex items-center justify-center gap-1.5 pl-3 pr-2 py-2.5 rounded-l-md text-sm transition-colors disabled:opacity-40 border-r-0"
                             >
                                 {aiLoading ? (
                                     <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -1113,33 +1358,52 @@ export function EditorWindow() {
                                         <path d="M16.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
                                     </svg>
                                 )}
-                                <span>AI</span>
-                                <svg className="w-3 h-3 ml-0.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <span>{selectedPreset?.name || 'AI'}</span>
+                            </button>
+                            {/* Dropdown button - opens preset selector */}
+                            <button
+                                onClick={() => setShowAiPopover(!showAiPopover)}
+                                disabled={!isPremium || aiLoading}
+                                title="Select AI preset"
+                                className="btn-ai flex items-center justify-center px-1.5 py-2.5 rounded-r-md text-sm transition-colors disabled:opacity-40"
+                            >
+                                <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
                                 </svg>
                             </button>
 
                             {/* AI Presets Popover */}
                             {showAiPopover && (
-                                <div className="absolute bottom-full mb-2 left-0 bg-[var(--editor-bg)] border border-[var(--editor-border)] rounded-lg shadow-lg z-50 min-w-[220px] py-1 animate-fade-in">
-                                    <div className="px-3 py-2 border-b border-[var(--editor-border)]">
-                                        <p className="text-xs font-medium text-[var(--editor-text)]">Transform with AI</p>
-                                        <p className="text-[10px] text-[var(--editor-muted)]">Select a preset to refine your text</p>
+                                <div className="absolute bottom-full mb-2 left-0 bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] rounded-lg shadow-lg z-50 min-w-[220px] py-1 animate-fade-in">
+                                    <div className="px-3 py-2 border-b border-[var(--ui-border)]">
+                                        <p className="text-xs font-medium text-[var(--ui-text)]">Select Default Preset</p>
+                                        <p className="text-[10px] text-[var(--ui-text-muted)]">Choose a preset for the AI button</p>
                                     </div>
                                     <div className="max-h-[200px] overflow-y-auto">
                                         {enabledPresets.map((preset) => (
                                             <button
                                                 key={preset.id}
-                                                onClick={() => handleAiRefineWithPreset(preset)}
-                                                className="w-full text-left px-3 py-2 hover:bg-[var(--editor-hover)] transition-colors"
+                                                onClick={() => handleSelectPreset(preset.id)}
+                                                className={`w-full text-left px-3 py-2 hover:bg-[var(--ui-hover)] transition-colors ${
+                                                    selectedPreset?.id === preset.id ? 'bg-[var(--btn-ai-bg)]' : ''
+                                                }`}
                                             >
-                                                <p className="text-xs font-medium text-[var(--editor-text)]">{preset.name}</p>
-                                                <p className="text-[10px] text-[var(--editor-muted)]">{preset.description}</p>
+                                                <div className="flex items-center gap-2">
+                                                    {selectedPreset?.id === preset.id && (
+                                                        <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                                                        </svg>
+                                                    )}
+                                                    <div className={selectedPreset?.id === preset.id ? '' : 'ml-5'}>
+                                                        <p className="text-xs font-medium text-[var(--ui-text)]">{preset.name}</p>
+                                                        <p className="text-[10px] text-[var(--ui-text-muted)]">{preset.description}</p>
+                                                    </div>
+                                                </div>
                                             </button>
                                         ))}
                                     </div>
                                     {enabledPresets.length === 0 && (
-                                        <p className="px-3 py-2 text-xs text-[var(--editor-muted)]">No presets enabled. Configure in Settings.</p>
+                                        <p className="px-3 py-2 text-xs text-[var(--ui-text-muted)]">No presets enabled. Configure in Settings.</p>
                                     )}
                                 </div>
                             )}
@@ -1150,7 +1414,7 @@ export function EditorWindow() {
                             onClick={handleObsidianSend}
                             disabled={!hasObsidianAccess || !hasObsidianConfigured || !content.trim()}
                             title={!hasObsidianAccess ? "Pro feature - Send to Obsidian" : (!hasObsidianConfigured ? "Configure Obsidian vault in Settings first" : "Send to Obsidian")}
-                            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm transition-colors bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 disabled:opacity-40"
+                            className="btn-obsidian flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm transition-colors disabled:opacity-40"
                         >
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l6.9 3.45L12 11.09 5.1 7.63 12 4.18zM4 8.82l7 3.5v7.36l-7-3.5V8.82zm9 10.86v-7.36l7-3.5v7.36l-7 3.5z"/>
@@ -1162,7 +1426,7 @@ export function EditorWindow() {
                         <button
                             onClick={pasteAndClose}
                             disabled={!content.trim() && images.length === 0}
-                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-md bg-[var(--editor-surface)] border border-[var(--editor-border)] text-sm text-[var(--editor-text)] hover:bg-[var(--editor-hover)] disabled:opacity-40 transition-colors"
+                            className="btn-primary flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm disabled:opacity-40 transition-colors"
                         >
                             <span>Copy to Clipboard</span>
                             <span className="kbd">⌘↵</span>

@@ -52,9 +52,9 @@ export function ProFeatureGate({
 
   return (
     <div className="flex flex-col items-center justify-center h-full p-6 text-center animate-fade-in">
-      <div className="w-12 h-12 rounded-full bg-[var(--editor-surface)] border border-[var(--editor-border)] flex items-center justify-center mb-4">
+      <div className="w-12 h-12 rounded-full bg-[var(--ui-surface)] border border-[var(--ui-border)] flex items-center justify-center mb-4">
         <svg
-          className="w-6 h-6 text-[var(--editor-accent)]"
+          className="w-6 h-6 text-[var(--ui-accent)]"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -68,7 +68,7 @@ export function ProFeatureGate({
         </svg>
       </div>
       <h3 className="text-base font-medium mb-2">{FEATURE_NAMES[feature]}</h3>
-      <p className="text-sm text-[var(--editor-muted)] mb-4 max-w-xs">
+      <p className="text-sm text-[var(--ui-text-muted)] mb-4 max-w-xs">
         This is a Pro feature. Upgrade to Wingman Pro for $4.99 (one-time) to unlock all features.
       </p>
       <button
@@ -89,11 +89,11 @@ export function ProFeatureGate({
             console.error('Failed to create checkout session:', err);
           }
         }}
-        className="btn bg-[var(--editor-accent)] text-white px-4 py-2"
+        className="btn bg-[var(--ui-accent)] text-white px-4 py-2"
       >
         Upgrade to Pro
       </button>
-      <p className="text-xs text-[var(--editor-muted)] mt-3">
+      <p className="text-xs text-[var(--ui-text-muted)] mt-3">
         Already have a license? Go to Settings to activate.
       </p>
     </div>

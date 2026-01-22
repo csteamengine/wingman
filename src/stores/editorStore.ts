@@ -52,6 +52,7 @@ interface EditorState {
   applyNumberedList: () => void;
   showWindow: () => Promise<void>;
   hideWindow: () => Promise<void>;
+  toggleWindow: () => Promise<void>;
   // Navigate to settings with specific tab or update check
   openSettingsTab: (tab: SettingsTab, checkUpdates?: boolean) => void;
   clearSettingsNavigation: () => void;
@@ -371,6 +372,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const storeState = get();
     const { editorView } = storeState;
 
+    // Regex patterns for list detection
+    const bulletPattern = /^(\s*)[•\-\*]\s/;
+    const numberPattern = /^(\s*)\d+\.\s/;
+
     // Get content from editor (source of truth) or fall back to store
     const content = getEditorContent(storeState);
 
@@ -394,8 +399,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       // Fallback: apply bullets to all lines
       const lines = content.split('\n');
       const bulleted = lines.map(line => {
-        if (line.trim() === '' || line.trimStart().startsWith('• ')) {
+        if (line.trim() === '') {
           return line;
+        }
+        // Already a bullet - skip
+        if (bulletPattern.test(line)) {
+          return line;
+        }
+        // Is a numbered list - convert to bullet
+        if (numberPattern.test(line)) {
+          return line.replace(numberPattern, '$1• ');
         }
         return '• ' + line;
       }).join('\n');
@@ -419,7 +432,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const lineText = line.text;
 
       // Skip already bulleted lines
-      if (lineText.trimStart().startsWith('• ')) {
+      if (bulletPattern.test(lineText)) {
+        continue;
+      }
+
+      // Convert numbered list to bullet
+      const numberMatch = lineText.match(numberPattern);
+      if (numberMatch) {
+        const indent = numberMatch[1] || '';
+        const matchLength = numberMatch[0].length;
+        changes.push({
+          from: line.from,
+          to: line.from + matchLength,
+          insert: `${indent}• `,
+        });
         continue;
       }
 
@@ -453,6 +479,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const storeState = get();
     const { editorView } = storeState;
 
+    // Regex patterns for list detection
+    const bulletPattern = /^(\s*)[•\-\*]\s/;
+    const numberPattern = /^(\s*)\d+\.\s/;
+
     // Get content from editor (source of truth) or fall back to store
     const content = getEditorContent(storeState);
 
@@ -481,8 +511,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           return line;
         }
         // Skip already numbered lines
-        if (/^\s*\d+\.\s/.test(line)) {
+        if (numberPattern.test(line)) {
           return line;
+        }
+        // Convert bullet to number
+        if (bulletPattern.test(line)) {
+          return line.replace(bulletPattern, `$1${num++}. `);
         }
         return `${num++}. ${line}`;
       }).join('\n');
@@ -507,8 +541,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const lineText = line.text;
 
       // Skip already numbered lines
-      if (/^\s*\d+\.\s/.test(lineText)) {
+      if (numberPattern.test(lineText)) {
         num++;
+        continue;
+      }
+
+      // Convert bullet list to numbered
+      const bulletMatch = lineText.match(bulletPattern);
+      if (bulletMatch) {
+        const indent = bulletMatch[1] || '';
+        const matchLength = bulletMatch[0].length;
+        changes.push({
+          from: line.from,
+          to: line.from + matchLength,
+          insert: `${indent}${num++}. `,
+        });
         continue;
       }
 
@@ -555,6 +602,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       set({ isVisible: false });
     } catch (error) {
       console.error('Failed to hide window:', error);
+    }
+  },
+
+  toggleWindow: async () => {
+    const { isVisible } = get();
+    if (isVisible) {
+      // If visible, hide it (like Spotlight/Raycast behavior)
+      try {
+        await invoke('hide_window');
+        set({ isVisible: false });
+      } catch (error) {
+        console.error('Failed to hide window:', error);
+      }
+    } else {
+      // If hidden, show it
+      try {
+        await invoke('show_window');
+        set({ isVisible: true });
+      } catch (error) {
+        console.error('Failed to show window:', error);
+      }
     }
   },
 

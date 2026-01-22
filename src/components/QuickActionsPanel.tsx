@@ -526,14 +526,14 @@ export function QuickActionsPanel() {
                 onMouseEnter={() => setSelectedIndex(index)}
                 disabled={isDisabled}
                 title={tooltip}
-                className={`flex items-center justify-between px-2 py-1.5 rounded-md text-left text-sm ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[var(--editor-hover)]'} ${isSelected ? 'bg-[var(--editor-hover)] ring-1 ring-[var(--editor-accent)]/50' : ''}`}
+                className={`flex items-center justify-between px-2 py-1.5 rounded-md text-left text-sm ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[var(--ui-hover)]'} ${isSelected ? 'bg-[var(--ui-hover)] ring-1 ring-[var(--ui-accent)]/50' : ''}`}
             >
-        <span className="text-[var(--editor-text)]">
+        <span className="text-[var(--ui-text)]">
           {action.label}
         </span>
                 {!isPro && (
                     <span
-                        className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--editor-accent)]/20 text-[var(--editor-accent)]">
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--ui-accent)]/20 text-[var(--ui-accent)]">
             PRO
           </span>
                 )}
@@ -598,12 +598,12 @@ export function QuickActionsPanel() {
                 }}
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={`group relative px-3 py-2.5 rounded-md cursor-grab active:cursor-grabbing transition-all select-none ${
-                    isSelected ? 'bg-[var(--editor-hover)] ring-1 ring-[var(--editor-accent)]/50' : 'hover:bg-[var(--editor-hover)]'
+                    isSelected ? 'bg-[var(--ui-hover)] ring-1 ring-[var(--ui-accent)]/50' : 'hover:bg-[var(--ui-hover)]'
                 } ${isDragging ? 'opacity-50' : ''}`}
             >
                 {/* Full width content - two lines with ellipsis */}
                 <p
-                    className="text-sm text-[var(--editor-text)] leading-tight overflow-hidden"
+                    className="text-sm text-[var(--ui-text)] leading-tight overflow-hidden"
                     style={{
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
@@ -616,13 +616,13 @@ export function QuickActionsPanel() {
 
                 {/* Footer with metadata and actions */}
                 <div className="flex items-center justify-between mt-1.5">
-                    <p className="text-[11px] text-[var(--editor-muted)]">
+                    <p className="text-[11px] text-[var(--ui-text-muted)]">
                         {formatTime(item.timestamp)} · {item.content.length} chars
                     </p>
 
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {/* Drag hint */}
-                        <div className="text-[var(--editor-muted)] mr-1" title="Drag to insert">
+                        <div className="text-[var(--ui-text-muted)] mr-1" title="Drag to insert">
                             <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
                                 <circle cx="3" cy="3" r="1.5"/>
                                 <circle cx="9" cy="3" r="1.5"/>
@@ -637,7 +637,7 @@ export function QuickActionsPanel() {
                                 e.stopPropagation();
                                 removeClipboardItem(item.id);
                             }}
-                            className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-500/20 text-[var(--editor-muted)] hover:text-red-400 transition-all"
+                            className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-500/20 text-[var(--ui-text-muted)] hover:text-red-400 transition-all"
                             title="Remove from history"
                         >
                             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"
@@ -653,13 +653,13 @@ export function QuickActionsPanel() {
 
     return (
         <div className="flex flex-col h-full animate-fade-in" onKeyDown={handleKeyDown}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--editor-border)]">
-                <h2 className="text-sm font-medium text-[var(--editor-text)]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--ui-border)]">
+                <h2 className="text-sm font-medium text-[var(--ui-text)]">
                     {activeTab === 'clipboard' ? 'Clipboard' : 'Quick Actions'}
                 </h2>
                 <button
                     onClick={() => setActivePanel('editor')}
-                    className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] text-[var(--editor-muted)] hover:text-[var(--editor-text)] transition-colors"
+                    className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors"
                     aria-label="Close panel"
                 >
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"
@@ -670,13 +670,13 @@ export function QuickActionsPanel() {
             </div>
 
             {/* Tab buttons */}
-            <div className="flex border-b border-[var(--editor-border)]">
+            <div className="flex border-b border-[var(--ui-border)]">
                 <button
                     onClick={() => setActiveTab('clipboard')}
                     className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
                         activeTab === 'clipboard'
-                            ? 'text-[var(--editor-accent)] border-b-2 border-[var(--editor-accent)]'
-                            : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)]'
+                            ? 'text-[var(--ui-accent)] border-b-2 border-[var(--ui-accent)]'
+                            : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
                     }`}
                 >
                     <div className="flex items-center justify-center gap-1.5">
@@ -688,12 +688,12 @@ export function QuickActionsPanel() {
                         Clipboard
                         {!hasClipboardHistory ? (
                             <span
-                                className="text-[10px] px-1 rounded bg-[var(--editor-accent)]/20 text-[var(--editor-accent)]">
+                                className="text-[10px] px-1 rounded bg-[var(--ui-accent)]/20 text-[var(--ui-accent)]">
                 PRO
               </span>
                         ) : clipboardItems.length > 0 ? (
                             <span
-                                className="text-[10px] px-1 rounded bg-[var(--editor-accent)]/20 text-[var(--editor-accent)]">
+                                className="text-[10px] px-1 rounded bg-[var(--ui-accent)]/20 text-[var(--ui-accent)]">
                 {clipboardItems.length}
               </span>
                         ) : null}
@@ -703,8 +703,8 @@ export function QuickActionsPanel() {
                     onClick={() => setActiveTab('actions')}
                     className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
                         activeTab === 'actions'
-                            ? 'text-[var(--editor-accent)] border-b-2 border-[var(--editor-accent)]'
-                            : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)]'
+                            ? 'text-[var(--ui-accent)] border-b-2 border-[var(--ui-accent)]'
+                            : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
                     }`}
                 >
                     <div className="flex items-center justify-center gap-1.5">
@@ -718,10 +718,10 @@ export function QuickActionsPanel() {
             </div>
 
             {/* Search input */}
-            <div className="px-2 py-2 border-b border-[var(--editor-border)]">
+            <div className="px-2 py-2 border-b border-[var(--ui-border)]">
                 <div className="relative">
                     <svg
-                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--editor-muted)]"
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--ui-text-muted)]"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -736,12 +736,12 @@ export function QuickActionsPanel() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={activeTab === 'clipboard' ? 'Search clipboard...' : 'Search actions...'}
-                        className="w-full pl-8 pr-3 py-1.5 text-sm bg-[var(--editor-surface)] border border-[var(--editor-border)] rounded-md text-[var(--editor-text)] placeholder:text-[var(--editor-muted)] focus:outline-none focus:border-[var(--editor-accent)]"
+                        className="w-full pl-8 pr-3 py-1.5 text-sm bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-md text-[var(--ui-text)] placeholder:text-[var(--ui-text-muted)] focus:outline-none focus:border-[var(--ui-accent)]"
                     />
                     {searchQuery && (
                         <button
                             onClick={() => setSearchQuery('')}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-[var(--editor-muted)] hover:text-[var(--editor-text)]"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]"
                         >
                             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"
                                  strokeWidth="1.5" strokeLinecap="round">
@@ -766,20 +766,20 @@ export function QuickActionsPanel() {
                         /* PRO feature gate */
                         <div className="px-3 py-8 text-center">
                             <div
-                                className="w-12 h-12 mx-auto mb-3 rounded-full bg-[var(--editor-surface)] border border-[var(--editor-border)] flex items-center justify-center">
-                                <svg className="w-6 h-6 text-[var(--editor-accent)]" fill="none" stroke="currentColor"
+                                className="w-12 h-12 mx-auto mb-3 rounded-full bg-[var(--ui-surface)] border border-[var(--ui-border)] flex items-center justify-center">
+                                <svg className="w-6 h-6 text-[var(--ui-accent)]" fill="none" stroke="currentColor"
                                      viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                           d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                                 </svg>
                             </div>
-                            <h3 className="text-sm font-medium text-[var(--editor-text)] mb-1">Clipboard History</h3>
-                            <p className="text-xs text-[var(--editor-muted)] mb-3">
+                            <h3 className="text-sm font-medium text-[var(--ui-text)] mb-1">Clipboard History</h3>
+                            <p className="text-xs text-[var(--ui-text-muted)] mb-3">
                                 Track and reuse your recent clipboard items. Upgrade to Pro to unlock.
                             </p>
                             <button
                                 onClick={() => setActivePanel('settings')}
-                                className="text-xs text-[var(--editor-accent)] hover:underline"
+                                className="text-xs text-[var(--ui-accent)] hover:underline"
                             >
                                 Upgrade to Pro
                             </button>
@@ -789,7 +789,7 @@ export function QuickActionsPanel() {
                             {filteredClipboardItems.map((item, index) => renderClipboardItem(item, index))}
                         </div>
                     ) : (
-                        <div className="px-3 py-8 text-center text-xs text-[var(--editor-muted)]">
+                        <div className="px-3 py-8 text-center text-xs text-[var(--ui-text-muted)]">
                             {searchQuery ? (
                                 <>No clipboard items found for "{searchQuery}"</>
                             ) : (
@@ -810,7 +810,7 @@ export function QuickActionsPanel() {
                                     {filteredActions.map((action, index) => renderAction(action, index, true))}
                                 </div>
                             ) : (
-                                <div className="px-3 py-8 text-center text-xs text-[var(--editor-muted)]">
+                                <div className="px-3 py-8 text-center text-xs text-[var(--ui-text-muted)]">
                                     No actions found for "{searchQuery}"
                                 </div>
                             )
@@ -826,13 +826,13 @@ export function QuickActionsPanel() {
                                         <div key={section.title} className="mb-2">
                                             <button
                                                 onClick={() => toggleSection(section.title)}
-                                                className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-medium text-[var(--editor-muted)] hover:text-[var(--editor-text)] transition-colors"
+                                                className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-medium text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors"
                                             >
                         <span className="flex items-center gap-2">
                           {section.title}
                             {section.proFeature && !isPro && (
                                 <span
-                                    className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--editor-accent)]/20 text-[var(--editor-accent)]">
+                                    className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--ui-accent)]/20 text-[var(--ui-accent)]">
                               PRO
                             </span>
                             )}
@@ -855,12 +855,12 @@ export function QuickActionsPanel() {
                                                 <div className="grid gap-1">
                                                     {section.proFeature && !isPro ? (
                                                         <div
-                                                            className="px-3 py-4 text-center text-xs text-[var(--editor-muted)]">
+                                                            className="px-3 py-4 text-center text-xs text-[var(--ui-text-muted)]">
                                                             <p className="mb-2">Upgrade to Pro to
                                                                 unlock {section.title}</p>
                                                             <button
                                                                 onClick={() => setActivePanel('settings')}
-                                                                className="text-[var(--editor-accent)] hover:underline"
+                                                                className="text-[var(--ui-accent)] hover:underline"
                                                             >
                                                                 View Pro features
                                                             </button>
@@ -897,10 +897,10 @@ export function QuickActionsPanel() {
                 )}
             </div>
 
-            <div className="px-4 py-2 border-t border-[var(--editor-border)] rounded-br-[10px]">
+            <div className="px-4 py-2 border-t border-[var(--ui-border)] rounded-br-[10px]">
                 {activeTab === 'clipboard' ? (
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs text-[var(--editor-muted)]">
+                        <div className="flex items-center gap-2 text-xs text-[var(--ui-text-muted)]">
                             <span className="kbd">Drag</span>
                             <span className="opacity-60">to insert</span>
                             <span className="opacity-30">·</span>
@@ -910,14 +910,14 @@ export function QuickActionsPanel() {
                         {clipboardItems.length > 0 && (
                             <button
                                 onClick={clearClipboard}
-                                className="text-xs text-[var(--editor-muted)] hover:text-red-400 transition-colors"
+                                className="text-xs text-[var(--ui-text-muted)] hover:text-red-400 transition-colors"
                             >
                                 Clear all
                             </button>
                         )}
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2 text-xs text-[var(--editor-muted)]">
+                    <div className="flex items-center gap-2 text-xs text-[var(--ui-text-muted)]">
                         <span className="kbd">↑↓</span>
                         <span className="opacity-60">Navigate</span>
                         <span className="opacity-30">·</span>

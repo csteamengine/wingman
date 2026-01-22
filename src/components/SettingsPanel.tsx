@@ -4,6 +4,7 @@ import {invoke} from '@tauri-apps/api/core';
 import {useSettings} from '../hooks/useSettings';
 import {useEditorStore} from '../stores/editorStore';
 import {useLicenseStore} from '../stores/licenseStore';
+import {usePremiumStore, formatTokenUsage} from '../stores/premiumStore';
 import {LicenseActivation} from './LicenseActivation';
 import {ObsidianConfig} from './ObsidianConfig';
 import {ProBadge} from './ProFeatureGate';
@@ -40,10 +41,15 @@ interface UpdateInfo {
 
 type TabType = 'settings' | 'hotkeys' | 'license';
 
+// Platform detection - opacity slider only available on Linux
+// macOS uses native vibrancy (NSVisualEffectView), Windows uses acrylic/mica
+const isLinux = navigator.platform.includes('Linux');
+
 export function SettingsPanel() {
     const {settings, handleUpdate, handleReset} = useSettings();
     const {setActivePanel, initialSettingsTab, shouldCheckUpdates, clearSettingsNavigation} = useEditorStore();
-    const {isProFeatureEnabled} = useLicenseStore();
+    const {isProFeatureEnabled, isPremiumTier} = useLicenseStore();
+    const {subscriptionStatus, tokenUsagePercent, loadSubscriptionStatus} = usePremiumStore();
     const [activeTab, setActiveTab] = useState<TabType>('settings');
     const [hotkeyInput, setHotkeyInput] = useState('');
     const [isRecording, setIsRecording] = useState(false);
@@ -59,6 +65,17 @@ export function SettingsPanel() {
     const hasStickyMode = isProFeatureEnabled('sticky_mode');
     const hasStatsDisplay = isProFeatureEnabled('stats_display');
     const hasObsidianAccess = isProFeatureEnabled('obsidian_integration');
+    const isPremium = isPremiumTier();
+
+    // Load subscription status for Premium users
+    useEffect(() => {
+        if (isPremium) {
+            const licenseKey = localStorage.getItem('wingman_license_key');
+            if (licenseKey) {
+                loadSubscriptionStatus(licenseKey);
+            }
+        }
+    }, [isPremium, loadSubscriptionStatus]);
 
     // Get app version on mount
     useEffect(() => {
@@ -157,11 +174,11 @@ export function SettingsPanel() {
     return (
         <div className="flex flex-col h-full animate-fade-in">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--editor-border)]">
-                <h2 className="text-sm font-medium text-[var(--editor-text)]">Settings</h2>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--ui-border)]">
+                <h2 className="text-sm font-medium text-[var(--ui-text)]">Settings</h2>
                 <button
                     onClick={() => setActivePanel('editor')}
-                    className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] text-[var(--editor-muted)] hover:text-[var(--editor-text)] transition-colors"
+                    className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors"
                     aria-label="Close settings"
                 >
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -171,14 +188,14 @@ export function SettingsPanel() {
             </div>
 
             {/* Centered Tab Navigation */}
-            <div className="border-b border-[var(--editor-border)] px-4 pt-3">
+            <div className="border-b border-[var(--ui-border)] px-4 pt-3">
                 <div className="flex items-center justify-center gap-1">
                     <button
                         onClick={() => setActiveTab('settings')}
                         className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
                             activeTab === 'settings'
-                                ? 'text-[var(--editor-text)] bg-[var(--editor-surface)]'
-                                : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)] hover:bg-[var(--editor-hover)]'
+                                ? 'text-[var(--ui-text)] bg-[var(--ui-surface)]'
+                                : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)]'
                         }`}
                     >
                         Settings
@@ -187,8 +204,8 @@ export function SettingsPanel() {
                         onClick={() => setActiveTab('hotkeys')}
                         className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
                             activeTab === 'hotkeys'
-                                ? 'text-[var(--editor-text)] bg-[var(--editor-surface)]'
-                                : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)] hover:bg-[var(--editor-hover)]'
+                                ? 'text-[var(--ui-text)] bg-[var(--ui-surface)]'
+                                : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)]'
                         }`}
                     >
                         Hotkeys
@@ -197,8 +214,8 @@ export function SettingsPanel() {
                         onClick={() => setActiveTab('license')}
                         className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
                             activeTab === 'license'
-                                ? 'text-[var(--editor-text)] bg-[var(--editor-surface)]'
-                                : 'text-[var(--editor-muted)] hover:text-[var(--editor-text)] hover:bg-[var(--editor-hover)]'
+                                ? 'text-[var(--ui-text)] bg-[var(--ui-surface)]'
+                                : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)]'
                         }`}
                     >
                         License & Updates
@@ -225,15 +242,15 @@ export function SettingsPanel() {
                                             disabled={isDisabled}
                                             className={`px-3 py-2.5 text-sm rounded-md border transition-colors text-left ${
                                                 isSelected
-                                                    ? 'border-[var(--editor-accent)] bg-[var(--editor-accent)]/10 text-[var(--editor-text)]'
+                                                    ? 'border-[var(--ui-accent)] bg-[var(--ui-accent)]/10 text-[var(--ui-text)]'
                                                     : isDisabled
-                                                    ? 'border-[var(--editor-border)] bg-[var(--editor-surface)]/50 text-[var(--editor-muted)] opacity-50 cursor-not-allowed'
-                                                    : 'border-[var(--editor-border)] bg-[var(--editor-surface)] text-[var(--editor-text)] hover:border-[var(--editor-accent)]/50'
+                                                    ? 'border-[var(--ui-border)] bg-[var(--ui-surface)]/50 text-[var(--ui-text-muted)] opacity-50 cursor-not-allowed'
+                                                    : 'border-[var(--ui-border)] bg-[var(--ui-surface)] text-[var(--ui-text)] hover:border-[var(--ui-accent)]/50'
                                             }`}
                                         >
                                             {theme.label}
                                             {theme.isPro && !hasCustomThemes && (
-                                                <span className="ml-1.5 text-xs text-[var(--editor-accent)]">PRO</span>
+                                                <span className="ml-1.5 text-xs text-[var(--ui-accent)]">PRO</span>
                                             )}
                                         </button>
                                     );
@@ -251,7 +268,7 @@ export function SettingsPanel() {
                                 value={settings.font_family}
                                 onChange={(e) => handleUpdate({font_family: e.target.value})}
                                 disabled={!hasFontCustomization}
-                                className={`w-full px-3 py-2 text-sm bg-[var(--editor-surface)] border border-[var(--editor-border)] rounded-md text-[var(--editor-text)] focus:outline-none focus:border-[var(--editor-accent)] ${
+                                className={`w-full px-3 py-2 text-sm bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-md text-[var(--ui-text)] focus:outline-none focus:border-[var(--ui-accent)] ${
                                     !hasFontCustomization ? 'opacity-50 cursor-not-allowed' : ''
                                 }`}
                             >
@@ -268,8 +285,8 @@ export function SettingsPanel() {
                             </select>
                         </div>
 
-                        {/* Font Size and Opacity - Side by Side - Pro */}
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* Font Size (and Opacity on Linux) - Pro */}
+                        <div className={`grid ${isLinux ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                             {/* Font Size - Pro */}
                             <div>
                                 <label className="block text-sm font-medium mb-2 flex items-center gap-2">
@@ -289,31 +306,33 @@ export function SettingsPanel() {
                                             }
                                         }}
                                         disabled={!hasFontCustomization}
-                                        className={`w-full px-3 py-2 pr-8 text-sm bg-[var(--editor-surface)] border border-[var(--editor-border)] rounded-md text-[var(--editor-text)] focus:outline-none focus:border-[var(--editor-accent)] ${
+                                        className={`w-full px-3 py-2 pr-8 text-sm bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-md text-[var(--ui-text)] focus:outline-none focus:border-[var(--ui-accent)] ${
                                             !hasFontCustomization ? 'opacity-50 cursor-not-allowed' : ''
                                         }`}
                                     />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--editor-muted)]">px</span>
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--ui-text-muted)]">px</span>
                                 </div>
                             </div>
 
-                            {/* Opacity - Pro */}
-                            <div>
-                                <label className="block text-sm font-medium mb-2 flex items-center gap-2">
-                                    Opacity: {Math.round(settings.opacity * 100)}%
-                                    {!hasOpacityControl && <ProBadge />}
-                                </label>
-                                <input
-                                    type="range"
-                                    min="0.5"
-                                    max="1"
-                                    step="0.05"
-                                    value={settings.opacity}
-                                    onChange={(e) => handleUpdate({opacity: parseFloat(e.target.value)})}
-                                    disabled={!hasOpacityControl}
-                                    className={`w-full ${!hasOpacityControl ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                />
-                            </div>
+                            {/* Opacity - Linux only (macOS/Windows use native vibrancy) */}
+                            {isLinux && (
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 flex items-center gap-2">
+                                        Opacity: {Math.round(settings.opacity * 100)}%
+                                        {!hasOpacityControl && <ProBadge />}
+                                    </label>
+                                    <input
+                                        type="range"
+                                        min="0.5"
+                                        max="1"
+                                        step="0.05"
+                                        value={settings.opacity}
+                                        onChange={(e) => handleUpdate({opacity: parseFloat(e.target.value)})}
+                                        disabled={!hasOpacityControl}
+                                        className={`w-full ${!hasOpacityControl ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         {/* Toggles */}
@@ -321,17 +340,17 @@ export function SettingsPanel() {
                             {/* Stats Bar - Pro */}
                             <div className={`flex items-center justify-between py-2 ${!hasStatsDisplay ? 'opacity-60' : ''}`}>
                                 <div className="flex-1">
-                                    <label className="flex items-center gap-2 text-sm font-medium text-[var(--editor-text)]">
+                                    <label className="flex items-center gap-2 text-sm font-medium text-[var(--ui-text)]">
                                         Show Stats Bar
                                         {!hasStatsDisplay && <ProBadge />}
                                     </label>
-                                    <p className="text-xs text-[var(--editor-muted)] mt-0.5">Display character, word, and line counts</p>
+                                    <p className="text-xs text-[var(--ui-text-muted)] mt-0.5">Display character, word, and line counts</p>
                                 </div>
                                 <button
                                     onClick={() => hasStatsDisplay && handleUpdate({show_status_bar: !settings.show_status_bar})}
                                     disabled={!hasStatsDisplay}
                                     className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                                        settings.show_status_bar ? 'bg-[var(--editor-accent)]' : 'bg-[var(--editor-border)]'
+                                        settings.show_status_bar ? 'bg-[var(--ui-accent)]' : 'bg-[var(--ui-border)]'
                                     } ${!hasStatsDisplay ? 'cursor-not-allowed' : ''}`}
                                 >
                                     <span
@@ -345,11 +364,11 @@ export function SettingsPanel() {
                             {/* Sticky Mode - Pro */}
                             <div className={`flex items-center justify-between py-2 ${!hasStickyMode ? 'opacity-60' : ''}`}>
                                 <div className="flex-1">
-                                    <label className="flex items-center gap-2 text-sm font-medium text-[var(--editor-text)]">
+                                    <label className="flex items-center gap-2 text-sm font-medium text-[var(--ui-text)]">
                                         Sticky Window Mode
                                         {!hasStickyMode && <ProBadge />}
                                     </label>
-                                    <p className="text-xs text-[var(--editor-muted)] mt-0.5">
+                                    <p className="text-xs text-[var(--ui-text-muted)] mt-0.5">
                                         Prevent auto-hide on focus loss{settings.sticky_mode ? ' • Double-tap Esc to close' : ''}
                                     </p>
                                 </div>
@@ -357,7 +376,7 @@ export function SettingsPanel() {
                                     onClick={() => hasStickyMode && handleUpdate({sticky_mode: !settings.sticky_mode})}
                                     disabled={!hasStickyMode}
                                     className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                                        settings.sticky_mode ? 'bg-[var(--editor-accent)]' : 'bg-[var(--editor-border)]'
+                                        settings.sticky_mode ? 'bg-[var(--ui-accent)]' : 'bg-[var(--ui-border)]'
                                     } ${!hasStickyMode ? 'cursor-not-allowed' : ''}`}
                                 >
                                     <span
@@ -371,13 +390,13 @@ export function SettingsPanel() {
                             {/* Launch at Login */}
                             <div className="flex items-center justify-between py-2">
                                 <div className="flex-1">
-                                    <label className="block text-sm font-medium text-[var(--editor-text)]">Launch at Login</label>
-                                    <p className="text-xs text-[var(--editor-muted)] mt-0.5">Start Wingman when you log in</p>
+                                    <label className="block text-sm font-medium text-[var(--ui-text)]">Launch at Login</label>
+                                    <p className="text-xs text-[var(--ui-text-muted)] mt-0.5">Start Wingman when you log in</p>
                                 </div>
                                 <button
                                     onClick={() => handleUpdate({launch_at_login: !settings.launch_at_login})}
                                     className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                                        settings.launch_at_login ? 'bg-[var(--editor-accent)]' : 'bg-[var(--editor-border)]'
+                                        settings.launch_at_login ? 'bg-[var(--ui-accent)]' : 'bg-[var(--ui-border)]'
                                     }`}
                                 >
                                     <span
@@ -391,10 +410,10 @@ export function SettingsPanel() {
 
                         {/* Obsidian Integration - Pro feature - Collapsible */}
                         {hasObsidianAccess && (
-                            <div className="pt-3 border-t border-[var(--editor-border)]">
+                            <div className="pt-3 border-t border-[var(--ui-border)]">
                                 <button
                                     onClick={() => setObsidianExpanded(!obsidianExpanded)}
-                                    className="w-full flex items-center justify-between py-2 text-sm font-medium text-[var(--editor-text)] hover:text-[var(--editor-accent)] transition-colors"
+                                    className="w-full flex items-center justify-between py-2 text-sm font-medium text-[var(--ui-text)] hover:text-[var(--ui-accent)] transition-colors"
                                 >
                                     <span>Obsidian Integration</span>
                                     <svg
@@ -415,7 +434,7 @@ export function SettingsPanel() {
                         )}
 
                         {/* Reset Button */}
-                        <div className="pt-4 border-t border-[var(--editor-border)]">
+                        <div className="pt-4 border-t border-[var(--ui-border)]">
                             <button
                                 onClick={handleReset}
                                 className="px-3 py-2 text-sm text-red-400 hover:text-red-300 border border-red-400/30 rounded-md hover:bg-red-500/10 transition-colors"
@@ -432,7 +451,7 @@ export function SettingsPanel() {
                         {/* Global Hotkey */}
                         <div>
                             <label className="block text-sm font-medium mb-2">Global Hotkey</label>
-                            <p className="text-xs text-[var(--editor-muted)] mb-3">
+                            <p className="text-xs text-[var(--ui-text-muted)] mb-3">
                                 Press this keyboard shortcut anywhere to summon Wingman
                             </p>
                             <div className="flex gap-2">
@@ -441,14 +460,14 @@ export function SettingsPanel() {
                                     value={hotkeyInput}
                                     readOnly
                                     placeholder="Click Record to set hotkey"
-                                    className="flex-1 px-3 py-2 text-sm bg-[var(--editor-surface)] border border-[var(--editor-border)] rounded-md text-[var(--editor-text)] placeholder:text-[var(--editor-muted)]"
+                                    className="flex-1 px-3 py-2 text-sm bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-md text-[var(--ui-text)] placeholder:text-[var(--ui-text-muted)]"
                                 />
                                 <button
                                     onClick={() => setIsRecording(!isRecording)}
                                     className={`px-4 py-2 text-sm rounded-md transition-colors ${
                                         isRecording
-                                            ? 'bg-[var(--editor-accent)] text-white'
-                                            : 'bg-[var(--editor-surface)] text-[var(--editor-text)] hover:bg-[var(--editor-hover)]'
+                                            ? 'bg-[var(--ui-accent)] text-white'
+                                            : 'bg-[var(--ui-surface)] text-[var(--ui-text)] hover:bg-[var(--ui-hover)]'
                                     }`}
                                 >
                                     {isRecording ? 'Recording...' : 'Record'}
@@ -456,13 +475,13 @@ export function SettingsPanel() {
                                 <button
                                     onClick={saveHotkey}
                                     disabled={hotkeyInput === settings.hotkey}
-                                    className="px-4 py-2 text-sm bg-[var(--editor-accent)] text-white rounded-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                                    className="px-4 py-2 text-sm bg-[var(--ui-accent)] text-white rounded-md hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
                                 >
                                     Save
                                 </button>
                             </div>
                             {isRecording && (
-                                <p className="text-xs text-[var(--editor-accent)] mt-2">
+                                <p className="text-xs text-[var(--ui-accent)] mt-2">
                                     Press any key combination...
                                 </p>
                             )}
@@ -472,44 +491,44 @@ export function SettingsPanel() {
                         <div>
                             <h3 className="text-sm font-medium mb-3">Built-in Shortcuts</h3>
                             <div className="space-y-1.5 text-xs">
-                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--editor-surface)] rounded-md">
-                                    <span className="text-[var(--editor-text)]">Paste and Close</span>
+                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
+                                    <span className="text-[var(--ui-text)]">Paste and Close</span>
                                     <span className="kbd">⌘↵</span>
                                 </div>
-                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--editor-surface)] rounded-md">
-                                    <span className="text-[var(--editor-text)]">Close Window</span>
+                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
+                                    <span className="text-[var(--ui-text)]">Close Window</span>
                                     <span className="kbd">Esc</span>
                                 </div>
-                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--editor-surface)] rounded-md">
-                                    <span className="text-[var(--editor-text)]">Open Settings</span>
+                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
+                                    <span className="text-[var(--ui-text)]">Open Settings</span>
                                     <span className="kbd">⌘,</span>
                                 </div>
-                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--editor-surface)] rounded-md">
-                                    <span className="text-[var(--editor-text)]">Quick Actions</span>
+                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
+                                    <span className="text-[var(--ui-text)]">Quick Actions</span>
                                     <span className="kbd">⌘⇧A</span>
                                 </div>
-                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--editor-surface)] rounded-md">
-                                    <span className="text-[var(--editor-text)]">History</span>
+                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
+                                    <span className="text-[var(--ui-text)]">History</span>
                                     <span className="kbd">⌘H</span>
                                 </div>
-                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--editor-surface)] rounded-md">
-                                    <span className="text-[var(--editor-text)]">Snippets</span>
+                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
+                                    <span className="text-[var(--ui-text)]">Snippets</span>
                                     <span className="kbd">⌘K</span>
                                 </div>
-                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--editor-surface)] rounded-md">
-                                    <span className="text-[var(--editor-text)]">Clear Editor</span>
+                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
+                                    <span className="text-[var(--ui-text)]">Clear Editor</span>
                                     <span className="kbd">⌘N</span>
                                 </div>
-                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--editor-surface)] rounded-md">
-                                    <span className="text-[var(--editor-text)]">Find/Replace</span>
+                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
+                                    <span className="text-[var(--ui-text)]">Find/Replace</span>
                                     <span className="kbd">⌘F</span>
                                 </div>
-                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--editor-surface)] rounded-md">
-                                    <span className="text-[var(--editor-text)]">UPPERCASE</span>
+                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
+                                    <span className="text-[var(--ui-text)]">UPPERCASE</span>
                                     <span className="kbd">⌘⇧U</span>
                                 </div>
-                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--editor-surface)] rounded-md">
-                                    <span className="text-[var(--editor-text)]">lowercase</span>
+                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
+                                    <span className="text-[var(--ui-text)]">lowercase</span>
                                     <span className="kbd">⌘⇧L</span>
                                 </div>
                             </div>
@@ -526,19 +545,70 @@ export function SettingsPanel() {
                             <LicenseActivation />
                         </div>
 
+                        {/* AI Token Usage - Premium only */}
+                        {isPremium && subscriptionStatus && (
+                            <div className="pt-6 border-t border-[var(--ui-border)]">
+                                <h3 className="text-sm font-medium mb-3">AI Token Usage</h3>
+                                <div className="space-y-3">
+                                    {/* Usage Bar */}
+                                    <div className="p-3 bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-md">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs text-[var(--ui-text-muted)]">Monthly Usage</span>
+                                            <span className="text-xs font-medium text-[var(--ui-text)]">
+                                                {formatTokenUsage(subscriptionStatus.tokens_used)}
+                                            </span>
+                                        </div>
+                                        <div className="w-full h-2 bg-[var(--ui-border)] rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-300 ${
+                                                    tokenUsagePercent >= 90
+                                                        ? 'bg-red-500'
+                                                        : tokenUsagePercent >= 70
+                                                        ? 'bg-yellow-500'
+                                                        : 'bg-emerald-500'
+                                                }`}
+                                                style={{ width: `${Math.min(tokenUsagePercent, 100)}%` }}
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between mt-2">
+                                            <span className="text-[10px] text-[var(--ui-text-muted)]">
+                                                {subscriptionStatus.tokens_remaining.toLocaleString()} tokens remaining
+                                            </span>
+                                            <span className="text-[10px] text-[var(--ui-text-muted)]">
+                                                Resets monthly
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Warning if near limit */}
+                                    {tokenUsagePercent >= 80 && (
+                                        <div className={`px-3 py-2 text-xs rounded-md border ${
+                                            tokenUsagePercent >= 90
+                                                ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                                                : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                                        }`}>
+                                            {tokenUsagePercent >= 90
+                                                ? 'You\'re almost at your monthly token limit. Consider upgrading or waiting for the monthly reset.'
+                                                : 'You\'ve used over 80% of your monthly tokens.'}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Updates */}
-                        <div className="pt-6 border-t border-[var(--editor-border)]">
+                        <div className="pt-6 border-t border-[var(--ui-border)]">
                             <h3 className="text-sm font-medium mb-3">Updates</h3>
                             <div className="space-y-3">
-                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--editor-surface)] rounded-md text-sm">
-                                    <span className="text-[var(--editor-muted)]">Current Version</span>
-                                    <span className="text-[var(--editor-text)] font-medium">{appVersion || 'Loading...'}</span>
+                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md text-sm">
+                                    <span className="text-[var(--ui-text-muted)]">Current Version</span>
+                                    <span className="text-[var(--ui-text)] font-medium">{appVersion || 'Loading...'}</span>
                                 </div>
 
                                 <button
                                     onClick={checkForUpdates}
                                     disabled={isCheckingUpdate}
-                                    className="w-full px-4 py-2 text-sm bg-[var(--editor-accent)] text-white rounded-md hover:opacity-90 disabled:opacity-60 transition-opacity"
+                                    className="w-full px-4 py-2 text-sm bg-[var(--ui-accent)] text-white rounded-md hover:opacity-90 disabled:opacity-60 transition-opacity"
                                 >
                                     {isCheckingUpdate ? 'Checking...' : 'Check for Updates'}
                                 </button>
@@ -553,7 +623,7 @@ export function SettingsPanel() {
                                     <div className={`px-3 py-3 text-sm rounded-md border ${
                                         updateInfo.has_update
                                             ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                                            : 'bg-[var(--editor-surface)] border-[var(--editor-border)] text-[var(--editor-text)]'
+                                            : 'bg-[var(--ui-surface)] border-[var(--ui-border)] text-[var(--ui-text)]'
                                     }`}>
                                         {updateInfo.has_update ? (
                                             <div className="space-y-2">

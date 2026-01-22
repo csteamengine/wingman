@@ -122,10 +122,10 @@ function SnippetsPanelContent() {
   return (
     <div className="flex flex-col h-full animate-fade-in">
       {/* Search bar - full width at top */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--editor-border)]">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--ui-border)]">
         <button
           onClick={() => setActivePanel('editor')}
-          className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--editor-hover)] text-[var(--editor-muted)] hover:text-[var(--editor-text)] transition-colors flex-shrink-0"
+          className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors flex-shrink-0"
           aria-label="Back to editor"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -138,11 +138,11 @@ function SnippetsPanelContent() {
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
           placeholder="Type to filter snippets..."
-          className="flex-1 bg-transparent text-sm text-[var(--editor-text)] placeholder-[var(--editor-muted)] outline-none"
+          className="flex-1 bg-transparent text-sm text-[var(--ui-text)] placeholder-[var(--ui-text-muted)] outline-none"
         />
         <button
           onClick={startCreating}
-          className="text-xs px-2 py-1 rounded-md bg-[var(--editor-accent)] text-white hover:brightness-110 transition-all flex-shrink-0"
+          className="text-xs px-2 py-1 rounded-md bg-[var(--ui-accent)] text-white hover:brightness-110 transition-all flex-shrink-0"
         >
           + New
         </button>
@@ -150,13 +150,13 @@ function SnippetsPanelContent() {
 
       {/* Create form */}
       {isCreating && (
-        <div className="px-4 py-3 border-b border-[var(--editor-border)] bg-[var(--editor-surface)]">
+        <div className="px-4 py-3 border-b border-[var(--ui-border)] bg-[var(--ui-surface)]">
           <input
             type="text"
             value={newSnippetName}
             onChange={(e) => setNewSnippetName(e.target.value)}
             placeholder="Snippet name..."
-            className="w-full bg-[var(--editor-bg)] text-sm px-3 py-2 rounded-md border border-[var(--editor-border)] outline-none focus:border-[var(--editor-accent)] mb-2"
+            className="w-full bg-[var(--ui-surface)] text-sm px-3 py-2 rounded-md border border-[var(--ui-border)] outline-none focus:border-[var(--ui-accent)] mb-2"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Escape') cancelCreate();
@@ -166,7 +166,7 @@ function SnippetsPanelContent() {
             value={newSnippetContent}
             onChange={(e) => setNewSnippetContent(e.target.value)}
             placeholder="Snippet content..."
-            className="w-full bg-[var(--editor-bg)] text-sm px-3 py-2 rounded-md border border-[var(--editor-border)] outline-none focus:border-[var(--editor-accent)] min-h-[60px] resize-y mb-2"
+            className="w-full bg-[var(--ui-surface)] text-sm px-3 py-2 rounded-md border border-[var(--ui-border)] outline-none focus:border-[var(--ui-accent)] min-h-[60px] resize-y mb-2"
             onKeyDown={(e) => {
               if (e.key === 'Escape') cancelCreate();
             }}
@@ -174,12 +174,12 @@ function SnippetsPanelContent() {
           <div className="flex gap-2">
             <button
               onClick={handleCreate}
-              className="text-xs px-3 py-1.5 rounded-md bg-[var(--editor-accent)] text-white disabled:opacity-50"
+              className="text-xs px-3 py-1.5 rounded-md bg-[var(--ui-accent)] text-white disabled:opacity-50"
               disabled={!newSnippetName.trim() || !newSnippetContent.trim()}
             >
               Save
             </button>
-            <button onClick={cancelCreate} className="text-xs px-3 py-1.5 rounded-md hover:bg-[var(--editor-hover)]">
+            <button onClick={cancelCreate} className="text-xs px-3 py-1.5 rounded-md hover:bg-[var(--ui-hover)]">
               Cancel
             </button>
           </div>
@@ -189,14 +189,14 @@ function SnippetsPanelContent() {
       {/* Main content area - two columns */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left column - list */}
-        <div className="w-1/2 flex flex-col border-r border-[var(--editor-border)]">
+        <div className="w-1/2 flex flex-col border-r border-[var(--ui-border)]">
           <div className="flex-1 overflow-auto" ref={listRef}>
             {loading ? (
-              <div className="flex items-center justify-center h-32 text-[var(--editor-muted)]">
+              <div className="flex items-center justify-center h-32 text-[var(--ui-text-muted)]">
                 Loading...
               </div>
             ) : snippets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-32 text-[var(--editor-muted)]">
+              <div className="flex flex-col items-center justify-center h-32 text-[var(--ui-text-muted)]">
                 <p className="text-sm">No snippets yet</p>
                 <p className="text-xs mt-1 opacity-60">Create snippets to reuse text</p>
               </div>
@@ -204,7 +204,7 @@ function SnippetsPanelContent() {
               <div className="py-1">
                 {/* Section header */}
                 <div className="px-4 py-2">
-                  <span className="text-xs font-medium text-[var(--editor-muted)] uppercase tracking-wide">Saved</span>
+                  <span className="text-xs font-medium text-[var(--ui-text-muted)] uppercase tracking-wide">Saved</span>
                 </div>
                 {/* List items */}
                 {snippets.map((snippet, index) => (
@@ -229,13 +229,13 @@ function SnippetsPanelContent() {
               {/* Preview content */}
               <div className="flex-1 overflow-auto p-4">
                 <div className="mb-3">
-                  <h3 className="text-sm font-medium text-[var(--editor-text)]">{selectedSnippet.name}</h3>
+                  <h3 className="text-sm font-medium text-[var(--ui-text)]">{selectedSnippet.name}</h3>
                   {selectedSnippet.tags.length > 0 && (
                     <div className="flex gap-1 mt-2">
                       {selectedSnippet.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="px-1.5 py-0.5 text-xs rounded-md bg-[var(--editor-hover)] text-[var(--editor-muted)]"
+                          className="px-1.5 py-0.5 text-xs rounded-md bg-[var(--ui-hover)] text-[var(--ui-text-muted)]"
                         >
                           {tag}
                         </span>
@@ -244,8 +244,8 @@ function SnippetsPanelContent() {
                   )}
                 </div>
 
-                <div className="bg-[var(--editor-surface)] rounded-md p-3 mb-4 max-h-40 overflow-auto">
-                  <pre className="text-xs text-[var(--editor-text)] whitespace-pre-wrap font-mono">
+                <div className="bg-[var(--ui-surface)] rounded-md p-3 mb-4 max-h-40 overflow-auto">
+                  <pre className="text-xs text-[var(--ui-text)] whitespace-pre-wrap font-mono">
                     {selectedSnippet.content.slice(0, 500)}
                     {selectedSnippet.content.length > 500 && '...'}
                   </pre>
@@ -253,7 +253,7 @@ function SnippetsPanelContent() {
 
                 {/* Metadata */}
                 <div className="space-y-0.5">
-                  <div className="text-xs font-medium text-[var(--editor-muted)] uppercase tracking-wide mb-2">
+                  <div className="text-xs font-medium text-[var(--ui-text-muted)] uppercase tracking-wide mb-2">
                     Information
                   </div>
                   <MetadataRow label="Lines" value={String(selectedSnippet.content.split('\n').length)} />
@@ -262,10 +262,10 @@ function SnippetsPanelContent() {
               </div>
 
               {/* Action buttons */}
-              <div className="p-3 border-t border-[var(--editor-border)] space-y-2">
+              <div className="p-3 border-t border-[var(--ui-border)] space-y-2">
                 <button
                   onClick={() => handleInsert(selectedSnippet)}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-[var(--editor-surface)] border border-[var(--editor-border)] text-sm text-[var(--editor-text)] hover:bg-[var(--editor-hover)] transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] text-sm text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
                 >
                   <span>Insert to Editor</span>
                   <span className="kbd">↵</span>
@@ -273,13 +273,13 @@ function SnippetsPanelContent() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setEditingSnippet(selectedSnippet)}
-                    className="flex-1 text-xs px-3 py-1.5 rounded-md text-[var(--editor-muted)] hover:text-[var(--editor-text)] hover:bg-[var(--editor-hover)] transition-colors"
+                    className="flex-1 text-xs px-3 py-1.5 rounded-md text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
                   >
                     Edit
                   </button>
                   <button
                     onClick={(e) => handleDelete(selectedSnippet.id, e)}
-                    className="flex-1 text-xs px-3 py-1.5 rounded-md text-[var(--editor-muted)] hover:text-red-400 hover:bg-[var(--editor-hover)] transition-colors"
+                    className="flex-1 text-xs px-3 py-1.5 rounded-md text-[var(--ui-text-muted)] hover:text-red-400 hover:bg-[var(--ui-hover)] transition-colors"
                   >
                     Delete
                   </button>
@@ -293,7 +293,7 @@ function SnippetsPanelContent() {
               onCancel={() => setEditingSnippet(null)}
             />
           ) : (
-            <div className="flex-1 flex items-center justify-center text-[var(--editor-muted)]">
+            <div className="flex-1 flex items-center justify-center text-[var(--ui-text-muted)]">
               <p className="text-sm">Select a snippet to preview</p>
             </div>
           )}
@@ -301,7 +301,7 @@ function SnippetsPanelContent() {
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-2 border-t border-[var(--editor-border)] rounded-b-[10px] text-xs text-[var(--editor-muted)] flex justify-between">
+      <div className="px-4 py-2 border-t border-[var(--ui-border)] rounded-b-[10px] text-xs text-[var(--ui-text-muted)] flex justify-between">
         <span>{snippets.length} snippets</span>
         <span className="opacity-50">↑↓ navigate · ↵ insert</span>
       </div>
@@ -311,9 +311,9 @@ function SnippetsPanelContent() {
 
 function MetadataRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between py-1.5 text-xs border-b border-[var(--editor-border)] last:border-0">
-      <span className="text-[var(--editor-muted)]">{label}</span>
-      <span className="text-[var(--editor-text)]">{value}</span>
+    <div className="flex items-center justify-between py-1.5 text-xs border-b border-[var(--ui-border)] last:border-0">
+      <span className="text-[var(--ui-text-muted)]">{label}</span>
+      <span className="text-[var(--ui-text)]">{value}</span>
     </div>
   );
 }
@@ -330,7 +330,7 @@ function EditSnippetForm({ snippet, onUpdate, onCancel }: EditSnippetFormProps) 
 
   return (
     <div className="flex-1 flex flex-col p-4">
-      <div className="text-xs font-medium text-[var(--editor-muted)] uppercase tracking-wide mb-3">
+      <div className="text-xs font-medium text-[var(--ui-text-muted)] uppercase tracking-wide mb-3">
         Edit Snippet
       </div>
       <input
@@ -338,23 +338,23 @@ function EditSnippetForm({ snippet, onUpdate, onCancel }: EditSnippetFormProps) 
         value={editName}
         onChange={(e) => setEditName(e.target.value)}
         placeholder="Snippet name..."
-        className="w-full bg-[var(--editor-surface)] text-sm px-3 py-2 rounded-md border border-[var(--editor-border)] outline-none focus:border-[var(--editor-accent)] mb-2"
+        className="w-full bg-[var(--ui-surface)] text-sm px-3 py-2 rounded-md border border-[var(--ui-border)] outline-none focus:border-[var(--ui-accent)] mb-2"
         autoFocus
       />
       <textarea
         value={editContent}
         onChange={(e) => setEditContent(e.target.value)}
-        className="flex-1 w-full bg-[var(--editor-surface)] text-sm px-3 py-2 rounded-md border border-[var(--editor-border)] outline-none focus:border-[var(--editor-accent)] resize-none font-mono"
+        className="flex-1 w-full bg-[var(--ui-surface)] text-sm px-3 py-2 rounded-md border border-[var(--ui-border)] outline-none focus:border-[var(--ui-accent)] resize-none font-mono"
         placeholder="Snippet content..."
       />
       <div className="flex gap-2 mt-3">
         <button
           onClick={() => onUpdate(snippet.id, editName, editContent, snippet.tags)}
-          className="text-xs px-3 py-1.5 rounded-md bg-[var(--editor-accent)] text-white"
+          className="text-xs px-3 py-1.5 rounded-md bg-[var(--ui-accent)] text-white"
         >
           Save
         </button>
-        <button onClick={onCancel} className="text-xs px-3 py-1.5 rounded-md hover:bg-[var(--editor-hover)]">
+        <button onClick={onCancel} className="text-xs px-3 py-1.5 rounded-md hover:bg-[var(--ui-hover)]">
           Cancel
         </button>
       </div>
@@ -376,8 +376,8 @@ function SnippetItem({ snippet, index, isSelected, onInsert, onHover }: SnippetI
       data-index={index}
       className={`flex items-center gap-3 px-4 py-2 mx-2 rounded-md cursor-pointer transition-colors ${
         isSelected
-          ? 'bg-[var(--editor-surface)]'
-          : 'hover:bg-[var(--editor-hover)]'
+          ? 'bg-[var(--ui-surface)]'
+          : 'hover:bg-[var(--ui-hover)]'
       }`}
       onClick={() => onInsert(snippet)}
       onMouseEnter={onHover}
@@ -385,7 +385,7 @@ function SnippetItem({ snippet, index, isSelected, onInsert, onHover }: SnippetI
       tabIndex={-1}
     >
       {/* Icon */}
-      <div className={`flex-shrink-0 ${isSelected ? 'text-[var(--editor-accent)]' : 'text-[var(--editor-muted)]'}`}>
+      <div className={`flex-shrink-0 ${isSelected ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)]'}`}>
         <SnippetIcon />
       </div>
 

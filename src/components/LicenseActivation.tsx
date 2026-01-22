@@ -88,7 +88,7 @@ export function LicenseActivation() {
                             Wingman {isPremium ? 'Premium' : 'Pro'} Active
                         </p>
                         {email && (
-                            <p className="text-xs text-[var(--editor-muted)] truncate">{email}</p>
+                            <p className="text-xs text-[var(--ui-text-muted)] truncate">{email}</p>
                         )}
                     </div>
                 </div>
@@ -109,7 +109,7 @@ export function LicenseActivation() {
                 )}
 
                 <div className="flex items-center justify-between text-sm">
-          <span className="text-[var(--editor-muted)]">
+          <span className="text-[var(--ui-text-muted)]">
             {daysUntilExpiry !== null && `Revalidation in ${daysUntilExpiry} days`}
           </span>
                     {!showDeactivateConfirm ? (
@@ -122,7 +122,7 @@ export function LicenseActivation() {
                         </button>
                     ) : (
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-[var(--editor-muted)]">Confirm?</span>
+                            <span className="text-xs text-[var(--ui-text-muted)]">Confirm?</span>
                             <button
                                 onClick={async () => {
                                     console.log('Deactivate confirmed, calling handleDeactivate...');
@@ -145,7 +145,7 @@ export function LicenseActivation() {
                             <button
                                 onClick={() => setShowDeactivateConfirm(false)}
                                 disabled={loading}
-                                className="text-[var(--editor-muted)] hover:text-[var(--editor-fg)] text-xs"
+                                className="text-[var(--ui-text-muted)] hover:text-[var(--editor-fg)] text-xs"
                             >
                                 No
                             </button>
@@ -160,10 +160,10 @@ export function LicenseActivation() {
     return (
         <div className="space-y-4">
             <div
-                className="flex items-center gap-3 p-3 bg-[var(--editor-surface)] border border-[var(--editor-border)] rounded-md">
+                className="flex items-center gap-3 p-3 bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-md">
                 <div
-                    className="w-8 h-8 rounded-full bg-[var(--editor-border)] flex items-center justify-center flex-shrink-0">
-                    <svg className="w-4 h-4 text-[var(--editor-muted)]" fill="none" stroke="currentColor"
+                    className="w-8 h-8 rounded-full bg-[var(--ui-border)] flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-[var(--ui-text-muted)]" fill="none" stroke="currentColor"
                          viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                               d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
@@ -171,7 +171,7 @@ export function LicenseActivation() {
                 </div>
                 <div className="flex-1">
                     <p className="text-sm font-medium">Free Tier</p>
-                    <p className="text-xs text-[var(--editor-muted)]">
+                    <p className="text-xs text-[var(--ui-text-muted)]">
                         Upgrade for history, snippets, syntax highlighting & more
                     </p>
                 </div>
@@ -209,14 +209,14 @@ export function LicenseActivation() {
                     <button
                         type="submit"
                         disabled={loading || !licenseKey.trim() || !activationEmail.trim()}
-                        className="btn bg-[var(--editor-accent)] text-white flex-1 disabled:opacity-50"
+                        className="btn bg-[var(--ui-accent)] text-white flex-1 disabled:opacity-50"
                     >
                         {loading ? 'Activating...' : 'Activate License'}
                     </button>
                 </div>
             </form>
 
-            <div className="pt-6 border-t border-[var(--editor-border)]">
+            <div className="pt-6 border-t border-[var(--ui-border)]">
                 <div
                     className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-lg border border-blue-500/20">
                     <div className="flex items-start gap-3 mb-3">
@@ -228,12 +228,12 @@ export function LicenseActivation() {
                             </svg>
                         </div>
                         <div>
-                            <h4 className="text-sm font-medium text-[var(--editor-text)]">Get Wingman Pro</h4>
-                            <p className="text-xs text-[var(--editor-muted)]">$4.99 one-time payment</p>
+                            <h4 className="text-sm font-medium text-[var(--ui-text)]">Get Wingman Pro</h4>
+                            <p className="text-xs text-[var(--ui-text-muted)]">$4.99 one-time payment</p>
                         </div>
                     </div>
 
-                    <ul className="space-y-1.5 mb-4 text-xs text-[var(--editor-muted)]">
+                    <ul className="space-y-1.5 mb-4 text-xs text-[var(--ui-text-muted)]">
                         <li className="flex items-center gap-2">
                             <span className="text-green-400">✓</span>
                             Clipboard History

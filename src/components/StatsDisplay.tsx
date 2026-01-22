@@ -4,7 +4,7 @@ export function StatsDisplay() {
   const { stats } = useEditorStore();
 
   return (
-    <div className="flex items-center gap-4 text-xs text-[var(--editor-muted)]">
+    <div className="flex items-center gap-4 text-xs text-[var(--ui-text-muted)]">
       <span title="Characters">{stats.character_count} chars</span>
       <span title="Words">{stats.word_count} words</span>
       <span title="Lines">{stats.line_count} lines</span>

@@ -557,6 +557,7 @@ pub async fn call_ai_feature(
     let response = client
         .post(&url)
         .header("apikey", SUPABASE_PUBLISHABLE_KEY)
+        .header("Authorization", format!("Bearer {}", SUPABASE_PUBLISHABLE_KEY))
         .header("Content-Type", "application/json")
         .json(&request_body)
         .send()
