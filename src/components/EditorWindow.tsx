@@ -1,6 +1,7 @@
 import {useEffect, useRef, useCallback, useState} from 'react';
-import {EditorView, keymap, placeholder, Decoration, ViewPlugin, drawSelection, dropCursor} from '@codemirror/view';
+import {EditorView, keymap, placeholder, Decoration, ViewPlugin, drawSelection, dropCursor, WidgetType} from '@codemirror/view';
 import type {DecorationSet, ViewUpdate} from '@codemirror/view';
+import type {SelectionRange} from '@codemirror/state';
 import {EditorState} from '@codemirror/state';
 import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/commands';
 import {search, searchKeymap} from '@codemirror/search';
@@ -163,78 +164,416 @@ function yamlLinter(view: EditorView): Diagnostic[] {
     return diagnostics;
 }
 
-// Markdown link decoration - hides syntax and shows only link text in blue
-const hiddenMark = Decoration.mark({ class: 'cm-markdown-link-hidden' });
-const linkTextMark = Decoration.mark({ class: 'cm-markdown-link-text' });
+// ===== UNIFIED MARKDOWN DECORATION SYSTEM =====
+// Obsidian-style editing: syntax hidden when cursor is outside, shown when cursor is inside
 
-// Build decorations for markdown links
-// Only hides syntax when cursor is NOT inside the link
-function buildMarkdownLinkDecorations(view: EditorView): DecorationSet {
-    const decorations: {from: number, to: number, decoration: Decoration}[] = [];
+// Decoration marks for different markdown elements
+const mdHidden = Decoration.mark({ class: 'cm-md-hidden' });
+const mdBold = Decoration.mark({ class: 'cm-md-bold' });
+const mdItalic = Decoration.mark({ class: 'cm-md-italic' });
+const mdBoldItalic = Decoration.mark({ class: 'cm-md-bold cm-md-italic' });
+const mdStrikethrough = Decoration.mark({ class: 'cm-md-strikethrough' });
+const mdCode = Decoration.mark({ class: 'cm-md-code' });
+const mdLink = Decoration.mark({ class: 'cm-md-link' });
+const mdH1 = Decoration.line({ class: 'cm-md-h1' });
+const mdH2 = Decoration.line({ class: 'cm-md-h2' });
+const mdH3 = Decoration.line({ class: 'cm-md-h3' });
+const mdH4 = Decoration.line({ class: 'cm-md-h4' });
+const mdBlockquote = Decoration.line({ class: 'cm-md-blockquote' });
+const mdHr = Decoration.line({ class: 'cm-md-hr' });
+
+// Image widget for rendering inline images
+class ImageWidget extends WidgetType {
+    url: string;
+    alt: string;
+
+    constructor(url: string, alt: string) {
+        super();
+        this.url = url;
+        this.alt = alt;
+    }
+
+    eq(other: ImageWidget) {
+        return other.url === this.url && other.alt === this.alt;
+    }
+
+    toDOM() {
+        const container = document.createElement('span');
+        container.className = 'cm-md-image-preview';
+
+        const img = document.createElement('img');
+        img.src = this.url;
+        img.alt = this.alt;
+        img.style.maxHeight = '200px';
+        img.style.maxWidth = '100%';
+        img.style.display = 'inline-block';
+        img.style.verticalAlign = 'middle';
+        img.style.borderRadius = '4px';
+        img.onerror = () => { img.style.display = 'none'; };
+
+        container.appendChild(img);
+        return container;
+    }
+
+    ignoreEvent() { return false; }
+}
+
+// Check if cursor is within a range
+function isCursorInRange(selections: readonly SelectionRange[], from: number, to: number): boolean {
+    return selections.some(sel =>
+        (sel.from >= from && sel.from <= to) ||
+        (sel.to >= from && sel.to <= to) ||
+        (sel.from <= from && sel.to >= to)
+    );
+}
+
+// Check if position is inside a code block (``` ... ```)
+function isInsideCodeBlock(text: string, pos: number): boolean {
+    const codeBlockRegex = /```[\s\S]*?```/g;
+    let match;
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+        if (pos >= match.index && pos < match.index + match[0].length) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Check if a character is escaped (preceded by backslash)
+function isEscaped(text: string, pos: number): boolean {
+    let backslashes = 0;
+    let i = pos - 1;
+    while (i >= 0 && text[i] === '\\') {
+        backslashes++;
+        i--;
+    }
+    return backslashes % 2 === 1;
+}
+
+interface DecorationEntry {
+    from: number;
+    to: number;
+    decoration: Decoration;
+}
+
+// Build all markdown decorations
+function buildMarkdownDecorations(view: EditorView): DecorationSet {
+    const decorations: DecorationEntry[] = [];
+    const widgets: {pos: number, widget: Decoration}[] = [];
     const doc = view.state.doc;
     const text = doc.toString();
-    const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
-    let match;
-
-    // Get all cursor/selection positions
     const selections = view.state.selection.ranges;
 
-    while ((match = regex.exec(text)) !== null) {
-        const start = match.index;
-        const bracketOpen = start; // [
-        const textStart = start + 1; // start of link text
-        const textEnd = textStart + match[1].length; // end of link text
-        const bracketClose = textEnd; // ]
-        const end = start + match[0].length; // end of )
+    // Track ranges that have been decorated to avoid overlaps
+    const decoratedRanges: {from: number, to: number}[] = [];
 
-        // Check if any cursor/selection is inside this link
-        const cursorInside = selections.some(sel =>
-            (sel.from >= bracketOpen && sel.from <= end) ||
-            (sel.to >= bracketOpen && sel.to <= end) ||
-            (sel.from <= bracketOpen && sel.to >= end)
+    const isRangeDecorated = (from: number, to: number): boolean => {
+        return decoratedRanges.some(r =>
+            (from >= r.from && from < r.to) ||
+            (to > r.from && to <= r.to) ||
+            (from <= r.from && to >= r.to)
         );
+    };
 
-        if (cursorInside) {
-            // Cursor is inside - show full syntax, just style the link text portion
-            decorations.push({ from: textStart, to: textEnd, decoration: linkTextMark });
-        } else {
-            // Cursor is outside - hide syntax and show styled link
-            decorations.push({ from: bracketOpen, to: textStart, decoration: hiddenMark });
-            decorations.push({ from: textStart, to: textEnd, decoration: linkTextMark });
-            decorations.push({ from: bracketClose, to: end, decoration: hiddenMark });
+    const markDecorated = (from: number, to: number) => {
+        decoratedRanges.push({from, to});
+    };
+
+    // Process line-by-line for block elements and inline elements
+    for (let i = 1; i <= doc.lines; i++) {
+        const line = doc.line(i);
+        const lineText = line.text;
+        const lineFrom = line.from;
+
+        // Skip if line is inside a code block
+        if (isInsideCodeBlock(text, lineFrom)) continue;
+
+        // === BLOCK ELEMENTS ===
+
+        // Headers: # to ######
+        const headerMatch = lineText.match(/^(#{1,6})\s+(.+)$/);
+        if (headerMatch) {
+            const hashCount = headerMatch[1].length;
+            const cursorInLine = isCursorInRange(selections, lineFrom, line.to);
+
+            // Apply header styling to the line
+            const headerDeco = hashCount === 1 ? mdH1 :
+                              hashCount === 2 ? mdH2 :
+                              hashCount === 3 ? mdH3 : mdH4;
+            decorations.push({ from: lineFrom, to: lineFrom, decoration: headerDeco });
+
+            // Hide hash marks when cursor is outside
+            if (!cursorInLine) {
+                const hashEnd = lineFrom + hashCount + 1; // +1 for space
+                decorations.push({ from: lineFrom, to: hashEnd, decoration: mdHidden });
+            }
+            continue; // Don't process inline elements on header lines when hiding syntax
+        }
+
+        // Blockquote: > text
+        const blockquoteMatch = lineText.match(/^>\s+(.+)$/);
+        if (blockquoteMatch) {
+            const cursorInLine = isCursorInRange(selections, lineFrom, line.to);
+            decorations.push({ from: lineFrom, to: lineFrom, decoration: mdBlockquote });
+
+            // Hide > when cursor is outside
+            if (!cursorInLine) {
+                decorations.push({ from: lineFrom, to: lineFrom + 2, decoration: mdHidden });
+            }
+            continue;
+        }
+
+        // Horizontal rule: --- or *** or ___
+        if (/^(---|\*\*\*|___)$/.test(lineText.trim())) {
+            const cursorInLine = isCursorInRange(selections, lineFrom, line.to);
+
+            // Only show rendered line when cursor is outside, otherwise show raw syntax
+            if (!cursorInLine) {
+                decorations.push({ from: lineFrom, to: lineFrom, decoration: mdHr });
+                decorations.push({ from: lineFrom, to: line.to, decoration: mdHidden });
+            }
+            continue;
+        }
+
+        // === INLINE ELEMENTS ===
+
+        // Images: ![alt](url) - process before links
+        const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+        let imageMatch;
+        while ((imageMatch = imageRegex.exec(lineText)) !== null) {
+            const matchStart = lineFrom + imageMatch.index;
+            const matchEnd = matchStart + imageMatch[0].length;
+
+            if (isEscaped(text, matchStart)) continue;
+            if (isRangeDecorated(matchStart, matchEnd)) continue;
+
+            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
+            markDecorated(matchStart, matchEnd);
+
+            if (!cursorInside) {
+                // Hide syntax and show image
+                decorations.push({ from: matchStart, to: matchEnd, decoration: mdHidden });
+                widgets.push({
+                    pos: matchStart,
+                    widget: Decoration.widget({
+                        widget: new ImageWidget(imageMatch[2], imageMatch[1]),
+                        side: 1,
+                    })
+                });
+            }
+        }
+
+        // Links: [text](url)
+        const linkRegex = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
+        let linkMatch;
+        while ((linkMatch = linkRegex.exec(lineText)) !== null) {
+            const matchStart = lineFrom + linkMatch.index;
+            const matchEnd = matchStart + linkMatch[0].length;
+
+            if (isEscaped(text, matchStart)) continue;
+            if (isRangeDecorated(matchStart, matchEnd)) continue;
+
+            const textStart = matchStart + 1;
+            const textEnd = textStart + linkMatch[1].length;
+            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
+            markDecorated(matchStart, matchEnd);
+
+            if (cursorInside) {
+                decorations.push({ from: textStart, to: textEnd, decoration: mdLink });
+            } else {
+                decorations.push({ from: matchStart, to: textStart, decoration: mdHidden });
+                decorations.push({ from: textStart, to: textEnd, decoration: mdLink });
+                decorations.push({ from: textEnd, to: matchEnd, decoration: mdHidden });
+            }
+        }
+
+        // Bold+Italic: ***text***
+        const boldItalicRegex = /\*\*\*([^*]+)\*\*\*/g;
+        let boldItalicMatch;
+        while ((boldItalicMatch = boldItalicRegex.exec(lineText)) !== null) {
+            const matchStart = lineFrom + boldItalicMatch.index;
+            const matchEnd = matchStart + boldItalicMatch[0].length;
+
+            if (isEscaped(text, matchStart)) continue;
+            if (isRangeDecorated(matchStart, matchEnd)) continue;
+
+            const contentStart = matchStart + 3;
+            const contentEnd = matchEnd - 3;
+            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
+            markDecorated(matchStart, matchEnd);
+
+            if (cursorInside) {
+                decorations.push({ from: contentStart, to: contentEnd, decoration: mdBoldItalic });
+            } else {
+                decorations.push({ from: matchStart, to: contentStart, decoration: mdHidden });
+                decorations.push({ from: contentStart, to: contentEnd, decoration: mdBoldItalic });
+                decorations.push({ from: contentEnd, to: matchEnd, decoration: mdHidden });
+            }
+        }
+
+        // Bold: **text** or __text__
+        const boldRegex = /(\*\*|__)([^*_]+)\1/g;
+        let boldMatch;
+        while ((boldMatch = boldRegex.exec(lineText)) !== null) {
+            const matchStart = lineFrom + boldMatch.index;
+            const matchEnd = matchStart + boldMatch[0].length;
+
+            if (isEscaped(text, matchStart)) continue;
+            if (isRangeDecorated(matchStart, matchEnd)) continue;
+
+            const contentStart = matchStart + 2;
+            const contentEnd = matchEnd - 2;
+            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
+            markDecorated(matchStart, matchEnd);
+
+            if (cursorInside) {
+                decorations.push({ from: contentStart, to: contentEnd, decoration: mdBold });
+            } else {
+                decorations.push({ from: matchStart, to: contentStart, decoration: mdHidden });
+                decorations.push({ from: contentStart, to: contentEnd, decoration: mdBold });
+                decorations.push({ from: contentEnd, to: matchEnd, decoration: mdHidden });
+            }
+        }
+
+        // Italic: *text* or _text_ (not preceded/followed by same char)
+        const italicRegex = /(?<![*_])([*_])([^*_]+)\1(?![*_])/g;
+        let italicMatch;
+        while ((italicMatch = italicRegex.exec(lineText)) !== null) {
+            const matchStart = lineFrom + italicMatch.index;
+            const matchEnd = matchStart + italicMatch[0].length;
+
+            if (isEscaped(text, matchStart)) continue;
+            if (isRangeDecorated(matchStart, matchEnd)) continue;
+
+            const contentStart = matchStart + 1;
+            const contentEnd = matchEnd - 1;
+            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
+            markDecorated(matchStart, matchEnd);
+
+            if (cursorInside) {
+                decorations.push({ from: contentStart, to: contentEnd, decoration: mdItalic });
+            } else {
+                decorations.push({ from: matchStart, to: contentStart, decoration: mdHidden });
+                decorations.push({ from: contentStart, to: contentEnd, decoration: mdItalic });
+                decorations.push({ from: contentEnd, to: matchEnd, decoration: mdHidden });
+            }
+        }
+
+        // Strikethrough: ~~text~~
+        const strikeRegex = /~~([^~]+)~~/g;
+        let strikeMatch;
+        while ((strikeMatch = strikeRegex.exec(lineText)) !== null) {
+            const matchStart = lineFrom + strikeMatch.index;
+            const matchEnd = matchStart + strikeMatch[0].length;
+
+            if (isEscaped(text, matchStart)) continue;
+            if (isRangeDecorated(matchStart, matchEnd)) continue;
+
+            const contentStart = matchStart + 2;
+            const contentEnd = matchEnd - 2;
+            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
+            markDecorated(matchStart, matchEnd);
+
+            if (cursorInside) {
+                decorations.push({ from: contentStart, to: contentEnd, decoration: mdStrikethrough });
+            } else {
+                decorations.push({ from: matchStart, to: contentStart, decoration: mdHidden });
+                decorations.push({ from: contentStart, to: contentEnd, decoration: mdStrikethrough });
+                decorations.push({ from: contentEnd, to: matchEnd, decoration: mdHidden });
+            }
+        }
+
+        // Inline code: `code`
+        const codeRegex = /`([^`]+)`/g;
+        let codeMatch;
+        while ((codeMatch = codeRegex.exec(lineText)) !== null) {
+            const matchStart = lineFrom + codeMatch.index;
+            const matchEnd = matchStart + codeMatch[0].length;
+
+            if (isEscaped(text, matchStart)) continue;
+            if (isRangeDecorated(matchStart, matchEnd)) continue;
+
+            const contentStart = matchStart + 1;
+            const contentEnd = matchEnd - 1;
+            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
+            markDecorated(matchStart, matchEnd);
+
+            if (cursorInside) {
+                decorations.push({ from: contentStart, to: contentEnd, decoration: mdCode });
+            } else {
+                decorations.push({ from: matchStart, to: contentStart, decoration: mdHidden });
+                decorations.push({ from: contentStart, to: contentEnd, decoration: mdCode });
+                decorations.push({ from: contentEnd, to: matchEnd, decoration: mdHidden });
+            }
         }
     }
 
-    return Decoration.set(decorations.map(d => d.decoration.range(d.from, d.to)), true);
+    // Combine mark decorations and widgets, sorted by position
+    const allDecorations = [
+        ...decorations.map(d => d.decoration.range(d.from, d.to)),
+        ...widgets.map(w => w.widget.range(w.pos))
+    ];
+
+    // Sort by from position (required by CodeMirror)
+    allDecorations.sort((a, b) => a.from - b.from);
+
+    return Decoration.set(allDecorations, true);
 }
 
-const markdownLinkPlugin = ViewPlugin.fromClass(
+const markdownPlugin = ViewPlugin.fromClass(
     class {
         decorations: DecorationSet;
         constructor(view: EditorView) {
-            this.decorations = buildMarkdownLinkDecorations(view);
+            this.decorations = buildMarkdownDecorations(view);
         }
         update(update: ViewUpdate) {
-            // Rebuild on doc change, viewport change, OR selection change
-            // Selection change is needed to show/hide syntax when cursor enters/exits a link
             if (update.docChanged || update.viewportChanged || update.selectionSet) {
-                this.decorations = buildMarkdownLinkDecorations(update.view);
+                this.decorations = buildMarkdownDecorations(update.view);
             }
         }
     },
     { decorations: (v) => v.decorations }
 );
 
-// CSS theme for markdown links
-const markdownLinkTheme = EditorView.baseTheme({
-    '.cm-markdown-link-hidden': {
+// CSS theme for all markdown elements
+const markdownTheme = EditorView.baseTheme({
+    // Hidden syntax
+    '.cm-md-hidden': {
         display: 'none',
     },
-    '.cm-markdown-link-text': {
+    // Inline elements
+    '.cm-md-bold': {
+        fontWeight: 'bold',
+    },
+    '.cm-md-italic': {
+        fontStyle: 'italic',
+    },
+    '.cm-md-strikethrough': {
+        textDecoration: 'line-through',
+        opacity: '0.7',
+    },
+    '.cm-md-code': {
+        background: 'var(--ui-surface)',
+        padding: '1px 4px',
+        borderRadius: '3px',
+        fontFamily: 'monospace',
+    },
+    '.cm-md-link': {
         color: '#3b82f6',
         textDecoration: 'underline',
         textDecorationColor: '#3b82f680',
         cursor: 'pointer',
+    },
+    // Image preview
+    '.cm-md-image-preview': {
+        display: 'inline-block',
+        verticalAlign: 'middle',
+    },
+    '.cm-md-image-preview img': {
+        maxHeight: '200px',
+        maxWidth: '100%',
+        borderRadius: '4px',
+        border: '1px solid var(--ui-border)',
     },
 });
 
@@ -895,10 +1234,10 @@ export function EditorWindow() {
                     setContent(newContent);
                 }
             }),
-            // Markdown link paste handling and styling
+            // Markdown styling and paste handling
             markdownLinkPasteHandler,
-            markdownLinkPlugin,
-            markdownLinkTheme,
+            markdownPlugin,
+            markdownTheme,
             // Clipboard item drop handling
             clipboardDropHandler,
             ...getLanguageExtension(),
