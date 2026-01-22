@@ -298,6 +298,7 @@ export function EditorWindow() {
     const [showAiPopover, setShowAiPopover] = useState(false);
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const aiPopoverRef = useRef<HTMLDivElement>(null);
+    const languageDropdownRef = useRef<HTMLDivElement>(null);
 
 
     // Close AI popover when clicking outside
@@ -311,6 +312,18 @@ export function EditorWindow() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showAiPopover]);
+
+    // Close language dropdown when clicking outside
+    useEffect(() => {
+        if (!showLanguageDropdown) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (languageDropdownRef.current && !languageDropdownRef.current.contains(e.target as Node)) {
+                setShowLanguageDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showLanguageDropdown]);
 
     // Get drag store state and functions
     const {
@@ -1288,7 +1301,7 @@ export function EditorWindow() {
                             )}
                         </div>
                         {/* Language Selector */}
-                        <div className="relative">
+                        <div className="relative" ref={languageDropdownRef}>
                             <button
                                 onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
                                 className="text-xs px-2 py-1 rounded-md hover:bg-[var(--ui-hover)] transition-colors"
