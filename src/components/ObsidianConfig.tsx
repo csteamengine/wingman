@@ -40,11 +40,12 @@ export function ObsidianConfig({ onClose }: ObsidianConfigProps) {
     loadObsidianConfig();
   }, [loadObsidianConfig]);
 
-  useEffect(() => {
-    if (obsidianConfig) {
-      setConfig(obsidianConfig);
-    }
-  }, [obsidianConfig]);
+  // Sync local state with store when obsidianConfig loads (derived state pattern)
+  const configVaultPath = obsidianConfig?.vault_path ?? '';
+  if (config.vault_path !== configVaultPath && configVaultPath && !config.vault_path && obsidianConfig) {
+    // Only set on initial load, not after user edits
+    setConfig(obsidianConfig);
+  }
 
   const handleBrowseVault = async () => {
     try {
@@ -78,7 +79,7 @@ export function ObsidianConfig({ onClose }: ObsidianConfigProps) {
       try {
         await invoke('show_window');
         useEditorStore.setState({ isVisible: true });
-      } catch (e) {
+      } catch {
         // Ignore
       }
     }

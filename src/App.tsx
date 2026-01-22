@@ -114,7 +114,7 @@ function App() {
       'n': 'North', 'ne': 'NorthEast', 'e': 'East', 'se': 'SouthEast',
       's': 'South', 'sw': 'SouthWest', 'w': 'West', 'nw': 'NorthWest'
     };
-    await (win as any).startResizeDragging(directionMap[direction]);
+    await win.startResizeDragging(directionMap[direction] as Parameters<typeof win.startResizeDragging>[0]);
   }, []);
 
   return (

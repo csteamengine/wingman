@@ -42,12 +42,9 @@ function SnippetsPanelContent() {
   const listRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedSnippet = snippets[selectedIndex] || null;
-
-  // Reset selection when snippets change
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [snippets]);
+  // Compute safe index to avoid out-of-bounds when snippets change
+  const safeSelectedIndex = snippets.length > 0 ? Math.min(selectedIndex, snippets.length - 1) : 0;
+  const selectedSnippet = snippets[safeSelectedIndex] || null;
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -215,7 +212,7 @@ function SnippetsPanelContent() {
                     key={snippet.id}
                     snippet={snippet}
                     index={index}
-                    isSelected={index === selectedIndex}
+                    isSelected={index === safeSelectedIndex}
                     onInsert={handleInsert}
                     onHover={() => setSelectedIndex(index)}
                   />
