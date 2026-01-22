@@ -9,8 +9,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Premium subscription price ID from Stripe
-const PREMIUM_PRICE_ID = "price_1SrJYy7RJqZ8IvBxZm22ZDia";
+// Premium subscription price ID from Stripe (uses env var with fallback)
+const PREMIUM_PRICE_ID = Deno.env.get("STRIPE_PREMIUM_PRICE_ID") || "price_1SrJYy7RJqZ8IvBxZm22ZDia";
 
 serve(async (req) => {
   // Handle CORS preflight
