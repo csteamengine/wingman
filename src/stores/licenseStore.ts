@@ -170,7 +170,7 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
   // Synchronous check based on current state (no backend call)
   // Note: feature param is for API consistency and future granular checks
   // Premium tier also has access to all Pro features
-  isProFeatureEnabled: (_feature: ProFeature) => {
+  isProFeatureEnabled: (/* feature: ProFeature */) => {
     const { status, getEffectiveTier } = get();
     const effectiveTier = getEffectiveTier();
     // In dev mode with override, simulate valid status

@@ -100,12 +100,6 @@ export function ProFeatureGate({
   );
 }
 
-// Simple inline gate for conditionally showing elements
-export function useProFeature(feature: ProFeature): boolean {
-  const { isProFeatureEnabled } = useLicenseStore();
-  return isProFeatureEnabled(feature);
-}
-
 // Badge component for showing Pro lock on features
 export function ProBadge({ className = '' }: { className?: string }) {
   return (
