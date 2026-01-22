@@ -468,13 +468,14 @@ export function QuickActionsPanel() {
                     e.preventDefault();
                     setSelectedIndex(prev => prev > 0 ? prev - 1 : 0);
                     break;
-                case 'Enter':
+                case 'Enter': {
                     e.preventDefault();
                     const selectedItem = filteredClipboardItems[selectedIndex];
                     if (selectedItem) {
                         insertClipboardItem(selectedItem.content);
                     }
                     break;
+                }
             }
         } else {
             // Actions tab navigation
@@ -496,13 +497,14 @@ export function QuickActionsPanel() {
                     e.preventDefault();
                     setSelectedIndex(prev => prev > 0 ? prev - 1 : 0);
                     break;
-                case 'Enter':
+                case 'Enter': {
                     e.preventDefault();
                     const selectedAction = visibleActions[selectedIndex];
                     if (selectedAction) {
                         handleAction(selectedAction);
                     }
                     break;
+                }
             }
         }
     }, [activeTab, visibleActions, filteredClipboardItems, selectedIndex, handleAction, insertClipboardItem, searchQuery]);

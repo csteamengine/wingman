@@ -298,7 +298,7 @@ serve(async (req) => {
       const licenseKey = generateLicenseKey();
 
       // Create new license
-      const { data: newLicense, error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from("licenses")
         .insert({
           license_key: licenseKey,
