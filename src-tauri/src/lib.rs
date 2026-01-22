@@ -857,6 +857,9 @@ async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Resul
     {
         log::info!("show_window: Starting non-macOS window show sequence");
 
+        // Check if this is the first time showing the window
+        let is_first_show = !state.has_been_shown.load(std::sync::atomic::Ordering::SeqCst);
+
         // Only center on first show - remember position after that
         if is_first_show {
             if let Err(e) = window.center() {
