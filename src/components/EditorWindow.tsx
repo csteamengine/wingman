@@ -346,7 +346,7 @@ export function EditorWindow() {
     }, [aiError]);
 
     // Handle AI refine action with preset
-    const handleAiRefineWithPreset = useCallback(async (preset: Parameters<typeof callAIWithPreset>[2]) => {
+    const handleAiRefineWithPreset = useCallback(async (preset: { id: string; systemPrompt: string; name: string }) => {
         if (aiLoading || !content.trim()) return;
         setAiError(null);
         setShowAiPopover(false);
@@ -357,7 +357,7 @@ export function EditorWindow() {
             return;
         }
 
-        const response = await callAIWithPreset(licenseKey, content, preset);
+        const response = await callAIWithPreset(licenseKey, content, preset as any);
         if (response && response.result) {
             setContent(response.result);
         } else {
@@ -693,11 +693,7 @@ export function EditorWindow() {
 
     // Store current content before recreating editor
     const contentRef = useRef(content);
-
-    // Update ref in effect to avoid refs-during-render lint error
-    useEffect(() => {
-        contentRef.current = content;
-    }, [content]);
+    contentRef.current = content;
 
     useEffect(() => {
         if (!editorRef.current) return;
@@ -757,8 +753,6 @@ export function EditorWindow() {
             view.destroy();
             setEditorView(null);
         };
-    // Note: editorKeymap and setEditorView are stable references, intentionally omitted
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [language, settings?.theme, setContent, getLanguageExtension]);
 
     // Listen for refocus events (triggered when workspace changes in sticky mode)

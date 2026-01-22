@@ -716,3 +716,17 @@ serve(async (req) => {
     });
   }
 });
+
+// Helper to get customer email from Stripe
+async function getCustomerEmail(customerId: string): Promise<string> {
+  const response = await fetch(
+    `https://api.stripe.com/v1/customers/${customerId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${Deno.env.get("STRIPE_SECRET_KEY")}`,
+      },
+    }
+  );
+  const customer = await response.json();
+  return customer.email?.toLowerCase() || "";
+}

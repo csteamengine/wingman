@@ -64,7 +64,7 @@ serve(async (req) => {
     }
 
     // Delete the device activation
-    const { error: deleteError } = await supabase
+    const { error: deleteError, count } = await supabase
       .from("device_activations")
       .delete()
       .eq("license_id", license.id)
