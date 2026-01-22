@@ -69,7 +69,7 @@ const getEditorContent = (state: EditorState): string => {
         // Don't use set() here to avoid infinite loops, just return the editor content
       }
       return editorContent;
-    } catch {
+    } catch (e) {
       // EditorView might be destroyed or invalid
       console.warn('Failed to read from editorView, using store content');
     }
@@ -199,7 +199,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     try {
       const stats = await invoke<TextStats>('get_text_stats', { text: content });
       set({ stats });
-    } catch {
+    } catch (error) {
       // Calculate locally if backend fails
       const character_count = content.length;
       const word_count = content.split(/\s+/).filter(Boolean).length;
@@ -283,7 +283,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         // Still try to hide window on error
         try {
           await get().hideWindow();
-        } catch {
+        } catch (e) {
           // Ignore
         }
       }

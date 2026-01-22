@@ -126,7 +126,7 @@ export function PromptOptimizer({ initialText = '', onOptimized, onClose }: Prom
                         : 'text-green-400'
                   }`}
                 >
-                  {formatTokenUsage(subscriptionStatus.tokens_used)}
+                  {formatTokenUsage(subscriptionStatus.tokens_used, subscriptionStatus.tokens_remaining)}
                 </span>
               </div>
               <div className="h-2 bg-gray-700 rounded-full overflow-hidden">

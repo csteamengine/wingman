@@ -58,6 +58,10 @@ interface ClaudeProxyRequest {
   system_instructions?: string; // Optional custom system instructions
 }
 
+interface ClaudeMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
 interface ClaudeResponse {
   id: string;
@@ -143,7 +147,9 @@ serve(async (req) => {
       );
     }
 
+    // Get current month in YYYY-MM format (UTC)
     const now = new Date();
+    const currentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 
     // Validate Premium license and check access
     const { data: accessData, error: accessError } = await supabase.rpc(
