@@ -11,11 +11,12 @@ export function AIConfig() {
     loadAIConfig();
   }, [loadAIConfig]);
 
-  useEffect(() => {
-    if (aiConfig) {
-      setSystemInstructions(aiConfig.system_instructions);
-    }
-  }, [aiConfig]);
+  // Sync local state with store when aiConfig loads (derived state pattern)
+  const currentInstructions = aiConfig?.system_instructions ?? '';
+  if (systemInstructions !== currentInstructions && currentInstructions && !systemInstructions) {
+    // Only set on initial load, not after user edits
+    setSystemInstructions(currentInstructions);
+  }
 
   const handleSave = async () => {
     setSaving(true);
