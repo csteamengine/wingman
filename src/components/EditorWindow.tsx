@@ -168,12 +168,16 @@ const hiddenMark = Decoration.mark({ class: 'cm-markdown-link-hidden' });
 const linkTextMark = Decoration.mark({ class: 'cm-markdown-link-text' });
 
 // Build decorations for markdown links
+// Only hides syntax when cursor is NOT inside the link
 function buildMarkdownLinkDecorations(view: EditorView): DecorationSet {
     const decorations: {from: number, to: number, decoration: Decoration}[] = [];
     const doc = view.state.doc;
     const text = doc.toString();
     const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
     let match;
+
+    // Get all cursor/selection positions
+    const selections = view.state.selection.ranges;
 
     while ((match = regex.exec(text)) !== null) {
         const start = match.index;
@@ -183,12 +187,22 @@ function buildMarkdownLinkDecorations(view: EditorView): DecorationSet {
         const bracketClose = textEnd; // ]
         const end = start + match[0].length; // end of )
 
-        // Hide the opening bracket [
-        decorations.push({ from: bracketOpen, to: textStart, decoration: hiddenMark });
-        // Style the link text
-        decorations.push({ from: textStart, to: textEnd, decoration: linkTextMark });
-        // Hide the ](url)
-        decorations.push({ from: bracketClose, to: end, decoration: hiddenMark });
+        // Check if any cursor/selection is inside this link
+        const cursorInside = selections.some(sel =>
+            (sel.from >= bracketOpen && sel.from <= end) ||
+            (sel.to >= bracketOpen && sel.to <= end) ||
+            (sel.from <= bracketOpen && sel.to >= end)
+        );
+
+        if (cursorInside) {
+            // Cursor is inside - show full syntax, just style the link text portion
+            decorations.push({ from: textStart, to: textEnd, decoration: linkTextMark });
+        } else {
+            // Cursor is outside - hide syntax and show styled link
+            decorations.push({ from: bracketOpen, to: textStart, decoration: hiddenMark });
+            decorations.push({ from: textStart, to: textEnd, decoration: linkTextMark });
+            decorations.push({ from: bracketClose, to: end, decoration: hiddenMark });
+        }
     }
 
     return Decoration.set(decorations.map(d => d.decoration.range(d.from, d.to)), true);
@@ -201,7 +215,9 @@ const markdownLinkPlugin = ViewPlugin.fromClass(
             this.decorations = buildMarkdownLinkDecorations(view);
         }
         update(update: ViewUpdate) {
-            if (update.docChanged || update.viewportChanged) {
+            // Rebuild on doc change, viewport change, OR selection change
+            // Selection change is needed to show/hide syntax when cursor enters/exits a link
+            if (update.docChanged || update.viewportChanged || update.selectionSet) {
                 this.decorations = buildMarkdownLinkDecorations(update.view);
             }
         }
