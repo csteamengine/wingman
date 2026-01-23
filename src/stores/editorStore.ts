@@ -5,6 +5,7 @@ import type { EditorView } from '@codemirror/view';
 import type { TextStats, PanelType } from '../types';
 import { useDiffStore } from './diffStore';
 import { useSettingsStore } from './settingsStore';
+import { useLicenseStore } from './licenseStore';
 
 export type SettingsTab = 'settings' | 'hotkeys' | 'license';
 
@@ -328,6 +329,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const selection = editorView.state.selection.main;
       const cursorPos = selection.head;
       const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
+      const hasDiffPreview = useLicenseStore.getState().isProFeatureEnabled('diff_preview');
 
       if (!selection.empty) {
         // Transform only the selected text
@@ -347,7 +349,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             get().updateStats();
           };
 
-          if (showDiffPreview) {
+          if (showDiffPreview && hasDiffPreview) {
             useDiffStore.getState().setPendingDiff({
               originalText: selectedText,
               transformedText: transformed,
@@ -359,11 +361,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             useDiffStore.getState().openPreviewModal();
           } else {
             applyTransform();
-            useDiffStore.getState().addTransformationRecord({
-              originalText: selectedText,
-              transformedText: transformed,
-              transformationType: getTransformLabel(transform),
-            });
+            if (hasDiffPreview) {
+              useDiffStore.getState().addTransformationRecord({
+                originalText: selectedText,
+                transformedText: transformed,
+                transformationType: getTransformLabel(transform),
+              });
+            }
           }
         } catch (error) {
           console.error('Failed to transform text:', error);
@@ -387,7 +391,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           get().updateStats();
         };
 
-        if (showDiffPreview) {
+        if (showDiffPreview && hasDiffPreview) {
           useDiffStore.getState().setPendingDiff({
             originalText: content,
             transformedText: transformed,
@@ -399,11 +403,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           useDiffStore.getState().openPreviewModal();
         } else {
           applyTransform();
-          useDiffStore.getState().addTransformationRecord({
-            originalText: content,
-            transformedText: transformed,
-            transformationType: getTransformLabel(transform),
-          });
+          if (hasDiffPreview) {
+            useDiffStore.getState().addTransformationRecord({
+              originalText: content,
+              transformedText: transformed,
+              transformationType: getTransformLabel(transform),
+            });
+          }
         }
       } catch (error) {
         console.error('Failed to transform text:', error);
@@ -418,7 +424,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (content === transformed) return;
 
       const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
-      if (showDiffPreview) {
+      const hasDiffPreview = useLicenseStore.getState().isProFeatureEnabled('diff_preview');
+      if (showDiffPreview && hasDiffPreview) {
         useDiffStore.getState().setPendingDiff({
           originalText: content,
           transformedText: transformed,
@@ -434,11 +441,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       } else {
         set({ content: transformed });
         get().updateStats();
-        useDiffStore.getState().addTransformationRecord({
-          originalText: content,
-          transformedText: transformed,
-          transformationType: getTransformLabel(transform),
-        });
+        if (hasDiffPreview) {
+          useDiffStore.getState().addTransformationRecord({
+            originalText: content,
+            transformedText: transformed,
+            transformationType: getTransformLabel(transform),
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to transform text:', error);

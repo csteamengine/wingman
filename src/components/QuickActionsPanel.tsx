@@ -6,6 +6,7 @@ import {useClipboardStore} from '../stores/clipboardStore';
 import {useDragStore} from '../stores/dragStore';
 import {useDiffStore} from '../stores/diffStore';
 import {useSettingsStore} from '../stores/settingsStore';
+import {useCustomTransformationsStore} from '../stores/customTransformationsStore';
 
 type TabType = 'clipboard' | 'actions';
 
@@ -20,9 +21,9 @@ interface Action {
     label: string;
     description: string;
     requiresInput?: boolean;
-    handler?: 'transform' | 'format' | 'encode' | 'generate';
+    handler?: 'transform' | 'format' | 'encode' | 'generate' | 'custom';
     section?: string;
-    proFeature?: 'json_xml_formatting' | 'encode_decode';
+    proFeature?: 'json_xml_formatting' | 'encode_decode' | 'custom_transformations';
 }
 
 const actionSections: ActionSection[] = [
@@ -150,8 +151,8 @@ const actionSections: ActionSection[] = [
     },
 ];
 
-// Flatten all actions with section info for search
-const allActions: Action[] = actionSections.flatMap(section =>
+// Flatten all static actions with section info for search
+const staticActions: Action[] = actionSections.flatMap(section =>
     section.actions.map(action => ({
         ...action,
         section: section.title,
@@ -177,6 +178,17 @@ export function QuickActionsPanel() {
         removeItem: removeClipboardItem,
         clearAll: clearClipboard
     } = useClipboardStore();
+    const {
+        transformations: customTransformations,
+        loadTransformations: loadCustomTransformations,
+        executeTransformation,
+        getEnabledTransformations,
+    } = useCustomTransformationsStore();
+
+    // Load custom transformations on mount
+    useEffect(() => {
+        loadCustomTransformations();
+    }, [loadCustomTransformations]);
 
     const [activeTab, setActiveTab] = useState<TabType>('clipboard');
     const [error, setError] = useState<string | null>(null);
@@ -217,6 +229,26 @@ export function QuickActionsPanel() {
         );
     }, [clipboardItems, searchQuery]);
 
+    // Get custom transformation actions
+    const customTransformationActions: Action[] = useMemo(() => {
+        const hasAccess = isProFeatureEnabled('custom_transformations');
+        if (!hasAccess) return [];
+        return getEnabledTransformations().map(t => ({
+            id: `custom_${t.id}`,
+            label: t.name,
+            description: t.description || 'Custom transformation',
+            handler: 'custom' as const,
+            requiresInput: true,
+            section: 'Custom',
+            proFeature: 'custom_transformations' as const,
+        }));
+    }, [customTransformations, isProFeatureEnabled, getEnabledTransformations]);
+
+    // All actions including custom transformations
+    const allActions = useMemo(() => {
+        return [...staticActions, ...customTransformationActions];
+    }, [customTransformationActions]);
+
     const filteredActions = useMemo(() => {
         if (!searchQuery.trim()) return null;
         const query = searchQuery.toLowerCase();
@@ -225,7 +257,7 @@ export function QuickActionsPanel() {
                 action.label.toLowerCase().includes(query) ||
                 action.description.toLowerCase().includes(query)
         );
-    }, [searchQuery]);
+    }, [searchQuery, allActions]);
 
     // Get visible actions for keyboard navigation
     const visibleActions = useMemo(() => {
@@ -448,9 +480,10 @@ export function QuickActionsPanel() {
                     }
                     const formatted = await invoke<string>(action.id, {text});
 
-                    // Check if diff preview is enabled
+                    // Check if diff preview is enabled (and user has PRO)
                     const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
-                    if (showDiffPreview && text !== formatted) {
+                    const hasDiffPreview = isProFeatureEnabled('diff_preview');
+                    if (showDiffPreview && hasDiffPreview && text !== formatted) {
                         useDiffStore.getState().setPendingDiff({
                             originalText: text,
                             transformedText: formatted,
@@ -462,7 +495,7 @@ export function QuickActionsPanel() {
                         useDiffStore.getState().openPreviewModal();
                     } else {
                         applyProcessedText(formatted, hasSelection, from, to, cursorPos);
-                        if (text !== formatted) {
+                        if (text !== formatted && hasDiffPreview) {
                             useDiffStore.getState().addTransformationRecord({
                                 originalText: text,
                                 transformedText: formatted,
@@ -481,9 +514,10 @@ export function QuickActionsPanel() {
                     }
                     const encoded = await invoke<string>(action.id, {text});
 
-                    // Check if diff preview is enabled
+                    // Check if diff preview is enabled (and user has PRO)
                     const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
-                    if (showDiffPreview && text !== encoded) {
+                    const hasDiffPreview = isProFeatureEnabled('diff_preview');
+                    if (showDiffPreview && hasDiffPreview && text !== encoded) {
                         useDiffStore.getState().setPendingDiff({
                             originalText: text,
                             transformedText: encoded,
@@ -495,7 +529,7 @@ export function QuickActionsPanel() {
                         useDiffStore.getState().openPreviewModal();
                     } else {
                         applyProcessedText(encoded, hasSelection, from, to, cursorPos);
-                        if (text !== encoded) {
+                        if (text !== encoded && hasDiffPreview) {
                             useDiffStore.getState().addTransformationRecord({
                                 originalText: text,
                                 transformedText: encoded,
@@ -519,11 +553,55 @@ export function QuickActionsPanel() {
                         setContent(content ? content + '\n\n' + lorem : lorem);
                     }
                     break;
+
+                case 'custom': {
+                    const {text, hasSelection, from, to, cursorPos} = getTextToProcess();
+                    if (!text.trim()) {
+                        setError('No text to transform');
+                        return;
+                    }
+
+                    // Extract the custom transformation ID from the action ID
+                    const transformId = action.id.replace('custom_', '');
+                    const result = executeTransformation(transformId, text);
+
+                    if (!result.success) {
+                        setError(result.error || 'Transformation failed');
+                        return;
+                    }
+
+                    const transformed = result.result!;
+
+                    // Check if diff preview is enabled (and user has PRO)
+                    const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
+                    const hasDiffPreview = isProFeatureEnabled('diff_preview');
+                    if (showDiffPreview && hasDiffPreview && text !== transformed) {
+                        useDiffStore.getState().setPendingDiff({
+                            originalText: text,
+                            transformedText: transformed,
+                            transformationType: action.label,
+                            selectionRange: hasSelection ? { from, to } : null,
+                            cursorPos,
+                            applyCallback: () => applyProcessedText(transformed, hasSelection, from, to, cursorPos),
+                        });
+                        useDiffStore.getState().openPreviewModal();
+                    } else {
+                        applyProcessedText(transformed, hasSelection, from, to, cursorPos);
+                        if (text !== transformed && hasDiffPreview) {
+                            useDiffStore.getState().addTransformationRecord({
+                                originalText: text,
+                                transformedText: transformed,
+                                transformationType: action.label,
+                            });
+                        }
+                    }
+                    break;
+                }
             }
         } catch (err) {
             setError(String(err));
         }
-    }, [content, isProFeatureEnabled, setContent, transformText, applyBulletList, applyNumberedList, getTextToProcess, applyProcessedText]);
+    }, [content, isProFeatureEnabled, setContent, transformText, applyBulletList, applyNumberedList, getTextToProcess, applyProcessedText, executeTransformation]);
 
     // Keyboard navigation
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -897,79 +975,145 @@ export function QuickActionsPanel() {
                             /* Section view */
                             (() => {
                                 let globalIndex = 0;
-                                return actionSections.map((section) => {
-                                    const isPro = section.proFeature ? isProFeatureEnabled(section.proFeature) : true;
-                                    const sectionStartIndex = globalIndex;
+                                const hasCustomAccess = isProFeatureEnabled('custom_transformations');
+                                const enabledCustom = customTransformationActions;
 
-                                    return (
-                                        <div key={section.title} className="mb-2">
-                                            <button
-                                                onClick={() => toggleSection(section.title)}
-                                                className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-medium text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors"
-                                            >
-                        <span className="flex items-center gap-2">
-                          {section.title}
-                            {section.proFeature && !isPro && (
-                                <span
-                                    className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--ui-accent)]/20 text-[var(--ui-accent)]">
-                              PRO
-                            </span>
-                            )}
-                        </span>
-                                                <svg
-                                                    width="10"
-                                                    height="10"
-                                                    viewBox="0 0 10 10"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="1.5"
-                                                    strokeLinecap="round"
-                                                    className={`transition-transform ${expandedSections.has(section.title) ? 'rotate-180' : ''}`}
-                                                >
-                                                    <path d="M2 3.5l3 3 3-3"/>
-                                                </svg>
-                                            </button>
+                                return (
+                                    <>
+                                        {actionSections.map((section) => {
+                                            const isPro = section.proFeature ? isProFeatureEnabled(section.proFeature) : true;
+                                            const sectionStartIndex = globalIndex;
 
-                                            {expandedSections.has(section.title) && (
-                                                <div className="grid gap-1">
-                                                    {section.proFeature && !isPro ? (
-                                                        <div
-                                                            className="px-3 py-4 text-center text-xs text-[var(--ui-text-muted)]">
-                                                            <p className="mb-2">Upgrade to Pro to
-                                                                unlock {section.title}</p>
-                                                            <button
-                                                                onClick={() => setActivePanel('settings')}
-                                                                className="text-[var(--ui-accent)] hover:underline"
-                                                            >
-                                                                View Pro features
-                                                            </button>
+                                            return (
+                                                <div key={section.title} className="mb-2">
+                                                    <button
+                                                        onClick={() => toggleSection(section.title)}
+                                                        className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-medium text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors"
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            {section.title}
+                                                            {section.proFeature && !isPro && (
+                                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--ui-accent)]/20 text-[var(--ui-accent)]">
+                                                                    PRO
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        <svg
+                                                            width="10"
+                                                            height="10"
+                                                            viewBox="0 0 10 10"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="1.5"
+                                                            strokeLinecap="round"
+                                                            className={`transition-transform ${expandedSections.has(section.title) ? 'rotate-180' : ''}`}
+                                                        >
+                                                            <path d="M2 3.5l3 3 3-3"/>
+                                                        </svg>
+                                                    </button>
+
+                                                    {expandedSections.has(section.title) && (
+                                                        <div className="grid gap-1">
+                                                            {section.proFeature && !isPro ? (
+                                                                <div className="px-3 py-4 text-center text-xs text-[var(--ui-text-muted)]">
+                                                                    <p className="mb-2">Upgrade to Pro to unlock {section.title}</p>
+                                                                    <button
+                                                                        onClick={() => setActivePanel('settings')}
+                                                                        className="text-[var(--ui-accent)] hover:underline"
+                                                                    >
+                                                                        View Pro features
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                section.actions.map((action, idx) => {
+                                                                    const actionIndex = sectionStartIndex + idx;
+                                                                    globalIndex++;
+                                                                    return renderAction(
+                                                                        {
+                                                                            ...action,
+                                                                            section: section.title,
+                                                                            proFeature: section.proFeature
+                                                                        },
+                                                                        actionIndex
+                                                                    );
+                                                                })
+                                                            )}
                                                         </div>
-                                                    ) : (
-                                                        section.actions.map((action, idx) => {
-                                                            const actionIndex = sectionStartIndex + idx;
-                                                            globalIndex++;
-                                                            return renderAction(
-                                                                {
-                                                                    ...action,
-                                                                    section: section.title,
-                                                                    proFeature: section.proFeature
-                                                                },
-                                                                actionIndex
-                                                            );
-                                                        })
+                                                    )}
+                                                    {!expandedSections.has(section.title) && (
+                                                        // Skip indices for collapsed sections
+                                                        <>{(() => {
+                                                            globalIndex += section.actions.length;
+                                                            return null;
+                                                        })()}</>
                                                     )}
                                                 </div>
-                                            )}
-                                            {!expandedSections.has(section.title) && (
-                                                // Skip indices for collapsed sections
-                                                <>{(() => {
-                                                    globalIndex += section.actions.length;
-                                                    return null;
-                                                })()}</>
-                                            )}
-                                        </div>
-                                    );
-                                });
+                                            );
+                                        })}
+
+                                        {/* Custom Transformations Section */}
+                                        {(hasCustomAccess || enabledCustom.length > 0) && (
+                                            <div className="mb-2">
+                                                <button
+                                                    onClick={() => toggleSection('Custom')}
+                                                    className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-medium text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors"
+                                                >
+                                                    <span className="flex items-center gap-2">
+                                                        Custom
+                                                        {!hasCustomAccess && (
+                                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--ui-accent)]/20 text-[var(--ui-accent)]">
+                                                                PRO
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <svg
+                                                        width="10"
+                                                        height="10"
+                                                        viewBox="0 0 10 10"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="1.5"
+                                                        strokeLinecap="round"
+                                                        className={`transition-transform ${expandedSections.has('Custom') ? 'rotate-180' : ''}`}
+                                                    >
+                                                        <path d="M2 3.5l3 3 3-3"/>
+                                                    </svg>
+                                                </button>
+
+                                                {expandedSections.has('Custom') && (
+                                                    <div className="grid gap-1">
+                                                        {!hasCustomAccess ? (
+                                                            <div className="px-3 py-4 text-center text-xs text-[var(--ui-text-muted)]">
+                                                                <p className="mb-2">Upgrade to Pro to unlock Custom Transformations</p>
+                                                                <button
+                                                                    onClick={() => setActivePanel('settings')}
+                                                                    className="text-[var(--ui-accent)] hover:underline"
+                                                                >
+                                                                    View Pro features
+                                                                </button>
+                                                            </div>
+                                                        ) : enabledCustom.length === 0 ? (
+                                                            <div className="px-3 py-4 text-center text-xs text-[var(--ui-text-muted)]">
+                                                                <p className="mb-2">No custom transformations</p>
+                                                                <button
+                                                                    onClick={() => setActivePanel('settings')}
+                                                                    className="text-[var(--ui-accent)] hover:underline"
+                                                                >
+                                                                    Create one in Settings
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            enabledCustom.map((action, idx) => {
+                                                                const actionIndex = globalIndex + idx;
+                                                                return renderAction(action, actionIndex);
+                                                            })
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </>
+                                );
                             })()
                         )}
                     </>

@@ -94,7 +94,9 @@ export type ProFeature =
   | 'obsidian_integration'
   | 'font_customization'
   | 'opacity_control'
-  | 'sticky_mode';
+  | 'sticky_mode'
+  | 'diff_preview'
+  | 'custom_transformations';
 
 export type PremiumFeature =
   | 'prompt_optimizer'
@@ -183,4 +185,20 @@ export interface ClipboardItem {
   content: string;
   timestamp: number;
   preview: string; // First 100 chars for display
+}
+
+// Custom text transformation types
+export interface CustomTransformation {
+  id: string;
+  name: string;
+  description: string;
+  code: string; // JavaScript/TypeScript function body
+  language: 'javascript' | 'typescript';
+  created_at: string;
+  updated_at: string;
+  enabled: boolean;
+}
+
+export interface CustomTransformationsData {
+  transformations: CustomTransformation[];
 }

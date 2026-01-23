@@ -1,4 +1,5 @@
 import { useDiffStore } from '../stores/diffStore';
+import { useLicenseStore } from '../stores/licenseStore';
 
 export function TransformationFloatingButton() {
   const {
@@ -8,10 +9,12 @@ export function TransformationFloatingButton() {
     undoLastTransformation,
     dismissFloatingButton,
   } = useDiffStore();
+  const { isProFeatureEnabled } = useLicenseStore();
 
+  const hasDiffPreview = isProFeatureEnabled('diff_preview');
   const latestTransformation = transformationHistory[0];
 
-  if (!showFloatingButton || !latestTransformation) {
+  if (!hasDiffPreview || !showFloatingButton || !latestTransformation) {
     return null;
   }
 

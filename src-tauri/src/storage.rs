@@ -193,3 +193,41 @@ pub fn save_position_for_monitor(monitor_name: &str, position: WindowPosition) -
     data.positions.insert(monitor_name.to_string(), position);
     save_monitor_positions(&data)
 }
+
+// Custom text transformations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomTransformation {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub code: String,
+    pub language: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CustomTransformationsData {
+    pub transformations: Vec<CustomTransformation>,
+}
+
+pub fn load_custom_transformations() -> Result<CustomTransformationsData, StorageError> {
+    let dir = ensure_app_data_dir()?;
+    let path = dir.join("custom_transformations.json");
+
+    if path.exists() {
+        let content = fs::read_to_string(&path)?;
+        Ok(serde_json::from_str(&content)?)
+    } else {
+        Ok(CustomTransformationsData::default())
+    }
+}
+
+pub fn save_custom_transformations(data: &CustomTransformationsData) -> Result<(), StorageError> {
+    let dir = ensure_app_data_dir()?;
+    let path = dir.join("custom_transformations.json");
+    let content = serde_json::to_string_pretty(data)?;
+    fs::write(path, content)?;
+    Ok(())
+}
