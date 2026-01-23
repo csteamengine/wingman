@@ -33,10 +33,11 @@ pub fn start_workspace_monitor<R: Runtime>(app_handle: tauri::AppHandle<R>) {
                 // Check if monitor changed (cursor moved to different display)
                 if let Some(ref last_name) = last_monitor_name {
                     if last_name != &current_monitor_name && !current_monitor_name.is_empty() {
-                        log::info!("Monitor changed from '{}' to '{}'", last_name, current_monitor_name);
+                        log::info!("Monitor changed from '{}' to '{}', sticky_mode={}",
+                            last_name, current_monitor_name, sticky_mode);
 
                         if sticky_mode {
-                            log::info!("Sticky mode active - moving panel to new monitor");
+                            log::info!("Sticky mode active - attempting to move panel to new monitor");
 
                             // Clone names for the closure
                             let old_monitor = last_name.clone();
@@ -46,8 +47,11 @@ pub fn start_workspace_monitor<R: Runtime>(app_handle: tauri::AppHandle<R>) {
                             let app_for_thread = app_handle.clone();
                             let app_for_closure = app_for_thread.clone();
                             let _ = app_for_thread.run_on_main_thread(move || {
+                                log::info!("Main thread closure executing for monitor move");
                                 if let Ok(panel) = app_for_closure.get_webview_panel(MAIN_WINDOW_LABEL) {
-                                    if panel.is_visible() {
+                                    let is_visible = panel.is_visible();
+                                    log::info!("Panel found, is_visible={}", is_visible);
+                                    if is_visible {
                                         if let Some(window) = app_for_closure.get_webview_window(MAIN_WINDOW_LABEL) {
                                             // Save current position for the old monitor
                                             if let Err(e) = window.save_position_for_current_monitor(&old_monitor) {
@@ -63,7 +67,11 @@ pub fn start_workspace_monitor<R: Runtime>(app_handle: tauri::AppHandle<R>) {
                                         }
                                         panel.make_key_window();
                                         let _ = app_for_closure.emit("refocus-editor", ());
+                                    } else {
+                                        log::info!("Panel not visible, skipping move");
                                     }
+                                } else {
+                                    log::warn!("Failed to get panel in main thread closure");
                                 }
                             });
                         }
