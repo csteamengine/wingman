@@ -19,7 +19,7 @@ use tauri::{
 #[cfg(target_os = "macos")]
 use tauri_nspanel::ManagerExt;
 #[cfg(target_os = "macos")]
-use window::{start_workspace_monitor, set_window_blur, update_vibrancy_material, get_cursor_monitor_name, WebviewWindowExt, MAIN_WINDOW_LABEL};
+use window::{start_workspace_monitor, set_window_blur, update_vibrancy_material, get_window_monitor_name, WebviewWindowExt, MAIN_WINDOW_LABEL};
 
 use clipboard::{calculate_text_stats, transform_text, TextStats, TextTransform};
 use history::{
@@ -961,12 +961,13 @@ async fn hide_window(window: tauri::Window) -> Result<(), String> {
                 if let Ok(panel) = app_handle_inner.get_webview_panel(MAIN_WINDOW_LABEL) {
                     if panel.is_visible() {
                         // Save position before hiding
+                        // Use window's actual position, not cursor position
                         if let Some(webview_window) = app_handle_inner.get_webview_window(MAIN_WINDOW_LABEL) {
-                            if let Some(monitor_name) = get_cursor_monitor_name() {
+                            if let Some(monitor_name) = get_window_monitor_name(&webview_window) {
                                 if let Err(e) = webview_window.save_position_for_current_monitor(&monitor_name) {
                                     log::warn!("Failed to save position on hide: {:?}", e);
                                 } else {
-                                    log::info!("Saved position for {} before hiding", monitor_name);
+                                    log::info!("Saved position for {} before hiding (window position)", monitor_name);
                                 }
                             }
                         }
@@ -1002,8 +1003,9 @@ async fn hide_and_paste(window: tauri::Window, state: State<'_, AppState>) -> Re
                 if let Ok(panel) = app_handle_inner.get_webview_panel(MAIN_WINDOW_LABEL) {
                     if panel.is_visible() {
                         // Save position before hiding
+                        // Use window's actual position, not cursor position
                         if let Some(webview_window) = app_handle_inner.get_webview_window(MAIN_WINDOW_LABEL) {
-                            if let Some(monitor_name) = get_cursor_monitor_name() {
+                            if let Some(monitor_name) = get_window_monitor_name(&webview_window) {
                                 if let Err(e) = webview_window.save_position_for_current_monitor(&monitor_name) {
                                     log::warn!("Failed to save position on hide: {:?}", e);
                                 }

@@ -36,10 +36,9 @@ pub fn start_workspace_monitor<R: Runtime>(app_handle: tauri::AppHandle<R>) {
                         log::info!("Monitor changed from '{}' to '{}'", last_name, current_monitor_name);
 
                         if sticky_mode {
-                            log::info!("Sticky mode active - moving panel to new monitor");
+                            log::info!("Sticky mode active - cursor moved to new monitor");
 
                             // Clone names for the closure
-                            let old_monitor = last_name.clone();
                             let new_monitor = current_monitor_name.clone();
 
                             // Move panel to new monitor with animation
@@ -49,16 +48,34 @@ pub fn start_workspace_monitor<R: Runtime>(app_handle: tauri::AppHandle<R>) {
                                 if let Ok(panel) = app_for_closure.get_webview_panel(MAIN_WINDOW_LABEL) {
                                     if panel.is_visible() {
                                         if let Some(window) = app_for_closure.get_webview_window(MAIN_WINDOW_LABEL) {
-                                            // Save current position for the old monitor
-                                            if let Err(e) = window.save_position_for_current_monitor(&old_monitor) {
-                                                log::warn!("Failed to save position for {}: {:?}", old_monitor, e);
+                                            // Determine which monitor the window is ACTUALLY on
+                                            // (user may have dragged it to a different monitor)
+                                            let actual_window_monitor = get_window_monitor_name(&window);
+
+                                            // Save position for the monitor where the window actually is
+                                            if let Some(ref actual_monitor) = actual_window_monitor {
+                                                if let Err(e) = window.save_position_for_current_monitor(actual_monitor) {
+                                                    log::warn!("Failed to save position for {}: {:?}", actual_monitor, e);
+                                                } else {
+                                                    log::info!("Saved position for {} (window's actual monitor)", actual_monitor);
+                                                }
                                             }
 
-                                            // Move to new monitor with animation, restoring saved position
-                                            if let Err(e) = window.move_to_monitor_animated(&new_monitor) {
-                                                log::warn!("Failed to move panel to {}: {:?}", new_monitor, e);
+                                            // Only animate to new monitor if window isn't already there
+                                            let should_animate = actual_window_monitor
+                                                .as_ref()
+                                                .map(|m| m != &new_monitor)
+                                                .unwrap_or(true);
+
+                                            if should_animate {
+                                                // Move to new monitor with animation, restoring saved position
+                                                if let Err(e) = window.move_to_monitor_animated(&new_monitor) {
+                                                    log::warn!("Failed to move panel to {}: {:?}", new_monitor, e);
+                                                } else {
+                                                    log::info!("Panel animated to monitor: {}", new_monitor);
+                                                }
                                             } else {
-                                                log::info!("Panel animated to monitor: {}", new_monitor);
+                                                log::info!("Window already on target monitor {}, skipping animation", new_monitor);
                                             }
                                         }
                                         panel.make_key_window();
@@ -216,14 +233,15 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
             if let Ok(panel) = app_handle.get_webview_panel(MAIN_WINDOW_LABEL) {
                 if panel.is_visible() {
                     // Save position before hiding
+                    // IMPORTANT: Use the window's actual position to determine monitor,
+                    // not cursor position (user may have dragged window to different monitor)
                     if let Some(window) = app_handle.get_webview_window(MAIN_WINDOW_LABEL) {
-                        if let Some(monitor) = monitor::get_monitor_with_cursor() {
-                            let monitor_name = monitor.name().map(|s| s.to_string()).unwrap_or_default();
+                        if let Some(monitor_name) = get_window_monitor_name(&window) {
                             if !monitor_name.is_empty() {
                                 if let Err(e) = window.save_position_for_current_monitor(&monitor_name) {
                                     log::warn!("Failed to save position on hide: {:?}", e);
                                 } else {
-                                    log::info!("Saved position for {} before hiding", monitor_name);
+                                    log::info!("Saved position for {} before hiding (based on window position)", monitor_name);
                                 }
                             }
                         }
@@ -447,6 +465,75 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
 pub fn get_cursor_monitor_name() -> Option<String> {
     monitor::get_monitor_with_cursor()
         .and_then(|m| m.name().map(|s| s.to_string()))
+}
+
+/// Get the name of the monitor that contains a given point
+/// Uses macOS NSScreen APIs to find which screen contains the point
+#[cfg(target_os = "macos")]
+pub fn get_monitor_name_for_point(x: f64, y: f64) -> Option<String> {
+    use cocoa::base::{id, nil};
+    use cocoa::foundation::{NSPoint, NSRect};
+    use objc::{class, msg_send, sel, sel_impl};
+
+    unsafe {
+        // Get all screens
+        let screens: id = msg_send![class!(NSScreen), screens];
+        if screens.is_null() {
+            return None;
+        }
+
+        let count: usize = msg_send![screens, count];
+        let point = NSPoint { x, y };
+
+        for i in 0..count {
+            let screen: id = msg_send![screens, objectAtIndex: i];
+            if screen.is_null() {
+                continue;
+            }
+
+            let frame: NSRect = msg_send![screen, frame];
+
+            // Check if point is within this screen's frame
+            if point.x >= frame.origin.x
+                && point.x < frame.origin.x + frame.size.width
+                && point.y >= frame.origin.y
+                && point.y < frame.origin.y + frame.size.height
+            {
+                // Get the screen's localized name
+                let name: id = msg_send![screen, localizedName];
+                if !name.is_null() {
+                    let name_str: *const i8 = msg_send![name, UTF8String];
+                    if !name_str.is_null() {
+                        return Some(std::ffi::CStr::from_ptr(name_str).to_string_lossy().into_owned());
+                    }
+                }
+            }
+        }
+
+        None
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn get_monitor_name_for_point(_x: f64, _y: f64) -> Option<String> {
+    None
+}
+
+/// Get the monitor name where the window is currently positioned
+/// This determines the monitor based on the window's frame center, not cursor position
+pub fn get_window_monitor_name<R: Runtime>(window: &WebviewWindow<R>) -> Option<String> {
+    let panel = window
+        .get_webview_panel(window.label())
+        .ok()?;
+
+    let panel = panel.as_panel();
+    let frame = panel.frame();
+
+    // Use the center of the window to determine which monitor it's on
+    let center_x = frame.origin.x + frame.size.width / 2.0;
+    let center_y = frame.origin.y + frame.size.height / 2.0;
+
+    get_monitor_name_for_point(center_x, center_y)
 }
 
 /// Apply native macOS vibrancy effect using NSVisualEffectView
