@@ -664,3 +664,16 @@ body {
   border: 1px solid var(--ui-border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
+
+/* Fenced code block lines */
+.cm-md-codeblock-line {
+  background-color: var(--ui-surface);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', monospace;
+  padding-left: 8px;
+  border-left: 3px solid var(--ui-accent);
+}
+
+.theme-light .cm-md-codeblock-line,
+.theme-solarized-light .cm-md-codeblock-line {
+  background-color: rgba(0, 0, 0, 0.05);
+}
