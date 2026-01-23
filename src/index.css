@@ -665,28 +665,40 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Fenced code block lines */
-.cm-md-codeblock-line {
+/* Fenced code block - base styles */
+.cm-md-codeblock {
   background-color: var(--ui-surface);
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', monospace;
-  padding: 2px 12px;
-  margin: 0 12px;
-  border-radius: 6px;
+  padding: 4px 16px;
+  margin-left: 12px;
+  margin-right: 12px;
 }
 
-/* Remove border-radius for middle lines to create connected block look */
-.cm-md-codeblock-line + .cm-md-codeblock-line {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-  margin-top: -1px;
+/* Single line code block - all corners rounded */
+.cm-md-codeblock-single {
+  border-radius: 8px;
 }
 
-.cm-md-codeblock-line:has(+ .cm-md-codeblock-line) {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+/* First line of multi-line block - top corners rounded */
+.cm-md-codeblock-first {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  padding-top: 8px;
 }
 
-.theme-light .cm-md-codeblock-line,
-.theme-solarized-light .cm-md-codeblock-line {
+/* Middle lines - no border radius */
+.cm-md-codeblock-middle {
+  border-radius: 0;
+}
+
+/* Last line of multi-line block - bottom corners rounded */
+.cm-md-codeblock-last {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  padding-bottom: 8px;
+}
+
+.theme-light .cm-md-codeblock,
+.theme-solarized-light .cm-md-codeblock {
   background-color: rgba(0, 0, 0, 0.05);
 }
