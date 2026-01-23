@@ -8,6 +8,7 @@ import {
   HistoryPanel,
   SnippetsPanel,
   QuickActionsPanel,
+  TransformationChainsPanel,
   LicenseStatusBanner,
   DevModeTierSwitcher,
 } from './components';
@@ -16,7 +17,7 @@ import { useEditorStore } from './stores/editorStore';
 
 function App() {
   const { settings } = useSettings();
-  const { activePanel, setActivePanel } = useEditorStore();
+  const { activePanel, setActivePanel, isFocusMode, toggleFocusMode } = useEditorStore();
 
   // Initialize license check
   useLicense();
@@ -183,23 +184,83 @@ function App() {
         className="h-11 flex items-center justify-between px-3 cursor-move select-none rounded-t-[10px]"
         onMouseDown={handleTitleBarDrag}
       >
-        {/* Settings cog button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setActivePanel(activePanel === 'settings' ? 'editor' : 'settings');
-          }}
-          tabIndex={-1}
-          className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
-            activePanel === 'settings' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
-          }`}
-          title="Settings"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </button>
+        {/* Left side: Settings + History + Snippets + Chains */}
+        <div className="flex items-center gap-1">
+          {/* Settings cog button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActivePanel(activePanel === 'settings' ? 'editor' : 'settings');
+            }}
+            tabIndex={-1}
+            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
+              activePanel === 'settings' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
+            }`}
+            title="Settings (Cmd+,)"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+
+          {/* History button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActivePanel(activePanel === 'history' ? 'editor' : 'history');
+            }}
+            tabIndex={-1}
+            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
+              activePanel === 'history' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
+            }`}
+            title="History (Cmd+H)"
+          >
+            {/* Clock icon */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </button>
+
+          {/* Snippets button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActivePanel(activePanel === 'snippets' ? 'editor' : 'snippets');
+            }}
+            tabIndex={-1}
+            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
+              activePanel === 'snippets' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
+            }`}
+            title="Snippets (Cmd+K)"
+          >
+            {/* Code brackets icon */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
+            </svg>
+          </button>
+
+          {/* Chains button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActivePanel(activePanel === 'chains' ? 'editor' : 'chains');
+            }}
+            tabIndex={-1}
+            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
+              activePanel === 'chains' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
+            }`}
+            title="Transformation Chains (Cmd+Shift+T)"
+          >
+            {/* Link chain icon */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+          </button>
+        </div>
 
         {/* Center dots */}
         <div className="flex items-center gap-1.5 pointer-events-none opacity-40">
@@ -208,10 +269,40 @@ function App() {
           <div className="w-2.5 h-2.5 rounded-full bg-[var(--ui-text-muted)]" />
         </div>
 
-        {/* Right side: Dev tier switcher + Quick Actions */}
-        <div className="flex items-center gap-2">
+        {/* Right side: Dev tier switcher + Focus + Quick Actions */}
+        <div className="flex items-center gap-1">
           {/* Dev mode tier switcher (only visible in dev mode) */}
           <DevModeTierSwitcher />
+
+          {/* Focus mode button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFocusMode();
+            }}
+            tabIndex={-1}
+            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
+              isFocusMode ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
+            }`}
+            title="Focus Mode (Cmd+Shift+F)"
+          >
+            {/* Expand/Minimize icon - shows minimize when in focus mode */}
+            {isFocusMode ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="4 14 10 14 10 20" />
+                <polyline points="20 10 14 10 14 4" />
+                <line x1="14" y1="10" x2="21" y2="3" />
+                <line x1="3" y1="21" x2="10" y2="14" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 3 21 3 21 9" />
+                <polyline points="9 21 3 21 3 15" />
+                <line x1="21" y1="3" x2="14" y2="10" />
+                <line x1="3" y1="21" x2="10" y2="14" />
+              </svg>
+            )}
+          </button>
 
           {/* Quick Actions toggle button */}
           <button
@@ -263,6 +354,12 @@ function App() {
         {activePanel === 'snippets' && (
           <div className="w-full">
             <SnippetsPanel />
+          </div>
+        )}
+
+        {activePanel === 'chains' && (
+          <div className="w-full">
+            <TransformationChainsPanel />
           </div>
         )}
 

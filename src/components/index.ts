@@ -3,6 +3,7 @@ export { SettingsPanel } from './SettingsPanel';
 export { HistoryPanel } from './HistoryPanel';
 export { SnippetsPanel } from './SnippetsPanel';
 export { QuickActionsPanel } from './QuickActionsPanel';
+export { TransformationChainsPanel } from './TransformationChainsPanel';
 export { StatsDisplay } from './StatsDisplay';
 export { ProFeatureGate } from './ProFeatureGate';
 export { LicenseActivation } from './LicenseActivation';

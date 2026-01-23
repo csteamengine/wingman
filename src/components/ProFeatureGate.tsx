@@ -27,6 +27,8 @@ const FEATURE_NAMES: Record<ProFeature, string> = {
   font_customization: 'Font Customization',
   opacity_control: 'Opacity Control',
   sticky_mode: 'Sticky Window Mode',
+  diff_preview: 'Diff Preview',
+  custom_transformations: 'Custom Transformations',
 };
 
 export function ProFeatureGate({

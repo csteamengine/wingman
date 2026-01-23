@@ -704,6 +704,107 @@ async fn toggle_fullscreen(window: tauri::Window) -> Result<(), String> {
     Ok(())
 }
 
+/// Stored frame for focus mode restoration (main thread only)
+#[cfg(target_os = "macos")]
+static FOCUS_MODE_ORIGINAL_FRAME: std::sync::Mutex<Option<(f64, f64, f64, f64)>> = std::sync::Mutex::new(None);
+#[cfg(target_os = "macos")]
+static FOCUS_MODE_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Toggle focus mode - maximizes window to fill screen without using native fullscreen
+/// This works with NSPanel on macOS where setFullscreen crashes
+#[cfg(target_os = "macos")]
+#[tauri::command]
+async fn toggle_focus_mode(window: tauri::WebviewWindow) -> Result<bool, String> {
+    use cocoa::base::id;
+    use cocoa::foundation::{NSPoint, NSRect, NSSize};
+    use objc::{msg_send, sel, sel_impl};
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    let (tx, rx) = mpsc::channel();
+    let app_handle = window.app_handle().clone();
+    let app_handle_inner = app_handle.clone();
+
+    app_handle
+        .run_on_main_thread(move || {
+            let result: Result<bool, String> = (|| {
+                let panel = app_handle_inner
+                    .get_webview_panel(MAIN_WINDOW_LABEL)
+                    .map_err(|e| format!("Failed to get panel: {:?}", e))?;
+
+                let ns_panel = panel.as_panel();
+                let current_frame = ns_panel.frame();
+                let is_focus_mode = FOCUS_MODE_ACTIVE.load(std::sync::atomic::Ordering::SeqCst);
+
+                if is_focus_mode {
+                    // Restore original frame
+                    if let Some((x, y, w, h)) = FOCUS_MODE_ORIGINAL_FRAME.lock().unwrap().take() {
+                        let restore_frame = NSRect {
+                            origin: NSPoint { x, y },
+                            size: NSSize { width: w, height: h },
+                        };
+                        // NSRect and CGRect are ABI-compatible, use transmute
+                        unsafe {
+                            ns_panel.setFrame_display(std::mem::transmute(restore_frame), true);
+                        }
+                        log::info!("Restored original frame");
+                    }
+                    FOCUS_MODE_ACTIVE.store(false, std::sync::atomic::Ordering::SeqCst);
+                    Ok(false)
+                } else {
+                    // Save current frame
+                    *FOCUS_MODE_ORIGINAL_FRAME.lock().unwrap() = Some((
+                        current_frame.origin.x,
+                        current_frame.origin.y,
+                        current_frame.size.width,
+                        current_frame.size.height,
+                    ));
+
+                    // Get the screen that contains the window
+                    unsafe {
+                        let raw_panel: id = std::mem::transmute_copy(&ns_panel);
+                        let screen: id = msg_send![raw_panel, screen];
+
+                        if screen.is_null() {
+                            return Err("Failed to get screen".to_string());
+                        }
+
+                        // Get the visible frame (excludes menu bar and dock)
+                        let visible_frame: NSRect = msg_send![screen, visibleFrame];
+
+                        // NSRect and CGRect are ABI-compatible, use transmute
+                        ns_panel.setFrame_display(std::mem::transmute(visible_frame), true);
+                        log::info!("Expanded to fill screen: ({}, {}) {}x{}",
+                            visible_frame.origin.x, visible_frame.origin.y,
+                            visible_frame.size.width, visible_frame.size.height);
+                    }
+
+                    FOCUS_MODE_ACTIVE.store(true, std::sync::atomic::Ordering::SeqCst);
+                    Ok(true)
+                }
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|e| e.to_string())?;
+
+    rx.recv_timeout(Duration::from_secs(5))
+        .map_err(|e| format!("Timeout: {}", e))?
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+async fn toggle_focus_mode(window: tauri::WebviewWindow) -> Result<bool, String> {
+    // On non-macOS, use the standard maximize/unmaximize
+    let is_maximized = window.is_maximized().map_err(|e| e.to_string())?;
+    if is_maximized {
+        window.unmaximize().map_err(|e| e.to_string())?;
+        Ok(false)
+    } else {
+        window.maximize().map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+}
+
 /// Set window blur effect (vibrancy) - PRO feature
 #[cfg(target_os = "macos")]
 #[tauri::command]
@@ -1198,6 +1299,7 @@ pub fn run() {
             hide_window,
             hide_and_paste,
             toggle_fullscreen,
+            toggle_focus_mode,
             set_window_blur_cmd,
             set_vibrancy_mode,
             #[cfg(target_os = "macos")]

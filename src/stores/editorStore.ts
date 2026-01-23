@@ -32,6 +32,7 @@ interface EditorState {
   activePanel: PanelType;
   previousPanel: PanelType | null; // Remember panel before opening settings
   isVisible: boolean;
+  isFocusMode: boolean;
   editorView: EditorView | null;
   images: EditorAttachment[]; // Keep as 'images' for compatibility
   nextImageId: number;
@@ -57,6 +58,7 @@ interface EditorState {
   showWindow: () => Promise<void>;
   hideWindow: () => Promise<void>;
   toggleWindow: () => Promise<void>;
+  toggleFocusMode: () => Promise<void>;
   // Navigate to settings with specific tab or update check
   openSettingsTab: (tab: SettingsTab, checkUpdates?: boolean) => void;
   clearSettingsNavigation: () => void;
@@ -89,6 +91,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activePanel: 'actions',
   previousPanel: null,
   isVisible: false,
+  isFocusMode: false,
   editorView: null,
   images: [],
   nextImageId: 1,
@@ -723,6 +726,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       } catch (error) {
         console.error('Failed to show window:', error);
       }
+    }
+  },
+
+  toggleFocusMode: async () => {
+    try {
+      // Use custom Rust command that works with NSPanel
+      const isFocusMode = await invoke<boolean>('toggle_focus_mode');
+      set({ isFocusMode });
+    } catch (error) {
+      console.error('Failed to toggle focus mode:', error);
     }
   },
 

@@ -142,7 +142,7 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Text transformations
+      // Text transformations and other shift shortcuts
       if (isMod && e.shiftKey) {
         switch (e.key.toLowerCase()) {
           case 'u':
@@ -152,6 +152,14 @@ export function useKeyboardShortcuts() {
           case 'l':
             e.preventDefault();
             transformText('lowercase');
+            break;
+          case 't':
+            e.preventDefault();
+            setActivePanel(activePanel === 'chains' ? 'editor' : 'chains');
+            break;
+          case 'f':
+            e.preventDefault();
+            useEditorStore.getState().toggleFocusMode();
             break;
         }
       }
