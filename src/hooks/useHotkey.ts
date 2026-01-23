@@ -47,7 +47,7 @@ export function useGlobalHotkey() {
 }
 
 export function useKeyboardShortcuts() {
-  const { pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText } = useEditorStore();
+  const { pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isQuickActionsOpen, toggleQuickActions } = useEditorStore();
   const { isProFeatureEnabled } = useLicenseStore();
   const { settings } = useSettingsStore();
   const lastEscapeRef = useRef<number>(0);
@@ -60,13 +60,13 @@ export function useKeyboardShortcuts() {
       if (e.key === 'Escape') {
         e.preventDefault();
 
-        // If on settings/history/snippets: single Escape always closes and returns to editor
-        if (activePanel !== 'editor' && activePanel !== 'actions') {
+        // If on settings/history/snippets/chains: single Escape always closes and returns to editor
+        if (activePanel !== 'editor') {
           setActivePanel('editor');
           return;
         }
 
-        // If on editor/actions panel:
+        // If on editor panel:
         if (settings?.sticky_mode) {
           // Sticky mode: require double-tap Escape to close window (within 300ms)
           const now = Date.now();
@@ -118,19 +118,19 @@ export function useKeyboardShortcuts() {
       // Cmd/Ctrl + Shift + A - quick actions
       if (isMod && e.shiftKey && e.key === 'a') {
         e.preventDefault();
-        if (activePanel === 'actions') {
+        if (isQuickActionsOpen) {
           // If QA is open, check if search is focused
           const searchInput = document.getElementById('quick-actions-search');
           if (document.activeElement === searchInput) {
             // Search is focused - close the menu
-            setActivePanel('editor');
+            toggleQuickActions();
           } else {
             // Search is not focused - focus it instead of closing
             searchInput?.focus();
           }
         } else {
           // QA is closed - open it
-          setActivePanel('actions');
+          toggleQuickActions();
         }
         return;
       }
@@ -167,5 +167,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isProFeatureEnabled, settings?.sticky_mode]);
+  }, [pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isProFeatureEnabled, settings?.sticky_mode, isQuickActionsOpen, toggleQuickActions]);
 }

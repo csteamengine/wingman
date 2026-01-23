@@ -17,7 +17,7 @@ import { useEditorStore } from './stores/editorStore';
 
 function App() {
   const { settings } = useSettings();
-  const { activePanel, setActivePanel, isFocusMode, toggleFocusMode } = useEditorStore();
+  const { activePanel, setActivePanel, isFocusMode, toggleFocusMode, isQuickActionsOpen, toggleQuickActions } = useEditorStore();
 
   // Initialize license check
   useLicense();
@@ -308,11 +308,11 @@ function App() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setActivePanel(activePanel === 'actions' ? 'editor' : 'actions');
+              toggleQuickActions();
             }}
             tabIndex={-1}
             className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
-              activePanel === 'actions' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
+              isQuickActionsOpen ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
             }`}
             title="Clipboard & Quick Actions"
           >
@@ -329,42 +329,41 @@ function App() {
 
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Editor panel */}
+        {/* Editor panel - shown when activePanel is 'editor' */}
         <div
-          className={`flex-1 ${
-            activePanel !== 'editor' && activePanel !== 'actions' ? 'hidden' : ''
-          }`}
+          className={`flex-1 ${activePanel !== 'editor' ? 'hidden' : ''}`}
         >
           <EditorWindow />
         </div>
 
-        {/* Side panels */}
+        {/* Full-width panels (hide editor when shown) */}
         {activePanel === 'settings' && (
-          <div className="w-full">
+          <div className="flex-1">
             <SettingsPanel />
           </div>
         )}
 
         {activePanel === 'history' && (
-          <div className="w-full">
+          <div className="flex-1">
             <HistoryPanel />
           </div>
         )}
 
         {activePanel === 'snippets' && (
-          <div className="w-full">
+          <div className="flex-1">
             <SnippetsPanel />
           </div>
         )}
 
         {activePanel === 'chains' && (
-          <div className="w-full">
+          <div className="flex-1">
             <TransformationChainsPanel />
           </div>
         )}
 
-        {activePanel === 'actions' && (
-          <div className="w-80 border-l border-[var(--ui-border)]">
+        {/* Quick Actions panel - independent, shows alongside any panel */}
+        {isQuickActionsOpen && (
+          <div className="w-80 border-l border-[var(--ui-border)] flex-shrink-0">
             <QuickActionsPanel />
           </div>
         )}

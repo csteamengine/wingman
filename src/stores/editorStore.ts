@@ -33,6 +33,7 @@ interface EditorState {
   previousPanel: PanelType | null; // Remember panel before opening settings
   isVisible: boolean;
   isFocusMode: boolean;
+  isQuickActionsOpen: boolean; // Independent of activePanel
   editorView: EditorView | null;
   images: EditorAttachment[]; // Keep as 'images' for compatibility
   nextImageId: number;
@@ -59,6 +60,7 @@ interface EditorState {
   hideWindow: () => Promise<void>;
   toggleWindow: () => Promise<void>;
   toggleFocusMode: () => Promise<void>;
+  toggleQuickActions: () => void;
   // Navigate to settings with specific tab or update check
   openSettingsTab: (tab: SettingsTab, checkUpdates?: boolean) => void;
   clearSettingsNavigation: () => void;
@@ -88,10 +90,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   content: '',
   language: 'plaintext',
   stats: { character_count: 0, word_count: 0, line_count: 0, paragraph_count: 0 },
-  activePanel: 'actions',
+  activePanel: 'editor',
   previousPanel: null,
   isVisible: false,
   isFocusMode: false,
+  isQuickActionsOpen: true,
   editorView: null,
   images: [],
   nextImageId: 1,
@@ -297,7 +300,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
         // Hide window and auto-paste to previous app
         await invoke('hide_and_paste');
-        set({ content: '', images: [], nextImageId: 1, activePanel: 'actions', isVisible: false });
+        set({ content: '', images: [], nextImageId: 1, activePanel: 'editor', isQuickActionsOpen: true, isVisible: false });
         return;
       } catch (error) {
         console.error('Failed to paste:', error);
@@ -310,7 +313,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     }
     get().hideWindow();
-    set({ content: '', images: [], nextImageId: 1, activePanel: 'actions' });
+    set({ content: '', images: [], nextImageId: 1, activePanel: 'editor', isQuickActionsOpen: true });
   },
 
   closeWithoutPaste: async () => {
@@ -737,6 +740,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     } catch (error) {
       console.error('Failed to toggle focus mode:', error);
     }
+  },
+
+  toggleQuickActions: () => {
+    set((state) => ({ isQuickActionsOpen: !state.isQuickActionsOpen }));
   },
 
   openSettingsTab: (tab: SettingsTab, checkUpdates = false) => {

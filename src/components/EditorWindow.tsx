@@ -1373,7 +1373,7 @@ export function EditorWindow() {
 
     // Focus editor when window becomes visible or when returning from other panels
     useEffect(() => {
-        const shouldFocusEditor = isVisible && (activePanel === 'editor' || activePanel === 'actions');
+        const shouldFocusEditor = isVisible && activePanel === 'editor';
         if (shouldFocusEditor && viewRef.current) {
             // Small delay to ensure window/panel transition is complete
             setTimeout(() => {

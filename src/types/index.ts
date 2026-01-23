@@ -74,7 +74,7 @@ export type TextTransform =
   | 'deduplicate'
   | 'reverse';
 
-export type PanelType = 'editor' | 'settings' | 'history' | 'snippets' | 'actions' | 'chains';
+export type PanelType = 'editor' | 'settings' | 'history' | 'snippets' | 'chains';
 
 // License types
 export type LicenseTier = 'free' | 'pro' | 'premium';
