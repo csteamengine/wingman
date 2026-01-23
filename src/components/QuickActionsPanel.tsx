@@ -4,6 +4,8 @@ import {useEditorStore} from '../stores/editorStore';
 import {useLicenseStore} from '../stores/licenseStore';
 import {useClipboardStore} from '../stores/clipboardStore';
 import {useDragStore} from '../stores/dragStore';
+import {useDiffStore} from '../stores/diffStore';
+import {useSettingsStore} from '../stores/settingsStore';
 
 type TabType = 'clipboard' | 'actions';
 
@@ -445,7 +447,29 @@ export function QuickActionsPanel() {
                         return;
                     }
                     const formatted = await invoke<string>(action.id, {text});
-                    applyProcessedText(formatted, hasSelection, from, to, cursorPos);
+
+                    // Check if diff preview is enabled
+                    const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
+                    if (showDiffPreview && text !== formatted) {
+                        useDiffStore.getState().setPendingDiff({
+                            originalText: text,
+                            transformedText: formatted,
+                            transformationType: action.label,
+                            selectionRange: hasSelection ? { from, to } : null,
+                            cursorPos,
+                            applyCallback: () => applyProcessedText(formatted, hasSelection, from, to, cursorPos),
+                        });
+                        useDiffStore.getState().openPreviewModal();
+                    } else {
+                        applyProcessedText(formatted, hasSelection, from, to, cursorPos);
+                        if (text !== formatted) {
+                            useDiffStore.getState().addTransformationRecord({
+                                originalText: text,
+                                transformedText: formatted,
+                                transformationType: action.label,
+                            });
+                        }
+                    }
                     break;
                 }
 
@@ -456,7 +480,29 @@ export function QuickActionsPanel() {
                         return;
                     }
                     const encoded = await invoke<string>(action.id, {text});
-                    applyProcessedText(encoded, hasSelection, from, to, cursorPos);
+
+                    // Check if diff preview is enabled
+                    const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
+                    if (showDiffPreview && text !== encoded) {
+                        useDiffStore.getState().setPendingDiff({
+                            originalText: text,
+                            transformedText: encoded,
+                            transformationType: action.label,
+                            selectionRange: hasSelection ? { from, to } : null,
+                            cursorPos,
+                            applyCallback: () => applyProcessedText(encoded, hasSelection, from, to, cursorPos),
+                        });
+                        useDiffStore.getState().openPreviewModal();
+                    } else {
+                        applyProcessedText(encoded, hasSelection, from, to, cursorPos);
+                        if (text !== encoded) {
+                            useDiffStore.getState().addTransformationRecord({
+                                originalText: text,
+                                transformedText: encoded,
+                                transformationType: action.label,
+                            });
+                        }
+                    }
                     break;
                 }
 

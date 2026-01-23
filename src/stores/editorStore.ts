@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import type { EditorView } from '@codemirror/view';
 import type { TextStats, PanelType } from '../types';
+import { useDiffStore } from './diffStore';
+import { useSettingsStore } from './settingsStore';
 
 export type SettingsTab = 'settings' | 'hotkeys' | 'license';
 
@@ -307,29 +309,62 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const state = get();
     const { editorView } = state;
 
+    // Helper to get transform label
+    const getTransformLabel = (t: string) => {
+      const labels: Record<string, string> = {
+        uppercase: 'UPPERCASE',
+        lowercase: 'lowercase',
+        titlecase: 'Title Case',
+        sentencecase: 'Sentence case',
+        trim: 'Trim Whitespace',
+        sort: 'Sort Lines',
+        deduplicate: 'Remove Duplicates',
+        reverse: 'Reverse Lines',
+      };
+      return labels[t] || t;
+    };
+
     if (editorView) {
       const selection = editorView.state.selection.main;
-      const cursorPos = selection.head; // Save cursor position
+      const cursorPos = selection.head;
+      const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
 
       if (!selection.empty) {
         // Transform only the selected text
         const selectedText = editorView.state.sliceDoc(selection.from, selection.to);
         try {
           const transformed = await invoke<string>('transform_text_cmd', { text: selectedText, transform });
-          // Keep cursor at same position, adjusted for length change
-          const lengthDiff = transformed.length - selectedText.length;
-          const newCursorPos = cursorPos <= selection.from ? cursorPos :
-                              cursorPos + lengthDiff;
 
-          editorView.dispatch({
-            changes: {
-              from: selection.from,
-              to: selection.to,
-              insert: transformed,
-            },
-            selection: { anchor: newCursorPos },
-          });
-          get().updateStats();
+          if (selectedText === transformed) return; // No change
+
+          const applyTransform = () => {
+            const lengthDiff = transformed.length - selectedText.length;
+            const newCursorPos = cursorPos <= selection.from ? cursorPos : cursorPos + lengthDiff;
+            editorView.dispatch({
+              changes: { from: selection.from, to: selection.to, insert: transformed },
+              selection: { anchor: newCursorPos },
+            });
+            get().updateStats();
+          };
+
+          if (showDiffPreview) {
+            useDiffStore.getState().setPendingDiff({
+              originalText: selectedText,
+              transformedText: transformed,
+              transformationType: getTransformLabel(transform),
+              selectionRange: { from: selection.from, to: selection.to },
+              cursorPos,
+              applyCallback: applyTransform,
+            });
+            useDiffStore.getState().openPreviewModal();
+          } else {
+            applyTransform();
+            useDiffStore.getState().addTransformationRecord({
+              originalText: selectedText,
+              transformedText: transformed,
+              transformationType: getTransformLabel(transform),
+            });
+          }
         } catch (error) {
           console.error('Failed to transform text:', error);
         }
@@ -340,17 +375,36 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const content = editorView.state.doc.toString();
       try {
         const transformed = await invoke<string>('transform_text_cmd', { text: content, transform });
-        // Keep cursor at same position, clamped to new content length
-        const newCursorPos = Math.min(cursorPos, transformed.length);
-        editorView.dispatch({
-          changes: {
-            from: 0,
-            to: content.length,
-            insert: transformed,
-          },
-          selection: { anchor: newCursorPos },
-        });
-        get().updateStats();
+
+        if (content === transformed) return; // No change
+
+        const applyTransform = () => {
+          const newCursorPos = Math.min(cursorPos, transformed.length);
+          editorView.dispatch({
+            changes: { from: 0, to: content.length, insert: transformed },
+            selection: { anchor: newCursorPos },
+          });
+          get().updateStats();
+        };
+
+        if (showDiffPreview) {
+          useDiffStore.getState().setPendingDiff({
+            originalText: content,
+            transformedText: transformed,
+            transformationType: getTransformLabel(transform),
+            selectionRange: null,
+            cursorPos,
+            applyCallback: applyTransform,
+          });
+          useDiffStore.getState().openPreviewModal();
+        } else {
+          applyTransform();
+          useDiffStore.getState().addTransformationRecord({
+            originalText: content,
+            transformedText: transformed,
+            transformationType: getTransformLabel(transform),
+          });
+        }
       } catch (error) {
         console.error('Failed to transform text:', error);
       }
@@ -361,8 +415,31 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const content = getEditorContent(state);
     try {
       const transformed = await invoke<string>('transform_text_cmd', { text: content, transform });
-      set({ content: transformed });
-      get().updateStats();
+      if (content === transformed) return;
+
+      const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
+      if (showDiffPreview) {
+        useDiffStore.getState().setPendingDiff({
+          originalText: content,
+          transformedText: transformed,
+          transformationType: getTransformLabel(transform),
+          selectionRange: null,
+          cursorPos: content.length,
+          applyCallback: () => {
+            set({ content: transformed });
+            get().updateStats();
+          },
+        });
+        useDiffStore.getState().openPreviewModal();
+      } else {
+        set({ content: transformed });
+        get().updateStats();
+        useDiffStore.getState().addTransformationRecord({
+          originalText: content,
+          transformedText: transformed,
+          transformationType: getTransformLabel(transform),
+        });
+      }
     } catch (error) {
       console.error('Failed to transform text:', error);
     }

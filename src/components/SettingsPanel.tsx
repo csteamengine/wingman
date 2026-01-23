@@ -406,6 +406,26 @@ export function SettingsPanel() {
                                     />
                                 </button>
                             </div>
+
+                            {/* Show Diff Preview */}
+                            <div className="flex items-center justify-between py-2">
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-[var(--ui-text)]">Show Diff Preview</label>
+                                    <p className="text-xs text-[var(--ui-text-muted)] mt-0.5">Preview changes before applying text transformations</p>
+                                </div>
+                                <button
+                                    onClick={() => handleUpdate({show_diff_preview: !settings.show_diff_preview})}
+                                    className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                                        settings.show_diff_preview ? 'bg-[var(--ui-accent)]' : 'bg-[var(--ui-border)]'
+                                    }`}
+                                >
+                                    <span
+                                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                                            settings.show_diff_preview ? 'translate-x-5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Obsidian Integration - Pro feature - Collapsible */}

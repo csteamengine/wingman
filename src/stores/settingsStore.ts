@@ -27,6 +27,7 @@ const defaultSettings: AppSettings = {
   default_language: 'plaintext',
   window_position: { x: 100, y: 100, width: 650, height: 450 },
   sticky_mode: false,
+  show_diff_preview: false,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
