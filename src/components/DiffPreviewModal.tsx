@@ -72,7 +72,7 @@ export function DiffPreviewModal() {
         </div>
 
         {/* Diff View */}
-        <div className="flex-1 overflow-hidden p-4">
+        <div className="flex-1 min-h-0 p-4">
           <DiffView
             originalText={pendingDiff.originalText}
             transformedText={pendingDiff.transformedText}

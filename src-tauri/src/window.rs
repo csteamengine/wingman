@@ -281,6 +281,12 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
         let monitor_size = monitor.size().to_logical::<f64>(monitor_scale_factor);
         let monitor_position = monitor.position().to_logical::<f64>(monitor_scale_factor);
 
+        log::info!(
+            "move_to_cursor_monitor: monitor='{}', scale={}, size={}x{}, pos=({}, {})",
+            monitor_name, monitor_scale_factor, monitor_size.width, monitor_size.height,
+            monitor_position.x, monitor_position.y
+        );
+
         let panel = self
             .get_webview_panel(self.label())
             .map_err(|_| TauriError::Anyhow(Error::PanelNotFound(self.label().into()).into()))?;
@@ -288,22 +294,62 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
         let panel = panel.as_panel();
         let panel_frame = panel.frame();
 
-        // Try to get saved position for this monitor
-        let rect = if let Some(saved_pos) = get_position_for_monitor(&monitor_name) {
-            log::info!("Restoring saved position for monitor: {}", monitor_name);
-            NSRect {
-                origin: NSPoint {
-                    x: saved_pos.x as f64,
-                    y: saved_pos.y as f64,
-                },
-                size: NSSize {
-                    width: saved_pos.width as f64,
-                    height: saved_pos.height as f64,
-                },
+        // Try to get saved position for this monitor (only if monitor name is valid)
+        let rect = if !monitor_name.is_empty() {
+            if let Some(saved_pos) = get_position_for_monitor(&monitor_name) {
+                log::info!("Restoring saved position for monitor '{}': ({}, {}) {}x{}",
+                    monitor_name, saved_pos.x, saved_pos.y, saved_pos.width, saved_pos.height);
+
+                // Validate saved position is within monitor bounds
+                let saved_x = saved_pos.x as f64;
+                let saved_y = saved_pos.y as f64;
+
+                // Check if position is reasonably within any monitor
+                // (allow some tolerance for multi-monitor setups)
+                let is_valid = saved_x >= monitor_position.x - 100.0
+                    && saved_x <= monitor_position.x + monitor_size.width + 100.0
+                    && saved_y >= monitor_position.y - 100.0
+                    && saved_y <= monitor_position.y + monitor_size.height + 100.0;
+
+                if is_valid {
+                    NSRect {
+                        origin: NSPoint {
+                            x: saved_pos.x as f64,
+                            y: saved_pos.y as f64,
+                        },
+                        size: NSSize {
+                            width: saved_pos.width as f64,
+                            height: saved_pos.height as f64,
+                        },
+                    }
+                } else {
+                    log::warn!("Saved position is outside monitor bounds, centering instead");
+                    NSRect {
+                        origin: NSPoint {
+                            x: (monitor_position.x + (monitor_size.width / 2.0))
+                                - (panel_frame.size.width / 2.0),
+                            y: (monitor_position.y + (monitor_size.height / 2.0))
+                                - (panel_frame.size.height / 2.0),
+                        },
+                        size: panel_frame.size,
+                    }
+                }
+            } else {
+                // Center on monitor if no saved position
+                log::info!("No saved position for '{}', centering", monitor_name);
+                NSRect {
+                    origin: NSPoint {
+                        x: (monitor_position.x + (monitor_size.width / 2.0))
+                            - (panel_frame.size.width / 2.0),
+                        y: (monitor_position.y + (monitor_size.height / 2.0))
+                            - (panel_frame.size.height / 2.0),
+                    },
+                    size: panel_frame.size,
+                }
             }
         } else {
-            // Center on monitor if no saved position
-            log::info!("No saved position for {}, centering", monitor_name);
+            // Empty monitor name - just center
+            log::warn!("Monitor name is empty, centering on detected monitor");
             NSRect {
                 origin: NSPoint {
                     x: (monitor_position.x + (monitor_size.width / 2.0))
@@ -316,6 +362,8 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
         };
 
         panel.setFrame_display(rect, true);
+        log::info!("Panel positioned at ({}, {}) {}x{}",
+            rect.origin.x, rect.origin.y, rect.size.width, rect.size.height);
         Ok(())
     }
 
@@ -325,6 +373,8 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
         use cocoa::base::id;
         use objc::{class, msg_send, sel, sel_impl};
 
+        log::info!("move_to_monitor_animated: target monitor='{}'", monitor_name);
+
         // Get the monitor where cursor currently is (should be the target)
         let target_monitor = monitor::get_monitor_with_cursor()
             .ok_or(TauriError::Anyhow(Error::MonitorNotFound.into()))?;
@@ -332,6 +382,11 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
         let monitor_scale_factor = target_monitor.scale_factor();
         let monitor_size = target_monitor.size().to_logical::<f64>(monitor_scale_factor);
         let monitor_position = target_monitor.position().to_logical::<f64>(monitor_scale_factor);
+
+        log::info!(
+            "Target monitor: size={}x{}, pos=({}, {})",
+            monitor_size.width, monitor_size.height, monitor_position.x, monitor_position.y
+        );
 
         let panel = self
             .get_webview_panel(self.label())
@@ -341,21 +396,35 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
         let panel_frame = ns_panel.frame();
 
         // Try to get saved position for target monitor
-        let target_rect = if let Some(saved_pos) = get_position_for_monitor(monitor_name) {
-            log::info!("Restoring saved position for monitor: {}", monitor_name);
-            NSRect {
-                origin: NSPoint {
-                    x: saved_pos.x as f64,
-                    y: saved_pos.y as f64,
-                },
-                size: NSSize {
-                    width: saved_pos.width as f64,
-                    height: saved_pos.height as f64,
-                },
+        let target_rect = if !monitor_name.is_empty() {
+            if let Some(saved_pos) = get_position_for_monitor(monitor_name) {
+                log::info!("Restoring saved position for '{}': ({}, {}) {}x{}",
+                    monitor_name, saved_pos.x, saved_pos.y, saved_pos.width, saved_pos.height);
+                NSRect {
+                    origin: NSPoint {
+                        x: saved_pos.x as f64,
+                        y: saved_pos.y as f64,
+                    },
+                    size: NSSize {
+                        width: saved_pos.width as f64,
+                        height: saved_pos.height as f64,
+                    },
+                }
+            } else {
+                // Center on monitor if no saved position
+                log::info!("No saved position for '{}', centering", monitor_name);
+                NSRect {
+                    origin: NSPoint {
+                        x: (monitor_position.x + (monitor_size.width / 2.0))
+                            - (panel_frame.size.width / 2.0),
+                        y: (monitor_position.y + (monitor_size.height / 2.0))
+                            - (panel_frame.size.height / 2.0),
+                    },
+                    size: panel_frame.size,
+                }
             }
         } else {
-            // Center on monitor if no saved position
-            log::info!("No saved position for {}, centering", monitor_name);
+            log::warn!("Empty monitor name, centering on current monitor");
             NSRect {
                 origin: NSPoint {
                     x: (monitor_position.x + (monitor_size.width / 2.0))
@@ -366,6 +435,9 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
                 size: panel_frame.size,
             }
         };
+
+        log::info!("Animating panel to ({}, {}) {}x{}",
+            target_rect.origin.x, target_rect.origin.y, target_rect.size.width, target_rect.size.height);
 
         // Animate the frame change using NSWindow's animator
         unsafe {
