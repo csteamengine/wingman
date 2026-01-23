@@ -30,6 +30,7 @@ interface EditorState {
   language: string;
   stats: TextStats;
   activePanel: PanelType;
+  previousPanel: PanelType | null; // Remember panel before opening settings
   isVisible: boolean;
   editorView: EditorView | null;
   images: EditorAttachment[]; // Keep as 'images' for compatibility
@@ -86,6 +87,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   language: 'plaintext',
   stats: { character_count: 0, word_count: 0, line_count: 0, paragraph_count: 0 },
   activePanel: 'actions',
+  previousPanel: null,
   isVisible: false,
   editorView: null,
   images: [],
@@ -103,7 +105,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   setActivePanel: (panel: PanelType) => {
-    set({ activePanel: panel });
+    const { activePanel, previousPanel } = get();
+
+    // If navigating TO settings, save current panel
+    if (panel === 'settings' && activePanel !== 'settings') {
+      set({ activePanel: panel, previousPanel: activePanel });
+    }
+    // If navigating FROM settings to 'editor', restore previous panel
+    else if (panel === 'editor' && activePanel === 'settings' && previousPanel) {
+      set({ activePanel: previousPanel, previousPanel: null });
+    }
+    else {
+      set({ activePanel: panel });
+    }
   },
 
   setEditorView: (view: EditorView | null) => {
