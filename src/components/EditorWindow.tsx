@@ -29,6 +29,7 @@ import {bracketMatching} from '@codemirror/language';
 import {autocompletion, closeBrackets, closeBracketsKeymap} from '@codemirror/autocomplete';
 import {linter, lintGutter} from '@codemirror/lint';
 import type {Diagnostic} from '@codemirror/lint';
+import {languages as codeLanguages} from '@codemirror/language-data';
 import {oneDark} from '@codemirror/theme-one-dark';
 import {listen} from '@tauri-apps/api/event';
 import {useEditorStore} from '../stores/editorStore';
@@ -49,7 +50,7 @@ const languages: Record<string, () => any> = {
     html: html,
     css: css,
     json: json,
-    markdown: markdown,
+    markdown: () => markdown({codeLanguages}),
     // Primary languages (free)
     sql: sql,
     yaml: yaml,
@@ -577,6 +578,16 @@ const markdownTheme = EditorView.baseTheme({
     },
 });
 
+// CSS theme for code block backgrounds in markdown
+const codeBlockTheme = EditorView.baseTheme({
+    '.cm-line:has(.tok-meta)': {
+        backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    },
+    '&light .cm-line:has(.tok-meta)': {
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    },
+});
+
 // Helper to check if a string is a URL
 const isUrl = (str: string): boolean => {
     return /^https?:\/\/\S+$/.test(str.trim());
@@ -654,6 +665,9 @@ export function EditorWindow() {
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const aiPopoverRef = useRef<HTMLDivElement>(null);
     const languageDropdownRef = useRef<HTMLDivElement>(null);
+
+    // URL Parser state
+    const [parsedUrlInfo, setParsedUrlInfo] = useState<{url: string; cursorPos: number} | null>(null);
 
 
     // Close AI popover when clicking outside
@@ -830,6 +844,14 @@ export function EditorWindow() {
         }
     }, [aiError]);
 
+    // Auto-hide URL parser button after 5 seconds
+    useEffect(() => {
+        if (parsedUrlInfo) {
+            const timer = setTimeout(() => setParsedUrlInfo(null), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [parsedUrlInfo]);
+
     // Handle AI refine action with preset
     const handleAiRefineWithPreset = useCallback(async (preset: Parameters<typeof callAIWithPreset>[2]) => {
         if (aiLoading || !content.trim()) return;
@@ -901,6 +923,49 @@ export function EditorWindow() {
         }
     }, [obsidianToast, openObsidianNote, hideWindow]);
 
+    // Parse URL and insert formatted output at cursor
+    const handleParseUrl = useCallback(() => {
+        if (!parsedUrlInfo || !viewRef.current) return;
+
+        try {
+            const url = new URL(parsedUrlInfo.url);
+            const lines: string[] = [];
+
+            lines.push(`Protocol: ${url.protocol.replace(':', '')}`);
+            lines.push(`Host: ${url.hostname}`);
+            if (url.port) {
+                lines.push(`Port: ${url.port}`);
+            }
+            if (url.pathname && url.pathname !== '/') {
+                lines.push(`Path: ${url.pathname}`);
+            }
+            if (url.search) {
+                lines.push('Query Parameters:');
+                url.searchParams.forEach((value, key) => {
+                    lines.push(`  - ${key}: ${decodeURIComponent(value)}`);
+                });
+            }
+            if (url.hash) {
+                lines.push(`Fragment: ${url.hash.slice(1)}`);
+            }
+            lines.push(`Full URL: ${url.href}`);
+
+            const output = lines.join('\n');
+            const view = viewRef.current;
+            const cursorPos = parsedUrlInfo.cursorPos;
+
+            view.dispatch({
+                changes: {from: cursorPos, to: cursorPos, insert: output},
+                selection: {anchor: cursorPos + output.length},
+            });
+            view.focus();
+        } catch {
+            // Invalid URL, do nothing
+        }
+
+        setParsedUrlInfo(null);
+    }, [parsedUrlInfo]);
+
     // Helper to wrap selected text with brackets/quotes
     const wrapSelection = (view: EditorView, open: string, close: string): boolean => {
         const selection = view.state.selection.main;
@@ -931,6 +996,7 @@ export function EditorWindow() {
         { key: ')', run: (view) => wrapSelection(view, '(', ')') },
         { key: '<', run: (view) => wrapSelection(view, '<', '>') },
         { key: '>', run: (view) => wrapSelection(view, '<', '>') },
+        { key: '`', run: (view) => wrapSelection(view, '`', '`') },
         // Cmd/Ctrl+D: Duplicate line
         {
             key: 'Mod-d',
@@ -1100,13 +1166,31 @@ export function EditorWindow() {
     const hasStatsDisplay = isProFeatureEnabled('stats_display');
     const hasProEditorFeatures = isProFeatureEnabled('syntax_highlighting'); // PRO editor enhancements
 
-    // Handle paste for file attachments (PRO feature)
+    // Handle paste for file attachments (PRO feature) and URL detection
     // Note: Markdown link pasting is handled by CodeMirror extension (markdownLinkPasteHandler)
     const handlePaste = useCallback(async (e: ClipboardEvent) => {
-        if (!hasImageSupport) return;
-
         const items = e.clipboardData?.items;
         if (!items) return;
+
+        // Check for URL paste (show "Parse URL" button)
+        const pastedText = e.clipboardData?.getData('text/plain');
+        if (pastedText && isUrl(pastedText) && viewRef.current) {
+            const selection = viewRef.current.state.selection.main;
+            // Only show parse button if no selection (selection case is handled by markdownLinkPasteHandler)
+            if (selection.empty) {
+                // The URL will be pasted at cursor position, so get cursor position after paste
+                // We use setTimeout to let the paste complete first
+                setTimeout(() => {
+                    if (viewRef.current) {
+                        const newCursorPos = viewRef.current.state.selection.main.head;
+                        setParsedUrlInfo({url: pastedText.trim(), cursorPos: newCursorPos});
+                    }
+                }, 10);
+            }
+        }
+
+        // Handle file attachments (PRO feature)
+        if (!hasImageSupport) return;
 
         const filesToAdd: File[] = [];
 
@@ -1238,6 +1322,8 @@ export function EditorWindow() {
             markdownLinkPasteHandler,
             markdownPlugin,
             markdownTheme,
+            // Code block styling for markdown
+            codeBlockTheme,
             // Clipboard item drop handling
             clipboardDropHandler,
             ...getLanguageExtension(),
@@ -1808,6 +1894,32 @@ export function EditorWindow() {
                     </div>
                 )}
             </div>
+
+            {/* URL Parser Floating Button */}
+            {parsedUrlInfo && (
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+                    <button
+                        onClick={handleParseUrl}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-blue-600/95 rounded-lg shadow-lg border border-blue-500/50 hover:bg-blue-600 transition-colors text-white"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        <span className="text-sm font-medium">Parse URL</span>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setParsedUrlInfo(null);
+                            }}
+                            className="ml-1 w-5 h-5 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+                        >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </button>
+                </div>
+            )}
 
             {/* Obsidian Toast Notification */}
             {obsidianToast && (
