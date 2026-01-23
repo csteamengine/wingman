@@ -7,7 +7,9 @@ export type AIPresetId =
   | 'general_refinement'
   | 'code_review'
   | 'documentation'
-  | 'pr_description';
+  | 'pr_description'
+  | 'tldr'
+  | 'code_explainer';
 
 export interface AIPreset {
   id: AIPresetId;
@@ -119,5 +121,24 @@ Any additional context, screenshots, or considerations
 
 Keep it informative but concise. Return only the PR description without meta-commentary.`,
     enabled: false,
+  },
+  {
+    id: 'tldr',
+    name: 'TL;DR',
+    description: 'Summarize and abbreviate text',
+    systemPrompt: `You are an expert summarizer. Take the user's text and create a concise TL;DR summary that captures the key points. Be brief but comprehensive - aim for 1-3 sentences that convey the essential information. Use clear, direct language. Return only the summary without explanations or meta-commentary.`,
+    enabled: true,
+  },
+  {
+    id: 'code_explainer',
+    name: 'Code Explainer',
+    description: 'Explain code in plain language',
+    systemPrompt: `You are an expert code explainer. Take the user's code and explain what it does in plain, accessible language. Break down:
+- What the code accomplishes overall
+- How the key parts work
+- Any notable patterns or techniques used
+
+Keep explanations clear and concise. Adjust detail level based on code complexity. Return only the explanation without the original code.`,
+    enabled: true,
   },
 ];

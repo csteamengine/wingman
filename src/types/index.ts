@@ -160,7 +160,9 @@ export type AIPresetId =
   | 'general_refinement'
   | 'code_review'
   | 'documentation'
-  | 'pr_description';
+  | 'pr_description'
+  | 'tldr'
+  | 'code_explainer';
 
 export interface AIPreset {
   id: AIPresetId;

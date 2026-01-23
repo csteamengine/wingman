@@ -380,6 +380,39 @@ fn generate_uuid() -> String {
     uuid_v4()
 }
 
+// Hash generator commands
+#[tauri::command]
+fn generate_md5(text: String) -> String {
+    use md5::{Md5, Digest};
+    let mut hasher = Md5::new();
+    hasher.update(text.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+#[tauri::command]
+fn generate_sha1(text: String) -> String {
+    use sha1::{Sha1, Digest};
+    let mut hasher = Sha1::new();
+    hasher.update(text.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+#[tauri::command]
+fn generate_sha256(text: String) -> String {
+    use sha2::{Sha256, Digest};
+    let mut hasher = Sha256::new();
+    hasher.update(text.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+#[tauri::command]
+fn generate_sha512(text: String) -> String {
+    use sha2::{Sha512, Digest};
+    let mut hasher = Sha512::new();
+    hasher.update(text.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
 // Lorem ipsum generator command
 #[tauri::command]
 fn generate_lorem_ipsum(paragraphs: u32, format: String) -> String {
@@ -1117,6 +1150,11 @@ pub fn run() {
             // Generators
             generate_uuid,
             generate_lorem_ipsum,
+            // Hash generators
+            generate_md5,
+            generate_sha1,
+            generate_sha256,
+            generate_sha512,
             // License
             activate_license,
             deactivate_license,

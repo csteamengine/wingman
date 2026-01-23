@@ -113,6 +113,39 @@ const actionSections: ActionSection[] = [
             {id: 'lorem_5', label: 'Lorem Ipsum (5 para)', description: 'Generate 5 paragraphs', handler: 'generate'},
         ],
     },
+    {
+        title: 'Hash Generators',
+        actions: [
+            {
+                id: 'generate_md5',
+                label: 'MD5 Hash',
+                description: 'Generate MD5 hash of text',
+                handler: 'encode',
+                requiresInput: true
+            },
+            {
+                id: 'generate_sha1',
+                label: 'SHA-1 Hash',
+                description: 'Generate SHA-1 hash of text',
+                handler: 'encode',
+                requiresInput: true
+            },
+            {
+                id: 'generate_sha256',
+                label: 'SHA-256 Hash',
+                description: 'Generate SHA-256 hash of text',
+                handler: 'encode',
+                requiresInput: true
+            },
+            {
+                id: 'generate_sha512',
+                label: 'SHA-512 Hash',
+                description: 'Generate SHA-512 hash of text',
+                handler: 'encode',
+                requiresInput: true
+            },
+        ],
+    },
 ];
 
 // Flatten all actions with section info for search
