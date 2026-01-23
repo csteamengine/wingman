@@ -126,7 +126,14 @@ Keep it informative but concise. Return only the PR description without meta-com
     id: 'tldr',
     name: 'TL;DR',
     description: 'Summarize and abbreviate text',
-    systemPrompt: `You are an expert summarizer. Take the user's text and create a concise TL;DR summary that captures the key points. Be brief but comprehensive - aim for 1-3 sentences that convey the essential information. Use clear, direct language. Return only the summary without explanations or meta-commentary.`,
+    systemPrompt: `You are an expert summarizer creating SparkNotes-style summaries. Take the user's text and create a comprehensive but concise summary that captures:
+
+- The main thesis or central idea
+- Key supporting points or arguments
+- Important details, names, or terms
+- Any conclusions or takeaways
+
+Format as a clear, readable summary - use bullet points for multiple distinct points if helpful. Aim for enough detail that someone could understand the essential content without reading the original, but keep it focused (typically 3-8 sentences depending on source length). Use clear, direct language. Return only the summary without explanations or meta-commentary.`,
     enabled: true,
   },
   {

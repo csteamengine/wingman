@@ -100,13 +100,25 @@ function App() {
     });
   }, [settings?.theme]);
 
-  // Apply opacity to window - uses CSS variable for background alpha
+  // Apply opacity to window - on Linux, this controls background transparency
+  // macOS/Windows use native vibrancy instead
   useEffect(() => {
     if (settings?.opacity !== undefined) {
-      // Set CSS variable for background alpha - controls all theme backgrounds
+      const isLinux = navigator.platform.includes('Linux');
+      if (isLinux) {
+        // On Linux, apply background color with opacity directly to the container
+        const container = document.querySelector('.editor-container') as HTMLElement;
+        if (container) {
+          // Get the current theme's base color
+          const isDark = !settings?.theme?.includes('light');
+          const baseColor = isDark ? '30, 30, 30' : '250, 250, 250';
+          container.style.backgroundColor = `rgba(${baseColor}, ${settings.opacity})`;
+        }
+      }
+      // Also set CSS variable for any other uses
       document.documentElement.style.setProperty('--bg-alpha', String(settings.opacity));
     }
-  }, [settings?.opacity]);
+  }, [settings?.opacity, settings?.theme]);
 
   // Native macOS vibrancy is applied at startup in Rust (see lib.rs setup)
   // No frontend call needed - NSVisualEffectView persists through show/hide cycles

@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 :root {
+  /* Background opacity - controlled by settings on Linux */
+  --bg-alpha: 0.95;
+
   /* UI colors - Dark theme (default) */
   --ui-text: #EBEBEB;
   --ui-text-muted: #7A7A7A;
