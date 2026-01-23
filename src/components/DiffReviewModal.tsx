@@ -51,9 +51,9 @@ export function DiffReviewModal() {
       aria-modal="true"
       aria-labelledby="diff-review-title"
     >
-      <div className="diff-modal max-w-4xl w-[90%] max-h-[80vh] bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] rounded-xl shadow-2xl flex flex-col animate-scale-in">
+      <div className="diff-modal max-w-4xl w-[90%] h-[80vh] bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] rounded-xl shadow-2xl flex flex-col animate-scale-in">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--ui-border)]">
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-[var(--ui-border)]">
           <div>
             <h2 id="diff-review-title" className="text-sm font-medium text-[var(--ui-text)]">
               Review Changes
@@ -74,16 +74,15 @@ export function DiffReviewModal() {
         </div>
 
         {/* Diff View */}
-        <div className="flex-1 min-h-0 p-4">
+        <div className="flex-1 min-h-0 flex flex-col p-4">
           <DiffView
             originalText={latestTransformation.originalText}
             transformedText={latestTransformation.transformedText}
-            className="h-full"
           />
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--ui-border)]">
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-t border-[var(--ui-border)]">
           <div className="flex items-center gap-2 text-xs text-[var(--ui-text-muted)]">
             <span className="kbd">Esc</span>
             <span>Close</span>

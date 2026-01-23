@@ -5,7 +5,6 @@ import type { Change } from 'diff';
 interface DiffViewProps {
   originalText: string;
   transformedText: string;
-  className?: string;
 }
 
 interface DiffLine {
@@ -15,7 +14,7 @@ interface DiffLine {
   wordChanges?: Change[];
 }
 
-function DiffViewComponent({ originalText, transformedText, className = '' }: DiffViewProps) {
+function DiffViewComponent({ originalText, transformedText }: DiffViewProps) {
   const leftPaneRef = useRef<HTMLDivElement>(null);
   const rightPaneRef = useRef<HTMLDivElement>(null);
 
@@ -228,7 +227,7 @@ function DiffViewComponent({ originalText, transformedText, className = '' }: Di
   };
 
   return (
-    <div className={`diff-view ${className}`} role="table" aria-label="Diff comparison">
+    <div className="diff-view" role="table" aria-label="Diff comparison">
       <div className="diff-panes">
         {/* Left pane - Original */}
         <div className="diff-pane diff-pane-left">
