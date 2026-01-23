@@ -126,6 +126,14 @@ body {
   width: 100%;
 }
 
+.btn-premium {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+}
+
+.btn-premium:hover {
+  background: linear-gradient(135deg, #fbbf24, #f87171);
+}
+
 /* Hero */
 .hero {
   min-height: 100vh;
@@ -379,9 +387,9 @@ body {
 
 .pricing-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 2rem;
-  max-width: 800px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
@@ -396,6 +404,11 @@ body {
 .pricing-card-pro {
   border-color: var(--accent);
   box-shadow: 0 0 40px rgba(99, 102, 241, 0.15);
+}
+
+.pricing-card-premium {
+  border-color: #f59e0b;
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.15);
 }
 
 .pricing-badge {
@@ -413,6 +426,10 @@ body {
   letter-spacing: 0.05em;
 }
 
+.pricing-badge.premium-badge {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+}
+
 .pricing-header {
   text-align: center;
   margin-bottom: 2rem;
@@ -428,6 +445,12 @@ body {
   font-size: 3rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+.price-period {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-muted);
 }
 
 .pricing-header p {
@@ -544,6 +567,14 @@ body {
 
 .feature-column.pro .feature-list li svg {
   stroke: var(--purple);
+}
+
+.feature-column.premium h3 {
+  color: #f59e0b;
+}
+
+.feature-column.premium .feature-list li svg {
+  stroke: #f59e0b;
 }
 
 @media (max-width: 700px) {
@@ -861,6 +892,18 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.premium-badge-small {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: white;
 }
 
 /* Transform Demo */
