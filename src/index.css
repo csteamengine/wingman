@@ -669,7 +669,7 @@ body {
 .cm-md-codeblock {
   background-color: var(--ui-surface);
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', monospace;
-  padding: 4px 16px;
+  padding: 6px 16px;
   margin-left: 12px;
   margin-right: 12px;
 }
@@ -677,13 +677,15 @@ body {
 /* Single line code block - all corners rounded */
 .cm-md-codeblock-single {
   border-radius: 8px;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
 /* First line of multi-line block - top corners rounded */
 .cm-md-codeblock-first {
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
-  padding-top: 8px;
+  padding-top: 12px;
 }
 
 /* Middle lines - no border radius */
@@ -695,7 +697,7 @@ body {
 .cm-md-codeblock-last {
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
-  padding-bottom: 8px;
+  padding-bottom: 12px;
 }
 
 .theme-light .cm-md-codeblock,

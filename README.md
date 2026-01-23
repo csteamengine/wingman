@@ -45,23 +45,48 @@ Everything you need for quick text manipulation:
 Unlock the full power of Wingman:
 
 - **Image & File Attachments**: Drag and drop images and files to include with your text—paste them together anywhere
-- **Multi-Language Scratchpad**: Syntax highlighting for 11 languages (JavaScript, TypeScript, Python, Rust, HTML, CSS, JSON, Markdown, and more)
+- **Multi-Language Scratchpad**: Syntax highlighting for 20+ languages (JavaScript, TypeScript, Python, Rust, Go, Java, and more)
+- **Obsidian-Style Markdown Editing**:
+    - Live preview with syntax hiding (bold, italic, strikethrough, inline code)
+    - Headers (H1-H6), blockquotes, horizontal rules
+    - Links and images with inline preview
+    - Fenced code blocks with syntax highlighting
+    - Cursor reveals syntax for editing, hides when moving away
 - **JSON/XML Formatter**: Pretty-print and minify JSON, format XML with proper indentation
 - **Encode/Decode Tools**:
     - Base64 encode/decode
     - URL encode/decode
     - HTML entity encode/decode
-- **Clipboard History**: Access your clipboard history with search
+- **Clipboard History**: Access your clipboard history with search and drag-drop support
 - **Export History**: Export clipboard history to JSON
 - **Snippet Library**: Save, organize, search, and tag your code snippets
 - **Stats Display**: Character, word, and line count
 - **Custom Themes**: Dark, Light, High Contrast, Solarized Dark/Light, Dracula, Nord
+- **Obsidian Integration**: Send notes directly to your Obsidian vault
+
+### Premium Features
+
+For power users who want AI assistance:
+
+- **AI Text Refinement**: Transform rough text into polished content
+    - Email formatting
+    - Slack message optimization
+    - Git commit messages
+    - Jira/ticket formatting
+    - Code review comments
+    - Documentation generation
+    - PR descriptions
+    - TL;DR summaries
+- **Code Explainer**: AI-powered code explanations with:
+    - Markdown-formatted output with fenced code blocks
+    - Syntax highlighting for the detected language
+    - Granular breakdown of functions, loops, conditionals
+    - Educational explanations for each code section
 
 ### Coming Soon
 
 - **Hash Generation**: MD5, SHA-256 *(coming soon)*
 - **Regex Tester**: Live pattern testing with match highlighting *(coming soon)*
-- **Unit Converter**: Convert between units with developer-friendly formats *(coming soon)*
 - **Timestamp Converter**: Unix timestamp to human-readable and vice versa *(coming soon)*
 
 ## Installation
