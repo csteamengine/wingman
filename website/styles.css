@@ -529,8 +529,8 @@ body {
 
 .feature-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
 }
 
 .feature-column h3 {
@@ -577,7 +577,7 @@ body {
   stroke: #f59e0b;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
   .feature-columns {
     grid-template-columns: 1fr;
     gap: 2.5rem;
