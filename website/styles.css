@@ -533,6 +533,84 @@ body {
   gap: 2rem;
 }
 
+/* Feature Table */
+.feature-table-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+  overflow-x: auto;
+}
+
+.feature-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.feature-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+}
+
+.feature-table th {
+  padding: 1rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border);
+}
+
+.feature-table th:not(:first-child) {
+  text-align: center;
+  width: 100px;
+}
+
+.feature-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.feature-table td:not(:first-child) {
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--green);
+}
+
+.feature-table tr:hover td {
+  background: var(--bg-secondary);
+}
+
+.feature-table .feature-category td {
+  padding: 1.25rem 1rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  background: transparent;
+  border-bottom: 1px solid var(--accent);
+}
+
+.feature-table .feature-category:hover td {
+  background: transparent;
+}
+
+@media (max-width: 600px) {
+  .feature-table th,
+  .feature-table td {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .feature-table th:not(:first-child),
+  .feature-table td:not(:first-child) {
+    width: 60px;
+  }
+}
+
 .feature-column h3 {
   font-size: 1.25rem;
   font-weight: 600;
