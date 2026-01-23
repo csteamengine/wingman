@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { DiffView } from './DiffView';
 import { useDiffStore } from '../stores/diffStore';
+import { useLicenseStore } from '../stores/licenseStore';
 
 export function DiffReviewModal() {
   const {
@@ -9,7 +10,9 @@ export function DiffReviewModal() {
     closeReviewModal,
     undoLastTransformation,
   } = useDiffStore();
+  const { isProFeatureEnabled } = useLicenseStore();
 
+  const hasDiffPreview = isProFeatureEnabled('diff_preview');
   const latestTransformation = transformationHistory[0];
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -27,7 +30,7 @@ export function DiffReviewModal() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  if (!showReviewModal || !latestTransformation) {
+  if (!hasDiffPreview || !showReviewModal || !latestTransformation) {
     return null;
   }
 

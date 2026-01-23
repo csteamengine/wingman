@@ -7,6 +7,7 @@ import {useLicenseStore} from '../stores/licenseStore';
 import {usePremiumStore, formatTokenUsage} from '../stores/premiumStore';
 import {LicenseActivation} from './LicenseActivation';
 import {ObsidianConfig} from './ObsidianConfig';
+import {CustomTransformationsPanel} from './CustomTransformationsPanel';
 import {ProBadge} from './ProFeatureGate';
 import type {ThemeType} from '../types';
 
@@ -58,6 +59,7 @@ export function SettingsPanel() {
     const [updateError, setUpdateError] = useState<string | null>(null);
     const [appVersion, setAppVersion] = useState<string>('');
     const [obsidianExpanded, setObsidianExpanded] = useState(false);
+    const [customTransformationsExpanded, setCustomTransformationsExpanded] = useState(false);
 
     const hasCustomThemes = isProFeatureEnabled('custom_themes');
     const hasFontCustomization = isProFeatureEnabled('font_customization');
@@ -65,6 +67,8 @@ export function SettingsPanel() {
     const hasStickyMode = isProFeatureEnabled('sticky_mode');
     const hasStatsDisplay = isProFeatureEnabled('stats_display');
     const hasObsidianAccess = isProFeatureEnabled('obsidian_integration');
+    const hasDiffPreview = isProFeatureEnabled('diff_preview');
+    const hasCustomTransformations = isProFeatureEnabled('custom_transformations');
     const isPremium = isPremiumTier();
 
     // Load subscription status for Premium users
@@ -407,21 +411,25 @@ export function SettingsPanel() {
                                 </button>
                             </div>
 
-                            {/* Show Diff Preview */}
+                            {/* Show Diff Preview - PRO feature */}
                             <div className="flex items-center justify-between py-2">
                                 <div className="flex-1">
-                                    <label className="block text-sm font-medium text-[var(--ui-text)]">Show Diff Preview</label>
+                                    <div className="flex items-center gap-2">
+                                        <label className="block text-sm font-medium text-[var(--ui-text)]">Show Diff Preview</label>
+                                        {!hasDiffPreview && <ProBadge />}
+                                    </div>
                                     <p className="text-xs text-[var(--ui-text-muted)] mt-0.5">Preview changes before applying text transformations</p>
                                 </div>
                                 <button
-                                    onClick={() => handleUpdate({show_diff_preview: !settings.show_diff_preview})}
+                                    onClick={() => hasDiffPreview && handleUpdate({show_diff_preview: !settings.show_diff_preview})}
+                                    disabled={!hasDiffPreview}
                                     className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                                        settings.show_diff_preview ? 'bg-[var(--ui-accent)]' : 'bg-[var(--ui-border)]'
-                                    }`}
+                                        settings.show_diff_preview && hasDiffPreview ? 'bg-[var(--ui-accent)]' : 'bg-[var(--ui-border)]'
+                                    } ${!hasDiffPreview ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     <span
                                         className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                                            settings.show_diff_preview ? 'translate-x-5' : 'translate-x-0'
+                                            settings.show_diff_preview && hasDiffPreview ? 'translate-x-5' : 'translate-x-0'
                                         }`}
                                     />
                                 </button>
@@ -452,6 +460,35 @@ export function SettingsPanel() {
                                 )}
                             </div>
                         )}
+
+                        {/* Custom Transformations - PRO feature */}
+                        <div className="pt-4 border-t border-[var(--ui-border)]">
+                            <button
+                                onClick={() => setCustomTransformationsExpanded(!customTransformationsExpanded)}
+                                className="w-full flex items-center justify-between py-2 text-left"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--ui-text-muted)]">
+                                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                                    </svg>
+                                    <span className="text-sm font-medium text-[var(--ui-text)]">Custom Transformations</span>
+                                    {!hasCustomTransformations && <ProBadge />}
+                                </div>
+                                <svg
+                                    className={`w-4 h-4 text-[var(--ui-text-muted)] transition-transform ${customTransformationsExpanded ? 'rotate-180' : ''}`}
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            {customTransformationsExpanded && (
+                                <div className="mt-3 -mx-4 border-t border-[var(--ui-border)]">
+                                    <div className="h-[300px]">
+                                        <CustomTransformationsPanel />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Reset Button */}
                         <div className="pt-4 border-t border-[var(--ui-border)]">

@@ -40,6 +40,7 @@ use premium::{
 };
 use storage::{
     load_settings, load_snippets, save_settings, save_snippets, AppSettings, Snippet, SnippetsData,
+    load_custom_transformations, save_custom_transformations, CustomTransformationsData,
 };
 use updater::{check_for_updates, UpdateInfo};
 
@@ -1045,6 +1046,17 @@ async fn hide_and_paste(window: tauri::Window, state: State<'_, AppState>) -> Re
     Ok(())
 }
 
+// Custom transformations commands
+#[tauri::command]
+fn get_custom_transformations() -> Result<CustomTransformationsData, String> {
+    load_custom_transformations().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_custom_transformations_cmd(data: CustomTransformationsData) -> Result<(), String> {
+    save_custom_transformations(&data).map_err(|e| e.to_string())
+}
+
 // Simple UUID v4 generator
 fn uuid_v4() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -1130,6 +1142,9 @@ pub fn run() {
             add_snippet,
             update_snippet,
             delete_snippet,
+            // Custom transformations
+            get_custom_transformations,
+            save_custom_transformations_cmd,
             // Text utilities
             get_text_stats,
             transform_text_cmd,
