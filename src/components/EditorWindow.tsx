@@ -580,11 +580,35 @@ const markdownTheme = EditorView.baseTheme({
 
 // CSS theme for code block backgrounds in markdown
 const codeBlockTheme = EditorView.baseTheme({
-    '.cm-line:has(.tok-meta)': {
-        backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    // Style fenced code block content - CodeMirror uses these classes for code blocks
+    '.cm-line .tok-meta': {
+        color: '#6b7280',
     },
-    '&light .cm-line:has(.tok-meta)': {
-        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    // Code inside fenced blocks gets syntax highlighting from language-data
+    '.cm-line .tok-keyword': {
+        color: '#c678dd',
+    },
+    '.cm-line .tok-string': {
+        color: '#98c379',
+    },
+    '.cm-line .tok-comment': {
+        color: '#5c6370',
+        fontStyle: 'italic',
+    },
+    '.cm-line .tok-number': {
+        color: '#d19a66',
+    },
+    '.cm-line .tok-operator': {
+        color: '#56b6c2',
+    },
+    '.cm-line .tok-variableName': {
+        color: '#e06c75',
+    },
+    '.cm-line .tok-function': {
+        color: '#61afef',
+    },
+    '.cm-line .tok-typeName': {
+        color: '#e5c07b',
     },
 });
 
