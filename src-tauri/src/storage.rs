@@ -51,6 +51,8 @@ pub struct AppSettings {
     pub window_position: WindowPosition,
     #[serde(default)]
     pub sticky_mode: bool,
+    #[serde(default)]
+    pub show_diff_preview: bool,
 }
 
 impl Default for AppSettings {
@@ -75,6 +77,7 @@ impl Default for AppSettings {
             default_language: "plaintext".to_string(),
             window_position: WindowPosition::default(),
             sticky_mode: false,
+            show_diff_preview: false,
         }
     }
 }

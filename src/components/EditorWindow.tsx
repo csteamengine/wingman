@@ -37,6 +37,9 @@ import {useSettingsStore} from '../stores/settingsStore';
 import {useLicenseStore} from '../stores/licenseStore';
 import {usePremiumStore} from '../stores/premiumStore';
 import {useDragStore} from '../stores/dragStore';
+import {DiffPreviewModal} from './DiffPreviewModal';
+import {DiffReviewModal} from './DiffReviewModal';
+import {TransformationFloatingButton} from './TransformationFloatingButton';
 import type {ObsidianResult} from '../types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2045,6 +2048,15 @@ export function EditorWindow() {
                     </div>
                 </div>
             )}
+
+            {/* Transformation Floating Button - Post-transformation review */}
+            <TransformationFloatingButton />
+
+            {/* Diff Preview Modal - Pre-transformation confirmation */}
+            <DiffPreviewModal />
+
+            {/* Diff Review Modal - Post-transformation review */}
+            <DiffReviewModal />
         </div>
     );
 }

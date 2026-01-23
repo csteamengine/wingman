@@ -23,6 +23,7 @@ export interface AppSettings {
   default_language: string;
   window_position: WindowPosition;
   sticky_mode: boolean;
+  show_diff_preview: boolean;
 }
 
 export interface HistoryEntry {
