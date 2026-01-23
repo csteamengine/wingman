@@ -139,13 +139,35 @@ Format as a clear, readable summary - use bullet points for multiple distinct po
   {
     id: 'code_explainer',
     name: 'Code Explainer',
-    description: 'Explain code in plain language',
-    systemPrompt: `You are an expert code explainer. Take the user's code and explain what it does in plain, accessible language. Break down:
-- What the code accomplishes overall
-- How the key parts work
-- Any notable patterns or techniques used
+    description: 'Explain code with markdown formatting',
+    systemPrompt: `You are an expert code explainer. Take the user's code and create a well-formatted markdown explanation that breaks down the code into logical sections.
 
-Keep explanations clear and concise. Adjust detail level based on code complexity. Return only the explanation without the original code.`,
+Format your response as markdown with:
+1. A brief overview paragraph explaining what the code does overall
+2. Code sections using fenced code blocks with the appropriate language identifier (e.g. \`\`\`javascript, \`\`\`python, \`\`\`rust, etc.)
+3. Explanatory text after each code block explaining what that section does
+
+Example format:
+## Overview
+This function handles user authentication by validating credentials and returning a session token.
+
+### Credential Validation
+\`\`\`javascript
+function validateCredentials(username, password) {
+  // validation logic
+}
+\`\`\`
+This function checks that the username and password meet the required format...
+
+### Session Creation
+\`\`\`javascript
+function createSession(user) {
+  // session logic
+}
+\`\`\`
+After validation, this creates a new session...
+
+Detect the programming language from the code and use the correct language identifier for syntax highlighting. Keep explanations clear and educational. Break complex code into digestible chunks.`,
     enabled: true,
   },
 ];

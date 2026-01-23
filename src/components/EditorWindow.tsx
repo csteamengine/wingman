@@ -182,6 +182,7 @@ const mdH3 = Decoration.line({ class: 'cm-md-h3' });
 const mdH4 = Decoration.line({ class: 'cm-md-h4' });
 const mdBlockquote = Decoration.line({ class: 'cm-md-blockquote' });
 const mdHr = Decoration.line({ class: 'cm-md-hr' });
+const mdCodeBlockLine = Decoration.line({ class: 'cm-md-codeblock-line' });
 
 // Image widget for rendering inline images
 class ImageWidget extends WidgetType {
@@ -228,18 +229,6 @@ function isCursorInRange(selections: readonly SelectionRange[], from: number, to
     );
 }
 
-// Check if position is inside a code block (``` ... ```)
-function isInsideCodeBlock(text: string, pos: number): boolean {
-    const codeBlockRegex = /```[\s\S]*?```/g;
-    let match;
-    while ((match = codeBlockRegex.exec(text)) !== null) {
-        if (pos >= match.index && pos < match.index + match[0].length) {
-            return true;
-        }
-    }
-    return false;
-}
-
 // Check if a character is escaped (preceded by backslash)
 function isEscaped(text: string, pos: number): boolean {
     let backslashes = 0;
@@ -280,14 +269,53 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
         decoratedRanges.push({from, to});
     };
 
+    // Track lines that are part of fenced code blocks (to skip in line processing)
+    const codeBlockLines = new Set<number>();
+
+    // === FENCED CODE BLOCKS ===
+    // Process fenced code blocks first (``` ... ```)
+    const codeBlockRegex = /^```(\w*)\n([\s\S]*?)^```$/gm;
+    let codeBlockMatch;
+    while ((codeBlockMatch = codeBlockRegex.exec(text)) !== null) {
+        const blockStart = codeBlockMatch.index;
+        const blockEnd = blockStart + codeBlockMatch[0].length;
+        const openingFence = text.indexOf('\n', blockStart);
+        const closingFenceStart = blockEnd - 3;
+
+        // Check if cursor is inside this code block (including the ``` lines)
+        const cursorInside = isCursorInRange(selections, blockStart, blockEnd);
+
+        // Find line numbers for the code block
+        const startLine = doc.lineAt(blockStart);
+        const endLine = doc.lineAt(blockEnd - 1);
+
+        // Mark all lines in this block
+        for (let lineNum = startLine.number; lineNum <= endLine.number; lineNum++) {
+            codeBlockLines.add(lineNum);
+        }
+
+        if (!cursorInside) {
+            // Hide opening ``` line
+            decorations.push({ from: blockStart, to: openingFence + 1, decoration: mdHidden });
+            // Hide closing ``` line
+            decorations.push({ from: closingFenceStart, to: blockEnd, decoration: mdHidden });
+        }
+
+        // Apply code block styling to content lines (not the ``` lines)
+        for (let lineNum = startLine.number + 1; lineNum < endLine.number; lineNum++) {
+            const codeLine = doc.line(lineNum);
+            decorations.push({ from: codeLine.from, to: codeLine.from, decoration: mdCodeBlockLine });
+        }
+    }
+
     // Process line-by-line for block elements and inline elements
     for (let i = 1; i <= doc.lines; i++) {
         const line = doc.line(i);
         const lineText = line.text;
         const lineFrom = line.from;
 
-        // Skip if line is inside a code block
-        if (isInsideCodeBlock(text, lineFrom)) continue;
+        // Skip if line is part of a fenced code block
+        if (codeBlockLines.has(i)) continue;
 
         // === BLOCK ELEMENTS ===
 
@@ -575,6 +603,11 @@ const markdownTheme = EditorView.baseTheme({
         maxWidth: '100%',
         borderRadius: '4px',
         border: '1px solid var(--ui-border)',
+    },
+    // Fenced code block lines
+    '.cm-md-codeblock-line': {
+        backgroundColor: 'rgba(0, 0, 0, 0.15)',
+        fontFamily: "'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace",
     },
 });
 
@@ -891,10 +924,14 @@ export function EditorWindow() {
         const response = await callAIWithPreset(licenseKey, content, preset);
         if (response && response.result) {
             setContent(response.result);
+            // Switch to markdown mode for code_explainer preset (output contains markdown formatting)
+            if (preset.id === 'code_explainer') {
+                setLanguage('markdown');
+            }
         } else {
             setAiError('Failed to refine text');
         }
-    }, [aiLoading, content, callAIWithPreset, setContent]);
+    }, [aiLoading, content, callAIWithPreset, setContent, setLanguage]);
 
     // Get enabled presets for the popover
     const enabledPresets = getEnabledPresets();
