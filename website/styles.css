@@ -484,6 +484,49 @@ body {
   font-weight: 500;
 }
 
+.pricing-features li.tier-includes {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.pricing-features li.tier-includes em {
+  color: var(--text-muted);
+  font-style: normal;
+}
+
+.pricing-footer {
+  text-align: center;
+  margin-top: 3rem;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn-outline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.btn-outline svg {
+  transition: transform 0.2s ease;
+}
+
+.btn-outline:hover svg {
+  transform: translateY(2px);
+}
+
 /* CTA */
 .cta {
   padding: 6rem 2rem;
