@@ -182,7 +182,11 @@ const mdH3 = Decoration.line({ class: 'cm-md-h3' });
 const mdH4 = Decoration.line({ class: 'cm-md-h4' });
 const mdBlockquote = Decoration.line({ class: 'cm-md-blockquote' });
 const mdHr = Decoration.line({ class: 'cm-md-hr' });
-const mdCodeBlockLine = Decoration.line({ class: 'cm-md-codeblock-line' });
+// Code block line decorations - separate for first, middle, last to create unified block
+const mdCodeBlockFirst = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-first' });
+const mdCodeBlockMiddle = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-middle' });
+const mdCodeBlockLast = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-last' });
+const mdCodeBlockSingle = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-single' });
 
 // Image widget for rendering inline images
 class ImageWidget extends WidgetType {
@@ -302,9 +306,29 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
         }
 
         // Apply code block styling to content lines (not the ``` lines)
-        for (let lineNum = startLine.number + 1; lineNum < endLine.number; lineNum++) {
+        const firstContentLine = startLine.number + 1;
+        const lastContentLine = endLine.number - 1;
+        const contentLineCount = lastContentLine - firstContentLine + 1;
+
+        for (let lineNum = firstContentLine; lineNum <= lastContentLine; lineNum++) {
             const codeLine = doc.line(lineNum);
-            decorations.push({ from: codeLine.from, to: codeLine.from, decoration: mdCodeBlockLine });
+            let decoration;
+
+            if (contentLineCount === 1) {
+                // Single line code block
+                decoration = mdCodeBlockSingle;
+            } else if (lineNum === firstContentLine) {
+                // First line of multi-line block
+                decoration = mdCodeBlockFirst;
+            } else if (lineNum === lastContentLine) {
+                // Last line of multi-line block
+                decoration = mdCodeBlockLast;
+            } else {
+                // Middle line
+                decoration = mdCodeBlockMiddle;
+            }
+
+            decorations.push({ from: codeLine.from, to: codeLine.from, decoration });
         }
     }
 
@@ -604,13 +628,29 @@ const markdownTheme = EditorView.baseTheme({
         borderRadius: '4px',
         border: '1px solid var(--ui-border)',
     },
-    // Fenced code block lines
-    '.cm-md-codeblock-line': {
+    // Fenced code block - base styles
+    '.cm-md-codeblock': {
         backgroundColor: 'var(--ui-surface, rgba(0, 0, 0, 0.15))',
         fontFamily: "'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace",
-        padding: '2px 12px',
-        margin: '0 12px',
-        borderRadius: '6px',
+        padding: '4px 16px',
+        marginLeft: '12px',
+        marginRight: '12px',
+    },
+    '.cm-md-codeblock-single': {
+        borderRadius: '8px',
+    },
+    '.cm-md-codeblock-first': {
+        borderTopLeftRadius: '8px',
+        borderTopRightRadius: '8px',
+        paddingTop: '8px',
+    },
+    '.cm-md-codeblock-middle': {
+        borderRadius: '0',
+    },
+    '.cm-md-codeblock-last': {
+        borderBottomLeftRadius: '8px',
+        borderBottomRightRadius: '8px',
+        paddingBottom: '8px',
     },
 });
 
