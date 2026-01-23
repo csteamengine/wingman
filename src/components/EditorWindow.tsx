@@ -606,8 +606,11 @@ const markdownTheme = EditorView.baseTheme({
     },
     // Fenced code block lines
     '.cm-md-codeblock-line': {
-        backgroundColor: 'rgba(0, 0, 0, 0.15)',
+        backgroundColor: 'var(--ui-surface, rgba(0, 0, 0, 0.15))',
         fontFamily: "'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace",
+        padding: '2px 12px',
+        margin: '0 12px',
+        borderRadius: '6px',
     },
 });
 
