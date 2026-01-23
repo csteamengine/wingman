@@ -669,8 +669,21 @@ body {
 .cm-md-codeblock-line {
   background-color: var(--ui-surface);
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', monospace;
-  padding-left: 8px;
-  border-left: 3px solid var(--ui-accent);
+  padding: 2px 12px;
+  margin: 0 12px;
+  border-radius: 6px;
+}
+
+/* Remove border-radius for middle lines to create connected block look */
+.cm-md-codeblock-line + .cm-md-codeblock-line {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin-top: -1px;
+}
+
+.cm-md-codeblock-line:has(+ .cm-md-codeblock-line) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .theme-light .cm-md-codeblock-line,
