@@ -202,3 +202,25 @@ export interface CustomTransformation {
 export interface CustomTransformationsData {
   transformations: CustomTransformation[];
 }
+
+// Transformation chain types
+export interface ChainStep {
+  id: string;
+  type: 'builtin' | 'custom';
+  transformId: string;  // e.g., 'uppercase' or custom UUID
+  name: string;         // Display name
+}
+
+export interface TransformationChain {
+  id: string;
+  name: string;
+  description: string;
+  steps: ChainStep[];
+  created_at: string;
+  updated_at: string;
+  enabled: boolean;
+}
+
+export interface TransformationChainsData {
+  chains: TransformationChain[];
+}

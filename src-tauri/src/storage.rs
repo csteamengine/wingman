@@ -231,3 +231,50 @@ pub fn save_custom_transformations(data: &CustomTransformationsData) -> Result<(
     fs::write(path, content)?;
     Ok(())
 }
+
+// Transformation chains
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChainStep {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub step_type: String,
+    #[serde(rename = "transformId")]
+    pub transform_id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransformationChain {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub steps: Vec<ChainStep>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TransformationChainsData {
+    pub chains: Vec<TransformationChain>,
+}
+
+pub fn load_transformation_chains() -> Result<TransformationChainsData, StorageError> {
+    let dir = ensure_app_data_dir()?;
+    let path = dir.join("transformation_chains.json");
+
+    if path.exists() {
+        let content = fs::read_to_string(&path)?;
+        Ok(serde_json::from_str(&content)?)
+    } else {
+        Ok(TransformationChainsData::default())
+    }
+}
+
+pub fn save_transformation_chains(data: &TransformationChainsData) -> Result<(), StorageError> {
+    let dir = ensure_app_data_dir()?;
+    let path = dir.join("transformation_chains.json");
+    let content = serde_json::to_string_pretty(data)?;
+    fs::write(path, content)?;
+    Ok(())
+}

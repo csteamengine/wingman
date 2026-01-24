@@ -827,7 +827,8 @@ export function EditorWindow() {
         removeImage,
         transformText,
         applyBulletList,
-        applyNumberedList
+        applyNumberedList,
+        saveToFile
     } = useEditorStore();
     const {settings} = useSettingsStore();
     const {isProFeatureEnabled, isPremiumTier} = useLicenseStore();
@@ -1848,6 +1849,29 @@ export function EditorWindow() {
                                 <span className="opacity-60">Pro: Stats</span>
                             )}
                         </div>
+                        {/* Save to File button */}
+                        <button
+                            onClick={async () => {
+                                const result = await saveToFile();
+                                if (result.success && result.path) {
+                                    // Could show a toast here if you have a toast system
+                                    console.log('File saved to:', result.path);
+                                } else if (result.error) {
+                                    console.error('Failed to save file:', result.error);
+                                }
+                            }}
+                            disabled={!content.trim()}
+                            className="text-xs px-2 py-1 rounded-md hover:bg-[var(--ui-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                            title="Save to file"
+                        >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            Save
+                        </button>
+
                         {/* Language Selector */}
                         <div className="relative" ref={languageDropdownRef}>
                             <button

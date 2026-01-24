@@ -41,6 +41,7 @@ use premium::{
 use storage::{
     load_settings, load_snippets, save_settings, save_snippets, AppSettings, Snippet, SnippetsData,
     load_custom_transformations, save_custom_transformations, CustomTransformationsData,
+    load_transformation_chains, save_transformation_chains, TransformationChainsData,
 };
 use updater::{check_for_updates, UpdateInfo};
 
@@ -1160,6 +1161,80 @@ fn save_custom_transformations_cmd(data: CustomTransformationsData) -> Result<()
     save_custom_transformations(&data).map_err(|e| e.to_string())
 }
 
+// Transformation chains commands
+#[tauri::command]
+fn get_transformation_chains() -> Result<TransformationChainsData, String> {
+    load_transformation_chains().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_transformation_chains_cmd(data: TransformationChainsData) -> Result<(), String> {
+    save_transformation_chains(&data).map_err(|e| e.to_string())
+}
+
+// Save file dialog command
+fn get_file_filter(language: &str) -> (&'static str, &'static [&'static str]) {
+    match language {
+        "javascript" => ("JavaScript", &["js"]),
+        "typescript" => ("TypeScript", &["ts"]),
+        "jsx" => ("JSX", &["jsx"]),
+        "tsx" => ("TSX", &["tsx"]),
+        "html" => ("HTML", &["html", "htm"]),
+        "css" => ("CSS", &["css"]),
+        "json" => ("JSON", &["json"]),
+        "sql" => ("SQL", &["sql"]),
+        "yaml" => ("YAML", &["yaml", "yml"]),
+        "xml" => ("XML", &["xml"]),
+        "bash" => ("Shell Script", &["sh", "bash"]),
+        "python" => ("Python", &["py"]),
+        "java" => ("Java", &["java"]),
+        "go" => ("Go", &["go"]),
+        "php" => ("PHP", &["php"]),
+        "c" => ("C", &["c", "h"]),
+        "cpp" => ("C++", &["cpp", "hpp", "cc"]),
+        "rust" => ("Rust", &["rs"]),
+        "ruby" => ("Ruby", &["rb"]),
+        "swift" => ("Swift", &["swift"]),
+        "kotlin" => ("Kotlin", &["kt", "kts"]),
+        "csharp" => ("C#", &["cs"]),
+        "markdown" => ("Markdown", &["md"]),
+        _ => ("Text", &["txt"]),
+    }
+}
+
+#[tauri::command]
+async fn save_file_dialog(content: String, file_type: Option<String>) -> Result<Option<String>, String> {
+    use rfd::AsyncFileDialog;
+
+    // Set flag to prevent panel from hiding when dialog takes focus
+    #[cfg(target_os = "macos")]
+    {
+        window::DIALOG_OPEN.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    let (filter_name, extensions) = get_file_filter(file_type.as_deref().unwrap_or("plaintext"));
+
+    let file = AsyncFileDialog::new()
+        .add_filter(filter_name, extensions)
+        .add_filter("All Files", &["*"])
+        .save_file()
+        .await;
+
+    // Clear the flag after dialog closes
+    #[cfg(target_os = "macos")]
+    {
+        window::DIALOG_OPEN.store(false, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    if let Some(handle) = file {
+        let path = handle.path();
+        std::fs::write(path, content).map_err(|e| e.to_string())?;
+        Ok(Some(path.to_string_lossy().to_string()))
+    } else {
+        Ok(None) // User cancelled
+    }
+}
+
 // Simple UUID v4 generator
 fn uuid_v4() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -1248,6 +1323,11 @@ pub fn run() {
             // Custom transformations
             get_custom_transformations,
             save_custom_transformations_cmd,
+            // Transformation chains
+            get_transformation_chains,
+            save_transformation_chains_cmd,
+            // Save file dialog
+            save_file_dialog,
             // Text utilities
             get_text_stats,
             transform_text_cmd,

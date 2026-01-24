@@ -64,6 +64,8 @@ interface EditorState {
   // Navigate to settings with specific tab or update check
   openSettingsTab: (tab: SettingsTab, checkUpdates?: boolean) => void;
   clearSettingsNavigation: () => void;
+  // Save to file
+  saveToFile: () => Promise<{ success: boolean; path?: string; error?: string }>;
 }
 
 // Helper to safely get current editor content from editorView or fall back to store
@@ -759,5 +761,31 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       initialSettingsTab: null,
       shouldCheckUpdates: false,
     });
+  },
+
+  saveToFile: async () => {
+    const state = get();
+    const content = getEditorContent(state);
+    const { language } = state;
+
+    if (!content.trim()) {
+      return { success: false, error: 'No content to save' };
+    }
+
+    try {
+      const path = await invoke<string | null>('save_file_dialog', {
+        content,
+        fileType: language,
+      });
+
+      if (path) {
+        return { success: true, path };
+      } else {
+        // User cancelled
+        return { success: false };
+      }
+    } catch (error) {
+      return { success: false, error: String(error) };
+    }
   },
 }));

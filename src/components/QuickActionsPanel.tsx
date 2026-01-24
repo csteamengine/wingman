@@ -7,6 +7,7 @@ import {useDragStore} from '../stores/dragStore';
 import {useDiffStore} from '../stores/diffStore';
 import {useSettingsStore} from '../stores/settingsStore';
 import {useCustomTransformationsStore} from '../stores/customTransformationsStore';
+import {useTransformationChainsStore} from '../stores/transformationChainsStore';
 
 type TabType = 'clipboard' | 'actions';
 
@@ -21,7 +22,7 @@ interface Action {
     label: string;
     description: string;
     requiresInput?: boolean;
-    handler?: 'transform' | 'format' | 'encode' | 'generate' | 'custom';
+    handler?: 'transform' | 'format' | 'encode' | 'generate' | 'custom' | 'chain';
     section?: string;
     proFeature?: 'json_xml_formatting' | 'encode_decode' | 'custom_transformations';
 }
@@ -185,10 +186,18 @@ export function QuickActionsPanel() {
         getEnabledTransformations,
     } = useCustomTransformationsStore();
 
-    // Load custom transformations on mount
+    const {
+        chains: transformationChains,
+        loadChains: loadTransformationChains,
+        executeChain,
+        getEnabledChains,
+    } = useTransformationChainsStore();
+
+    // Load custom transformations and chains on mount
     useEffect(() => {
         loadCustomTransformations();
-    }, [loadCustomTransformations]);
+        loadTransformationChains();
+    }, [loadCustomTransformations, loadTransformationChains]);
 
     const [activeTab, setActiveTab] = useState<TabType>('clipboard');
     const [error, setError] = useState<string | null>(null);
@@ -197,7 +206,7 @@ export function QuickActionsPanel() {
     const searchInputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
     const [expandedSections, setExpandedSections] = useState<Set<string>>(
-        new Set(actionSections.map(s => s.title))
+        new Set([...actionSections.map(s => s.title), 'Chains', 'Custom'])
     );
     const [draggedItem, setDraggedItem] = useState<string | null>(null);
 
@@ -244,10 +253,22 @@ export function QuickActionsPanel() {
         }));
     }, [customTransformations, isProFeatureEnabled, getEnabledTransformations]);
 
-    // All actions including custom transformations
+    // Get chain actions
+    const chainActions: Action[] = useMemo(() => {
+        return getEnabledChains().map(chain => ({
+            id: `chain_${chain.id}`,
+            label: chain.name,
+            description: chain.description || `${chain.steps.length} step chain`,
+            handler: 'chain' as const,
+            requiresInput: true,
+            section: 'Chains',
+        }));
+    }, [transformationChains, getEnabledChains]);
+
+    // All actions including custom transformations and chains
     const allActions = useMemo(() => {
-        return [...staticActions, ...customTransformationActions];
-    }, [customTransformationActions]);
+        return [...staticActions, ...customTransformationActions, ...chainActions];
+    }, [customTransformationActions, chainActions]);
 
     const filteredActions = useMemo(() => {
         if (!searchQuery.trim()) return null;
@@ -597,11 +618,55 @@ export function QuickActionsPanel() {
                     }
                     break;
                 }
+
+                case 'chain': {
+                    const {text, hasSelection, from, to, cursorPos} = getTextToProcess();
+                    if (!text.trim()) {
+                        setError('No text to transform');
+                        return;
+                    }
+
+                    // Extract the chain ID from the action ID
+                    const chainId = action.id.replace('chain_', '');
+                    const result = await executeChain(chainId, text);
+
+                    if (!result.success) {
+                        setError(result.error || 'Chain execution failed');
+                        return;
+                    }
+
+                    const transformed = result.result!;
+
+                    // Check if diff preview is enabled (and user has PRO)
+                    const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
+                    const hasDiffPreview = isProFeatureEnabled('diff_preview');
+                    if (showDiffPreview && hasDiffPreview && text !== transformed) {
+                        useDiffStore.getState().setPendingDiff({
+                            originalText: text,
+                            transformedText: transformed,
+                            transformationType: action.label,
+                            selectionRange: hasSelection ? { from, to } : null,
+                            cursorPos,
+                            applyCallback: () => applyProcessedText(transformed, hasSelection, from, to, cursorPos),
+                        });
+                        useDiffStore.getState().openPreviewModal();
+                    } else {
+                        applyProcessedText(transformed, hasSelection, from, to, cursorPos);
+                        if (text !== transformed && hasDiffPreview) {
+                            useDiffStore.getState().addTransformationRecord({
+                                originalText: text,
+                                transformedText: transformed,
+                                transformationType: action.label,
+                            });
+                        }
+                    }
+                    break;
+                }
             }
         } catch (err) {
             setError(String(err));
         }
-    }, [content, isProFeatureEnabled, setContent, transformText, applyBulletList, applyNumberedList, getTextToProcess, applyProcessedText, executeTransformation]);
+    }, [content, isProFeatureEnabled, setContent, transformText, applyBulletList, applyNumberedList, getTextToProcess, applyProcessedText, executeTransformation, executeChain]);
 
     // Keyboard navigation
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -1050,6 +1115,41 @@ export function QuickActionsPanel() {
                                                 </div>
                                             );
                                         })}
+
+                                        {/* Chains Section */}
+                                        {chainActions.length > 0 && (
+                                            <div className="mb-2">
+                                                <button
+                                                    onClick={() => toggleSection('Chains')}
+                                                    className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-medium text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors"
+                                                >
+                                                    <span className="flex items-center gap-2">
+                                                        Chains
+                                                    </span>
+                                                    <svg
+                                                        width="10"
+                                                        height="10"
+                                                        viewBox="0 0 10 10"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="1.5"
+                                                        strokeLinecap="round"
+                                                        className={`transition-transform ${expandedSections.has('Chains') ? 'rotate-180' : ''}`}
+                                                    >
+                                                        <path d="M2 3.5l3 3 3-3"/>
+                                                    </svg>
+                                                </button>
+
+                                                {expandedSections.has('Chains') && (
+                                                    <div className="grid gap-1">
+                                                        {chainActions.map((action, idx) => {
+                                                            const actionIndex = globalIndex + idx;
+                                                            return renderAction(action, actionIndex);
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
 
                                         {/* Custom Transformations Section */}
                                         {(hasCustomAccess || enabledCustom.length > 0) && (
