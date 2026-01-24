@@ -243,9 +243,9 @@ function HistoryPanelContent() {
                     entry={entry}
                     index={index}
                     isSelected={index === selectedIndex}
-                    onSelect={handleSelect}
+                    onPreview={() => setSelectedIndex(index)}
+                    onLoadToEditor={handleSelect}
                     onDelete={handleDelete}
-                    onHover={() => setSelectedIndex(index)}
                     truncate={truncate}
                     isCode={!!isCodeEntry(entry)}
                   />
@@ -365,14 +365,14 @@ interface HistoryItemProps {
   entry: HistoryEntry;
   index: number;
   isSelected: boolean;
-  onSelect: (entry: HistoryEntry) => void;
+  onPreview: () => void;
+  onLoadToEditor: (entry: HistoryEntry) => void;
   onDelete: (id: number, e?: React.MouseEvent) => void;
-  onHover: () => void;
   truncate: (text: string, length: number) => string;
   isCode: boolean;
 }
 
-function HistoryItem({ entry, index, isSelected, onSelect, onDelete, onHover, truncate, isCode }: HistoryItemProps) {
+function HistoryItem({ entry, index, isSelected, onPreview, onLoadToEditor, onDelete, truncate, isCode }: HistoryItemProps) {
   const attachments = parseAttachments(entry);
   const hasImageAttachments = attachments.some(a => a.type === 'image');
   const hasAttachments = attachments.length > 0;
@@ -380,13 +380,13 @@ function HistoryItem({ entry, index, isSelected, onSelect, onDelete, onHover, tr
   return (
     <div
       data-index={index}
-      className={`group flex items-center gap-3 px-4 py-2 mx-2 rounded-md cursor-pointer transition-colors ${
+      className={`group flex items-center gap-3 px-4 py-2 mx-2 rounded-md cursor-pointer transition-all ${
         isSelected
-          ? 'bg-[var(--ui-surface)]'
+          ? 'bg-[var(--ui-surface)] outline outline-2 outline-[var(--ui-accent)]'
           : 'hover:bg-[var(--ui-hover)]'
       }`}
-      onClick={() => onSelect(entry)}
-      onMouseEnter={onHover}
+      onClick={onPreview}
+      onDoubleClick={() => onLoadToEditor(entry)}
       role="button"
       tabIndex={-1}
     >

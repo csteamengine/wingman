@@ -192,12 +192,9 @@ export function TransformationChainsPanel() {
         <div className="flex-1" />
         <button
           onClick={handleCreateChain}
-          className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] text-[var(--ui-accent)] transition-colors"
-          title="Create new chain"
+          className="text-xs px-2 py-1 rounded-md bg-[var(--ui-accent)] text-white hover:brightness-110 transition-all flex-shrink-0"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M7 2v10M2 7h10" />
-          </svg>
+          + New
         </button>
       </div>
 

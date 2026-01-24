@@ -213,8 +213,8 @@ function SnippetsPanelContent() {
                     snippet={snippet}
                     index={index}
                     isSelected={index === safeSelectedIndex}
+                    onPreview={() => setSelectedIndex(index)}
                     onInsert={handleInsert}
-                    onHover={() => setSelectedIndex(index)}
                   />
                 ))}
               </div>
@@ -366,21 +366,21 @@ interface SnippetItemProps {
   snippet: Snippet;
   index: number;
   isSelected: boolean;
+  onPreview: () => void;
   onInsert: (snippet: Snippet) => void;
-  onHover: () => void;
 }
 
-function SnippetItem({ snippet, index, isSelected, onInsert, onHover }: SnippetItemProps) {
+function SnippetItem({ snippet, index, isSelected, onPreview, onInsert }: SnippetItemProps) {
   return (
     <div
       data-index={index}
-      className={`flex items-center gap-3 px-4 py-2 mx-2 rounded-md cursor-pointer transition-colors ${
+      className={`flex items-center gap-3 px-4 py-2 mx-2 rounded-md cursor-pointer transition-all ${
         isSelected
-          ? 'bg-[var(--ui-surface)]'
+          ? 'bg-[var(--ui-surface)] outline outline-2 outline-[var(--ui-accent)]'
           : 'hover:bg-[var(--ui-hover)]'
       }`}
-      onClick={() => onInsert(snippet)}
-      onMouseEnter={onHover}
+      onClick={onPreview}
+      onDoubleClick={() => onInsert(snippet)}
       role="button"
       tabIndex={-1}
     >
