@@ -90,7 +90,7 @@ const getEditorContent = (state: EditorState): string => {
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   content: '',
-  language: 'plaintext',
+  language: 'markdown',
   stats: { character_count: 0, word_count: 0, line_count: 0, paragraph_count: 0 },
   activePanel: 'editor',
   previousPanel: null,
