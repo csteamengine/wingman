@@ -53,6 +53,7 @@ pub fn transform_text(text: &str, transform: TextTransform) -> String {
         TextTransform::TrimWhitespace => text
             .lines()
             .map(|line| line.trim())
+            .filter(|line| !line.is_empty())
             .collect::<Vec<_>>()
             .join("\n"),
         TextTransform::SortLines => {

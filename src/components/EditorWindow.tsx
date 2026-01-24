@@ -765,8 +765,10 @@ export function EditorWindow() {
     const [obsidianToast, setObsidianToast] = useState<ObsidianResult | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
     const [showAiPopover, setShowAiPopover] = useState(false);
+    const [showPrimaryActionPopover, setShowPrimaryActionPopover] = useState(false);
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const aiPopoverRef = useRef<HTMLDivElement>(null);
+    const primaryActionRef = useRef<HTMLDivElement>(null);
     const languageDropdownRef = useRef<HTMLDivElement>(null);
 
     // URL Parser state
@@ -784,6 +786,18 @@ export function EditorWindow() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showAiPopover]);
+
+    // Close primary action popover when clicking outside
+    useEffect(() => {
+        if (!showPrimaryActionPopover) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (primaryActionRef.current && !primaryActionRef.current.contains(e.target as Node)) {
+                setShowPrimaryActionPopover(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showPrimaryActionPopover]);
 
     // Close language dropdown when clicking outside
     useEffect(() => {
@@ -830,7 +844,7 @@ export function EditorWindow() {
         applyNumberedList,
         saveToFile
     } = useEditorStore();
-    const {settings} = useSettingsStore();
+    const {settings, updateSettings} = useSettingsStore();
     const {isProFeatureEnabled, isPremiumTier} = useLicenseStore();
 
     // Check if clipboard drag/drop is enabled (PRO feature - uses history feature gate)
@@ -1849,29 +1863,6 @@ export function EditorWindow() {
                                 <span className="opacity-60">Pro: Stats</span>
                             )}
                         </div>
-                        {/* Save to File button */}
-                        <button
-                            onClick={async () => {
-                                const result = await saveToFile();
-                                if (result.success && result.path) {
-                                    // Could show a toast here if you have a toast system
-                                    console.log('File saved to:', result.path);
-                                } else if (result.error) {
-                                    console.error('Failed to save file:', result.error);
-                                }
-                            }}
-                            disabled={!content.trim()}
-                            className="text-xs px-2 py-1 rounded-md hover:bg-[var(--ui-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
-                            title="Save to file"
-                        >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="7 10 12 15 17 10" />
-                                <line x1="12" y1="15" x2="12" y2="3" />
-                            </svg>
-                            Save
-                        </button>
-
                         {/* Language Selector */}
                         <div className="relative" ref={languageDropdownRef}>
                             <button
@@ -2007,15 +1998,100 @@ export function EditorWindow() {
                             <span>Obsidian</span>
                         </button>
 
-                        {/* Copy to Clipboard - main action */}
-                        <button
-                            onClick={pasteAndClose}
-                            disabled={!content.trim() && images.length === 0}
-                            className="btn-primary flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm disabled:opacity-40 transition-colors"
-                        >
-                            <span>Copy to Clipboard</span>
-                            <span className="kbd">⌘↵</span>
-                        </button>
+                        {/* Primary Action split button */}
+                        <div className="relative flex flex-1" ref={primaryActionRef}>
+                            {/* Main button - triggers primary action */}
+                            <button
+                                onClick={() => {
+                                    if (settings?.primary_action === 'save_file') {
+                                        saveToFile();
+                                    } else {
+                                        pasteAndClose();
+                                    }
+                                }}
+                                disabled={!content.trim() && images.length === 0}
+                                className="btn-primary flex-1 flex items-center justify-center gap-2 pl-3 pr-2 py-2.5 rounded-l-md text-sm disabled:opacity-40 transition-colors"
+                            >
+                                {settings?.primary_action === 'save_file' ? (
+                                    <>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                            <polyline points="7 10 12 15 17 10" />
+                                            <line x1="12" y1="15" x2="12" y2="3" />
+                                        </svg>
+                                        <span>Save to File</span>
+                                    </>
+                                ) : (
+                                    <span>Copy to Clipboard</span>
+                                )}
+                                <span className="kbd">⌘↵</span>
+                            </button>
+                            {/* Dropdown button - opens action selector */}
+                            <button
+                                onClick={() => setShowPrimaryActionPopover(!showPrimaryActionPopover)}
+                                disabled={!content.trim() && images.length === 0}
+                                title="Select primary action"
+                                className="btn-primary flex items-center justify-center px-1.5 py-2.5 rounded-r-md text-sm disabled:opacity-40 transition-colors border-l border-white/20"
+                            >
+                                <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+
+                            {/* Primary Action Popover */}
+                            {showPrimaryActionPopover && (
+                                <div className="absolute bottom-full mb-2 right-0 bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] rounded-lg shadow-lg z-50 min-w-[200px] py-1 animate-fade-in">
+                                    <div className="px-3 py-2 border-b border-[var(--ui-border)]">
+                                        <p className="text-xs font-medium text-[var(--ui-text)]">Primary Action</p>
+                                        <p className="text-[10px] text-[var(--ui-text-muted)]">Choose what ⌘↵ does</p>
+                                    </div>
+                                    <div className="py-1">
+                                        <button
+                                            onClick={() => {
+                                                updateSettings({ primary_action: 'clipboard' });
+                                                setShowPrimaryActionPopover(false);
+                                            }}
+                                            className={`w-full text-left px-3 py-2 hover:bg-[var(--ui-hover)] transition-colors ${
+                                                settings?.primary_action !== 'save_file' ? 'bg-[var(--ui-accent)]/10' : ''
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {settings?.primary_action !== 'save_file' && (
+                                                    <svg className="w-3 h-3 text-[var(--ui-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                                                    </svg>
+                                                )}
+                                                <div className={settings?.primary_action !== 'save_file' ? '' : 'ml-5'}>
+                                                    <p className="text-xs font-medium text-[var(--ui-text)]">Copy to Clipboard</p>
+                                                    <p className="text-[10px] text-[var(--ui-text-muted)]">Copy and paste to previous app</p>
+                                                </div>
+                                            </div>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                updateSettings({ primary_action: 'save_file' });
+                                                setShowPrimaryActionPopover(false);
+                                            }}
+                                            className={`w-full text-left px-3 py-2 hover:bg-[var(--ui-hover)] transition-colors ${
+                                                settings?.primary_action === 'save_file' ? 'bg-[var(--ui-accent)]/10' : ''
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {settings?.primary_action === 'save_file' && (
+                                                    <svg className="w-3 h-3 text-[var(--ui-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                                                    </svg>
+                                                )}
+                                                <div className={settings?.primary_action === 'save_file' ? '' : 'ml-5'}>
+                                                    <p className="text-xs font-medium text-[var(--ui-text)]">Save to File</p>
+                                                    <p className="text-[10px] text-[var(--ui-text-muted)]">Save with native file picker</p>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                 {/* AI Error message */}

@@ -28,6 +28,7 @@ const defaultSettings: AppSettings = {
   window_position: { x: 100, y: 100, width: 650, height: 450 },
   sticky_mode: false,
   show_diff_preview: false,
+  primary_action: 'clipboard',
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({

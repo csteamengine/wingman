@@ -1146,7 +1146,12 @@ export function QuickActionsPanel() {
                                                             const actionIndex = globalIndex + idx;
                                                             return renderAction(action, actionIndex);
                                                         })}
+                                                        {/* Increment globalIndex after rendering chain actions */}
+                                                        {(() => { globalIndex += chainActions.length; return null; })()}
                                                     </div>
+                                                )}
+                                                {!expandedSections.has('Chains') && (
+                                                    <>{(() => { globalIndex += chainActions.length; return null; })()}</>
                                                 )}
                                             </div>
                                         )}
@@ -1203,12 +1208,18 @@ export function QuickActionsPanel() {
                                                                 </button>
                                                             </div>
                                                         ) : (
-                                                            enabledCustom.map((action, idx) => {
-                                                                const actionIndex = globalIndex + idx;
-                                                                return renderAction(action, actionIndex);
-                                                            })
+                                                            <>
+                                                                {enabledCustom.map((action, idx) => {
+                                                                    const actionIndex = globalIndex + idx;
+                                                                    return renderAction(action, actionIndex);
+                                                                })}
+                                                                {(() => { globalIndex += enabledCustom.length; return null; })()}
+                                                            </>
                                                         )}
                                                     </div>
+                                                )}
+                                                {!expandedSections.has('Custom') && enabledCustom.length > 0 && (
+                                                    <>{(() => { globalIndex += enabledCustom.length; return null; })()}</>
                                                 )}
                                             </div>
                                         )}

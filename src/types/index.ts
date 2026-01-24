@@ -7,6 +7,8 @@ export interface WindowPosition {
 
 export type ThemeType = 'dark' | 'light' | 'high-contrast' | 'solarized-dark' | 'solarized-light' | 'dracula' | 'nord';
 
+export type PrimaryAction = 'clipboard' | 'save_file';
+
 export interface AppSettings {
   hotkey: string;
   theme: ThemeType;
@@ -24,6 +26,7 @@ export interface AppSettings {
   window_position: WindowPosition;
   sticky_mode: boolean;
   show_diff_preview: boolean;
+  primary_action: PrimaryAction;
 }
 
 export interface HistoryEntry {

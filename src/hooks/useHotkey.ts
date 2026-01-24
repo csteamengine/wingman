@@ -47,7 +47,7 @@ export function useGlobalHotkey() {
 }
 
 export function useKeyboardShortcuts() {
-  const { pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isQuickActionsOpen, toggleQuickActions } = useEditorStore();
+  const { pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isQuickActionsOpen, toggleQuickActions, saveToFile } = useEditorStore();
   const { isProFeatureEnabled } = useLicenseStore();
   const { settings } = useSettingsStore();
   const lastEscapeRef = useRef<number>(0);
@@ -85,10 +85,14 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Cmd/Ctrl + Enter - paste and close
+      // Cmd/Ctrl + Enter - primary action (clipboard or save file)
       if (isMod && e.key === 'Enter') {
         e.preventDefault();
-        pasteAndClose();
+        if (settings?.primary_action === 'save_file') {
+          saveToFile();
+        } else {
+          pasteAndClose();
+        }
         return;
       }
 
@@ -167,5 +171,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isProFeatureEnabled, settings?.sticky_mode, isQuickActionsOpen, toggleQuickActions]);
+  }, [pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isProFeatureEnabled, settings?.sticky_mode, settings?.primary_action, isQuickActionsOpen, toggleQuickActions, saveToFile]);
 }

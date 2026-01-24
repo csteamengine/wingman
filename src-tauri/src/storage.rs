@@ -53,6 +53,12 @@ pub struct AppSettings {
     pub sticky_mode: bool,
     #[serde(default)]
     pub show_diff_preview: bool,
+    #[serde(default = "default_primary_action")]
+    pub primary_action: String,
+}
+
+fn default_primary_action() -> String {
+    "clipboard".to_string()
 }
 
 impl Default for AppSettings {
@@ -78,6 +84,7 @@ impl Default for AppSettings {
             window_position: WindowPosition::default(),
             sticky_mode: false,
             show_diff_preview: false,
+            primary_action: default_primary_action(),
         }
     }
 }

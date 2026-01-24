@@ -29,7 +29,8 @@ Everything you need for quick text manipulation:
 - **Text Transformations**:
     - Case conversion (UPPERCASE, lowercase, Title Case, Sentence case)
     - Line operations (sort, deduplicate, reverse)
-    - Trim whitespace
+    - Trim whitespace and remove empty lines
+    - Transformation chains: combine multiple transforms into a single action
 - **Generators**:
     - UUID v4 generator
     - Lorem Ipsum generator (1, 3, or 5 paragraphs)
@@ -37,6 +38,8 @@ Everything you need for quick text manipulation:
     - Spotlight-style overlay that appears over any application
     - Global hotkey activation (configurable)
     - Copy to clipboard with keyboard shortcut
+    - Save to file with native OS file picker
+    - Configurable primary action (clipboard or save file)
     - Customizable font family, size, and opacity
     - System tray integration
 
