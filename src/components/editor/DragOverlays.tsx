@@ -25,7 +25,7 @@ interface ClipboardDragIndicatorProps {
     hasClipboardDragDrop: boolean;
     cursorPosition: { x: number; y: number } | null;
     editorInsertPosition: number | null;
-    editorContainerRef: React.RefObject<HTMLDivElement>;
+    editorContainerRef: React.RefObject<HTMLDivElement | null>;
     viewRef: React.RefObject<EditorView | null>;
 }
 

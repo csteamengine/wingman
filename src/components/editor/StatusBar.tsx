@@ -2,12 +2,14 @@ import {useRef, useState, useEffect} from 'react';
 import {LANGUAGE_OPTIONS} from './languageConfig';
 import type {TextStats} from '../../types';
 
+import type { ProFeature } from '../../types';
+
 interface StatusBarProps {
     stats: TextStats;
     language: string;
     setLanguage: (lang: string) => void;
     hasStatsDisplay: boolean;
-    isProFeatureEnabled: (feature: string) => boolean;
+    isProFeatureEnabled: (feature: ProFeature) => boolean;
 }
 
 export function StatusBar({
