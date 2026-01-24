@@ -779,9 +779,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       });
 
       if (path) {
+        // Hide window and reset state like pasteAndClose
+        await get().hideWindow();
+        set({ content: '', images: [], nextImageId: 1, activePanel: 'editor', isQuickActionsOpen: true, isVisible: false });
         return { success: true, path };
       } else {
-        // User cancelled
+        // User cancelled - don't close window
         return { success: false };
       }
     } catch (error) {
