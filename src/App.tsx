@@ -361,8 +361,8 @@ function App() {
           </div>
         )}
 
-        {/* Quick Actions panel - independent, shows alongside any panel */}
-        {isQuickActionsOpen && (
+        {/* Quick Actions panel - only shows when editor is active */}
+        {isQuickActionsOpen && activePanel === 'editor' && (
           <div className="w-80 border-l border-[var(--ui-border)] flex-shrink-0">
             <QuickActionsPanel />
           </div>
