@@ -21,7 +21,6 @@ import {TransformationFloatingButton} from './TransformationFloatingButton';
 
 import {
     languages,
-    LANGUAGE_OPTIONS,
     jsonLinter,
     yamlLinter,
     markdownPlugin,
@@ -513,8 +512,6 @@ export function EditorWindow() {
             }
         }
     }, [content]);
-
-    const hasContent = content.trim() || images.length > 0;
 
     return (
         <div
