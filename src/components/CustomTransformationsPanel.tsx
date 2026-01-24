@@ -221,7 +221,6 @@ export function CustomTransformationsPanel() {
     updateTransformation,
     deleteTransformation,
     toggleTransformation,
-    executeTransformation: _executeTransformation,
   } = useCustomTransformationsStore();
 
   const { isProFeatureEnabled } = useLicenseStore();
