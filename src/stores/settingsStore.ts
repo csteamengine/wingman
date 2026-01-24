@@ -24,7 +24,7 @@ const defaultSettings: AppSettings = {
   max_history_entries: 100,
   auto_save_drafts: true,
   launch_at_login: false,
-  default_language: 'plaintext',
+  default_language: 'markdown',
   window_position: { x: 100, y: 100, width: 650, height: 450 },
   sticky_mode: false,
   show_diff_preview: false,

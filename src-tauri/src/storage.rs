@@ -80,7 +80,7 @@ impl Default for AppSettings {
             max_history_entries: 100,
             auto_save_drafts: true,
             launch_at_login: false,
-            default_language: "plaintext".to_string(),
+            default_language: "markdown".to_string(),
             window_position: WindowPosition::default(),
             sticky_mode: false,
             show_diff_preview: false,

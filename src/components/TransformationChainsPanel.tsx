@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useEditorStore } from '../stores/editorStore';
 import { useTransformationChainsStore } from '../stores/transformationChainsStore';
 import { useCustomTransformationsStore } from '../stores/customTransformationsStore';
@@ -29,12 +29,8 @@ export function TransformationChainsPanel() {
     updateChain,
     deleteChain,
     toggleChain,
-    addStep,
-    removeStep,
-    reorderSteps,
   } = useTransformationChainsStore();
   const {
-    transformations: customTransformations,
     loadTransformations: loadCustomTransformations,
     getEnabledTransformations,
   } = useCustomTransformationsStore();
