@@ -100,9 +100,11 @@ pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
                         .await
                     {
                         Ok(_) => {
-                            // Update installed successfully - app will restart
+                            // Update installed successfully
                             app.emit("update-installed", ()).ok();
-                            Ok(())
+
+                            // Restart the app to apply the update
+                            app.restart();
                         }
                         Err(e) => {
                             let error_msg = format!("Failed to download/install update: {}", e);

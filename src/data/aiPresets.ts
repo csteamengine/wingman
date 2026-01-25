@@ -1,4 +1,5 @@
 export type AIPresetId =
+  | 'ask_ai'
   | 'email'
   | 'slack'
   | 'claude_code'
@@ -20,6 +21,22 @@ export interface AIPreset {
 }
 
 export const DEFAULT_AI_PRESETS: AIPreset[] = [
+  {
+    id: 'ask_ai',
+    name: 'Ask AI',
+    description: 'Ask a question, get an answer',
+    systemPrompt: `You are a helpful AI assistant. The user's input is a question or request directed at you. Answer it directly and helpfully.
+
+Guidelines:
+- Provide clear, accurate, and concise answers
+- Use code blocks with appropriate language identifiers when sharing code
+- Use markdown formatting for readability when helpful
+- Be direct - no need for excessive pleasantries
+- If the question is ambiguous, make reasonable assumptions and answer
+
+Begin your response directly with the answer.`,
+    enabled: true,
+  },
   {
     id: 'general_refinement',
     name: 'General',
