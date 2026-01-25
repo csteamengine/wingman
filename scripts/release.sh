@@ -2,6 +2,13 @@
 # Release script for Wingman
 # Usage: ./scripts/release.sh <version>
 # Example: ./scripts/release.sh 0.3.0
+#
+# This script triggers a GitHub Actions workflow that:
+# 1. Builds for all platforms
+# 2. Only if ALL builds succeed:
+#    - Commits the version bump
+#    - Creates the git tag
+#    - Creates the GitHub release
 
 set -e
 
@@ -16,7 +23,17 @@ fi
 # Remove 'v' prefix if provided
 VERSION="${VERSION#v}"
 
-echo "Releasing version $VERSION..."
+# Validate semver format
+if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Error: Version must be in format X.Y.Z"
+  exit 1
+fi
+
+# Get current version
+CURRENT_VERSION=$(grep '^version = ' src-tauri/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+
+echo "Releasing version $VERSION (current: $CURRENT_VERSION)..."
+echo ""
 
 # Check for uncommitted changes
 if [ -n "$(git status --porcelain)" ]; then
@@ -24,40 +41,46 @@ if [ -n "$(git status --porcelain)" ]; then
   exit 1
 fi
 
-# Update package.json
-node -e "
-  const fs = require('fs');
-  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-  pkg.version = '$VERSION';
-  fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-"
-echo "Updated package.json"
-
-# Update tauri.conf.json
-node -e "
-  const fs = require('fs');
-  const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
-  conf.version = '$VERSION';
-  fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
-"
-echo "Updated tauri.conf.json"
-
-# Update Cargo.toml
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml
-else
-  sed -i "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml
+# Check if gh CLI is available
+if ! command -v gh &> /dev/null; then
+  echo "Error: GitHub CLI (gh) is required but not installed."
+  echo "Install it with: brew install gh"
+  exit 1
 fi
-echo "Updated Cargo.toml"
 
-# Commit, tag, and push
-git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
-git commit -m "Release v$VERSION"
-git tag "v$VERSION"
+# Ensure we're on main branch and up to date
+CURRENT_BRANCH=$(git branch --show-current)
+if [ "$CURRENT_BRANCH" != "main" ]; then
+  echo "Warning: You're on branch '$CURRENT_BRANCH', not 'main'."
+  read -p "Continue anyway? (y/N) " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    exit 1
+  fi
+fi
+
+# Push any local commits first
+echo "Pushing any local commits..."
 git push
-git push origin "v$VERSION"
+
+# Trigger the workflow
+echo ""
+echo "Triggering release workflow for v$VERSION..."
+gh workflow run release.yml -f version="$VERSION"
 
 echo ""
-echo "Released v$VERSION!"
-echo "GitHub Actions will now build and publish the release."
-echo "Watch progress at: https://github.com/csteamengine/wingman/actions"
+echo "✅ Release workflow triggered!"
+echo ""
+echo "The workflow will:"
+echo "  • Build for macOS (ARM64 + Intel)"
+echo "  • Build for Windows (x64)"
+echo "  • Build for Linux (x64)"
+echo "  • Sign all binaries"
+echo "  • If ALL builds succeed:"
+echo "    - Commit version bump to main"
+echo "    - Create git tag v$VERSION"
+echo "    - Create GitHub release"
+echo ""
+echo "Monitor progress at: https://github.com/csteamengine/wingman/actions"
+echo ""
+echo "Note: Version bump and tag will only be created if all builds succeed!"

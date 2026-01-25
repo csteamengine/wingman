@@ -76,7 +76,6 @@ jobs:
           echo "Building version: $VERSION"
 
       - name: Update version in package.json
-        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
@@ -89,7 +88,6 @@ jobs:
           echo "Updated package.json to version $VERSION"
 
       - name: Update version in tauri.conf.json
-        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
@@ -102,7 +100,6 @@ jobs:
           echo "Updated tauri.conf.json to version $VERSION"
 
       - name: Update version in Cargo.toml
-        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
@@ -175,6 +172,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Need full history and write access for pushing commits
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get version
         id: get_version
@@ -220,13 +221,52 @@ jobs:
           echo "Files to release:"
           ls -la release-files/
 
-      - name: Create tag
+      - name: Commit version bump and create tag
         if: github.event_name == 'workflow_dispatch'
         run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          TAG="${{ steps.get_version.outputs.TAG }}"
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag ${{ steps.get_version.outputs.TAG }}
-          git push origin ${{ steps.get_version.outputs.TAG }}
+
+          # Update version files
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '$VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          node -e "
+            const fs = require('fs');
+            const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+            conf.version = '$VERSION';
+            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
+          "
+
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml
+
+          # Update Cargo.lock by running cargo check
+          cd src-tauri && cargo check --quiet 2>/dev/null || true && cd ..
+
+          # Commit changes
+          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock 2>/dev/null || true
+          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No version changes to commit (version may already be correct)"
+          else
+            git commit -m "Release $TAG"
+            git push origin HEAD:main
+          fi
+
+          # Create and push tag
+          git tag "$TAG"
+          git push origin "$TAG"
+
+          echo "✅ Version bump committed and tag $TAG created"
 
       - name: Generate update manifest (latest.json)
         run: |

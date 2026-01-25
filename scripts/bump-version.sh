@@ -1,5 +1,9 @@
 #!/bin/bash
-# Bump version across all files
+# Bump version across all files (for local development only)
+#
+# NOTE: For releases, use ./scripts/release.sh or ./scripts/release-interactive.sh
+# Those scripts trigger the GitHub workflow which handles version bumping
+# after all builds succeed.
 
 set -e
 

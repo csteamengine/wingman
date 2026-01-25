@@ -1,5 +1,12 @@
 #!/bin/bash
-# Interactive release script with changelog support
+# Interactive release script for Wingman
+#
+# This script triggers a GitHub Actions workflow that:
+# 1. Builds for all platforms
+# 2. Only if ALL builds succeed:
+#    - Commits the version bump
+#    - Creates the git tag
+#    - Creates the GitHub release
 
 set -e
 
@@ -14,6 +21,13 @@ echo -e "${GREEN}║   Wingman Release Helper    ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════╝${NC}"
 echo ""
 
+# Check if gh CLI is available
+if ! command -v gh &> /dev/null; then
+    echo -e "${RED}Error: GitHub CLI (gh) is required but not installed.${NC}"
+    echo "Install it with: brew install gh"
+    exit 1
+fi
+
 # Get current version
 CURRENT_VERSION=$(grep '^version = ' src-tauri/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
 echo -e "📦 Current version: ${YELLOW}v$CURRENT_VERSION${NC}"
@@ -24,6 +38,17 @@ if ! git diff-index --quiet HEAD --; then
     echo -e "${RED}⚠ You have uncommitted changes!${NC}"
     echo "Please commit or stash them first."
     exit 1
+fi
+
+# Check current branch
+CURRENT_BRANCH=$(git branch --show-current)
+if [ "$CURRENT_BRANCH" != "main" ]; then
+    echo -e "${YELLOW}⚠ You're on branch '$CURRENT_BRANCH', not 'main'.${NC}"
+    echo -e "Continue anyway? (y/N)"
+    read -r BRANCH_CONFIRM
+    if [[ ! "$BRANCH_CONFIRM" =~ ^[Yy]$ ]]; then
+        exit 0
+    fi
 fi
 
 # Ask for new version
@@ -37,12 +62,18 @@ if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 
 echo ""
-echo -e "${BLUE}📝 This will:${NC}"
-echo "  1. Bump version to v$NEW_VERSION"
-echo "  2. Let you add CHANGELOG entries"
-echo "  3. Commit changes"
-echo "  4. Create git tag v$NEW_VERSION"
-echo "  5. Push to GitHub (triggers release workflow)"
+echo -e "${BLUE}📝 This will trigger a GitHub Actions workflow that:${NC}"
+echo "  1. Builds for macOS (ARM64 + Intel)"
+echo "  2. Builds for Windows (x64)"
+echo "  3. Builds for Linux (x64)"
+echo "  4. Signs all binaries"
+echo ""
+echo -e "${GREEN}  ✓ Only if ALL builds succeed:${NC}"
+echo "    • Commits version bump to main"
+echo "    • Creates git tag v$NEW_VERSION"
+echo "    • Creates GitHub release with all artifacts"
+echo ""
+echo -e "${YELLOW}⚠ No local changes will be made until builds succeed!${NC}"
 echo ""
 echo -e "${YELLOW}Continue? (y/N)${NC}"
 read -r CONFIRM
@@ -52,117 +83,29 @@ if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-# Bump version
+# Push any local commits first
 echo ""
-echo -e "${BLUE}🔧 Bumping version...${NC}"
+echo -e "${BLUE}📤 Pushing any local commits...${NC}"
+git push 2>/dev/null || true
 
-# Update package.json
-node -e "
-const fs = require('fs');
-const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-pkg.version = '$NEW_VERSION';
-fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-"
-
-# Update tauri.conf.json
-node -e "
-const fs = require('fs');
-const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
-conf.version = '$NEW_VERSION';
-fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
-"
-
-# Update Cargo.toml
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    sed -i '' "s/^version = \".*\"/version = \"$NEW_VERSION\"/" src-tauri/Cargo.toml
-else
-    sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" src-tauri/Cargo.toml
-fi
-
-echo -e "${GREEN}✓ Version bumped to v$NEW_VERSION${NC}"
-
-# Update changelog
+# Trigger the workflow
 echo ""
-echo -e "${BLUE}📄 Add to CHANGELOG.md? (Y/n)${NC}"
-read -r ADD_CHANGELOG
+echo -e "${BLUE}🚀 Triggering release workflow for v$NEW_VERSION...${NC}"
+gh workflow run release.yml -f version="$NEW_VERSION"
 
-if [[ ! "$ADD_CHANGELOG" =~ ^[Nn]$ ]]; then
-    # Create CHANGELOG.md if it doesn't exist
-    if [ ! -f "CHANGELOG.md" ]; then
-        cat > CHANGELOG.md <<EOF
-# Changelog
-
-All notable changes to Wingman will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-EOF
-    fi
-
-    echo ""
-    echo "Enter changelog entries (press Ctrl+D when done):"
-    echo "Categories: Added, Changed, Fixed, Removed, Security"
-    echo ""
-
-    ENTRIES=$(cat)
-    DATE=$(date +"%Y-%m-%d")
-
-    # Create entry
-    NEW_ENTRY="
-## [$NEW_VERSION] - $DATE
-
-$ENTRIES
-"
-
-    # Insert after the header
-    awk -v entry="$NEW_ENTRY" '
-      NR==1,/^$/ {print; if (/^$/) {print entry; skip=1}}
-      skip && /^$/ {skip=0; next}
-      !skip {print}
-    ' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
-
-    echo -e "${GREEN}✓ CHANGELOG.md updated${NC}"
-    git add CHANGELOG.md
-fi
-
-# Commit
 echo ""
-echo -e "${BLUE}💾 Committing changes...${NC}"
-git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
-git commit -m "chore: Release v$NEW_VERSION"
-echo -e "${GREEN}✓ Changes committed${NC}"
-
-# Tag
-echo -e "${BLUE}🏷  Creating tag v$NEW_VERSION...${NC}"
-git tag "v$NEW_VERSION"
-echo -e "${GREEN}✓ Tag created${NC}"
-
-# Push
+echo -e "${GREEN}✅ Release workflow triggered!${NC}"
 echo ""
-echo -e "${YELLOW}📤 Push to GitHub? This will trigger the release workflow. (y/N)${NC}"
-read -r PUSH_CONFIRM
-
-if [[ "$PUSH_CONFIRM" =~ ^[Yy]$ ]]; then
-    echo -e "${BLUE}🚀 Pushing to GitHub...${NC}"
-    git push
-    git push --tags
-
-    echo ""
-    echo -e "${GREEN}✅ Release initiated!${NC}"
-    echo ""
-    echo "GitHub Actions will now:"
-    echo "  • Build for macOS (ARM64 + Intel)"
-    echo "  • Build for Windows (x64)"
-    echo "  • Build for Linux (x64)"
-    echo "  • Sign all binaries"
-    echo "  • Create GitHub release"
-    echo "  • Generate latest.json for auto-updates"
-    echo ""
-    echo -e "Monitor progress: ${BLUE}https://github.com/csteamengine/wingman/actions${NC}"
-else
-    echo ""
-    echo -e "${YELLOW}ℹ Changes committed and tagged locally.${NC}"
-    echo "Push when ready with:"
-    echo -e "  ${YELLOW}git push && git push --tags${NC}"
-fi
+echo "GitHub Actions will now:"
+echo "  • Build for macOS (ARM64 + Intel)"
+echo "  • Build for Windows (x64)"
+echo "  • Build for Linux (x64)"
+echo "  • Sign all binaries"
+echo "  • Create GitHub release (only if all builds succeed)"
+echo ""
+echo -e "Monitor progress: ${BLUE}https://github.com/csteamengine/wingman/actions${NC}"
+echo ""
+echo -e "${YELLOW}Note: Version bump and tag will only be created if all builds succeed!${NC}"
+echo ""
+echo -e "After the workflow completes successfully, run:"
+echo -e "  ${YELLOW}git pull${NC}  (to get the version bump commit)"
