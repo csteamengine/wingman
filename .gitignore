@@ -53,3 +53,10 @@ coverage/
 .cache/
 .temp/
 .tmp/
+
+# Update system (NEVER commit private keys!)
+*.key
+*.priv
+PRIVATE_KEY.txt
+latest.json
+!latest.json.template

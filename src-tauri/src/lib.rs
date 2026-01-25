@@ -14,7 +14,7 @@ use std::sync::Mutex;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Emitter, Manager, State,
+    AppHandle, Emitter, Manager, State,
 };
 #[cfg(target_os = "macos")]
 use tauri_nspanel::ManagerExt;
@@ -43,7 +43,7 @@ use storage::{
     load_custom_transformations, save_custom_transformations, CustomTransformationsData,
     load_transformation_chains, save_transformation_chains, TransformationChainsData,
 };
-use updater::{check_for_updates, UpdateInfo};
+use updater::{check_for_updates, download_and_install_update as do_update, UpdateInfo};
 
 pub struct AppState {
     db: Mutex<Connection>,
@@ -688,8 +688,13 @@ async fn pick_folder(title: Option<String>) -> Result<Option<String>, String> {
 
 // Update commands
 #[tauri::command]
-async fn check_for_app_updates() -> Result<UpdateInfo, String> {
-    check_for_updates().await
+async fn check_for_app_updates(app: AppHandle) -> Result<UpdateInfo, String> {
+    check_for_updates(app).await
+}
+
+#[tauri::command]
+async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
+    do_update(app).await
 }
 
 #[tauri::command]
@@ -1388,6 +1393,7 @@ pub fn run() {
             pick_folder,
             // Updates
             check_for_app_updates,
+            download_and_install_update,
             get_app_version,
         ])
         .setup(|app| {

@@ -1,0 +1,23 @@
+{
+  "version": "0.1.0",
+  "notes": "Release notes go here.\n\nSupports markdown formatting:\n- Feature 1\n- Feature 2\n- Bug fixes",
+  "pub_date": "2026-01-24T00:00:00Z",
+  "platforms": {
+    "darwin-aarch64": {
+      "signature": "SIGNATURE_FROM_Wingman_aarch64.app.tar.gz.sig_FILE",
+      "url": "https://github.com/csteamengine/wingman/releases/download/v0.1.0/Wingman_aarch64.app.tar.gz"
+    },
+    "darwin-x86_64": {
+      "signature": "SIGNATURE_FROM_Wingman_x64.app.tar.gz.sig_FILE",
+      "url": "https://github.com/csteamengine/wingman/releases/download/v0.1.0/Wingman_x64.app.tar.gz"
+    },
+    "windows-x86_64": {
+      "signature": "SIGNATURE_FROM_Wingman_x64-setup.nsis.zip.sig_FILE",
+      "url": "https://github.com/csteamengine/wingman/releases/download/v0.1.0/Wingman_x64-setup.nsis.zip"
+    },
+    "linux-x86_64": {
+      "signature": "SIGNATURE_FROM_wingman_amd64.AppImage.tar.gz.sig_FILE",
+      "url": "https://github.com/csteamengine/wingman/releases/download/v0.1.0/wingman_amd64.AppImage.tar.gz"
+    }
+  }
+}

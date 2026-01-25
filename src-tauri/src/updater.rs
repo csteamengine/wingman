@@ -1,137 +1,122 @@
 use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Emitter};
+use tauri_plugin_updater::UpdaterExt;
 
-const GITHUB_REPO: &str = "csteamengine/wingman";
-const GITHUB_API_URL: &str = "https://api.github.com/repos";
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateInfo {
     pub current_version: String,
-    pub latest_version: String,
+    pub latest_version: Option<String>,
     pub has_update: bool,
-    pub release_url: String,
     pub release_notes: Option<String>,
     pub download_url: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-struct GitHubRelease {
-    tag_name: String,
-    html_url: String,
-    body: Option<String>,
-    assets: Vec<GitHubAsset>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GitHubAsset {
-    name: String,
-    browser_download_url: String,
+#[derive(Debug, Clone, Serialize)]
+pub struct DownloadProgress {
+    pub downloaded: u64,
+    pub total: Option<u64>,
+    pub percent: Option<f64>,
 }
 
 fn get_current_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
-fn parse_version(version: &str) -> Option<(u32, u32, u32)> {
-    let v = version.trim_start_matches('v');
-    let parts: Vec<&str> = v.split('.').collect();
-    if parts.len() >= 3 {
-        let major = parts[0].parse().ok()?;
-        let minor = parts[1].parse().ok()?;
-        let patch = parts[2].split('-').next()?.parse().ok()?;
-        Some((major, minor, patch))
-    } else {
-        None
-    }
-}
-
-fn is_newer_version(current: &str, latest: &str) -> bool {
-    match (parse_version(current), parse_version(latest)) {
-        (Some((c_maj, c_min, c_patch)), Some((l_maj, l_min, l_patch))) => {
-            (l_maj, l_min, l_patch) > (c_maj, c_min, c_patch)
-        }
-        _ => false,
-    }
-}
-
-fn get_platform_download_url(assets: &[GitHubAsset]) -> Option<String> {
-    let pattern = if cfg!(target_os = "macos") {
-        if cfg!(target_arch = "aarch64") {
-            "_aarch64.dmg"
-        } else {
-            "_x64.dmg"
-        }
-    } else if cfg!(target_os = "windows") {
-        "_x64-setup.exe"
-    } else {
-        "_amd64.deb"
-    };
-
-    assets
-        .iter()
-        .find(|a| a.name.ends_with(pattern))
-        .map(|a| a.browser_download_url.clone())
-}
-
-pub async fn check_for_updates() -> Result<UpdateInfo, String> {
-    let url = format!("{}/{}/releases/latest", GITHUB_API_URL, GITHUB_REPO);
-
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
-        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
-
-    let response = client
-        .get(&url)
-        .header("User-Agent", "Wingman-App")
-        .header("Accept", "application/vnd.github.v3+json")
-        .send()
-        .await
-        .map_err(|e| {
-            if e.is_connect() {
-                "Unable to connect. Check your internet connection.".to_string()
-            } else if e.is_timeout() {
-                "Request timed out. Try again later.".to_string()
-            } else {
-                format!("Network error: {}", e)
-            }
-        })?;
-
-    let status = response.status();
-    if status == reqwest::StatusCode::NOT_FOUND {
-        // No releases yet - return current version as latest
-        let current_version = get_current_version();
-        return Ok(UpdateInfo {
-            current_version: current_version.clone(),
-            latest_version: current_version,
-            has_update: false,
-            release_url: format!("https://github.com/{}/releases", GITHUB_REPO),
-            release_notes: Some("No releases published yet.".to_string()),
-            download_url: None,
-        });
-    } else if status == reqwest::StatusCode::FORBIDDEN {
-        return Err("GitHub API rate limit exceeded. Try again later.".to_string());
-    } else if !status.is_success() {
-        return Err(format!("GitHub API error: {}", status));
-    }
-
-    let release: GitHubRelease = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse release info: {}", e))?;
-
+/// Check for available updates using Tauri's built-in updater
+pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
     let current_version = get_current_version();
-    let latest_version = release.tag_name.clone();
-    let has_update = is_newer_version(&current_version, &latest_version);
-    let download_url = get_platform_download_url(&release.assets);
 
-    Ok(UpdateInfo {
-        current_version,
-        latest_version,
-        has_update,
-        release_url: release.html_url,
-        release_notes: release.body,
-        download_url,
-    })
+    // Check for updates using the Tauri plugin
+    match app.updater() {
+        Ok(updater) => {
+            match updater.check().await {
+                Ok(Some(update)) => {
+                    // Update is available
+                    Ok(UpdateInfo {
+                        current_version: current_version.clone(),
+                        latest_version: Some(update.version.clone()),
+                        has_update: true,
+                        release_notes: update.body.clone(),
+                        download_url: Some(update.download_url.to_string()),
+                    })
+                }
+                Ok(None) => {
+                    // No update available
+                    Ok(UpdateInfo {
+                        current_version: current_version.clone(),
+                        latest_version: Some(current_version),
+                        has_update: false,
+                        release_notes: None,
+                        download_url: None,
+                    })
+                }
+                Err(e) => {
+                    // Error checking for updates
+                    Err(format!("Failed to check for updates: {}", e))
+                }
+            }
+        }
+        Err(e) => Err(format!("Updater not available: {}", e)),
+    }
+}
+
+/// Download and install an update
+pub async fn download_and_install_update(app: AppHandle) -> Result<(), String> {
+    match app.updater() {
+        Ok(updater) => {
+            match updater.check().await {
+                Ok(Some(update)) => {
+                    // Emit download started event
+                    app.emit("update-download-started", ()).ok();
+
+                    // Download with progress tracking
+                    let mut downloaded = 0u64;
+
+                    match update
+                        .download_and_install(
+                            |chunk_length, content_length| {
+                                downloaded += chunk_length as u64;
+
+                                let percent = if let Some(total) = content_length {
+                                    Some((downloaded as f64 / total as f64) * 100.0)
+                                } else {
+                                    None
+                                };
+
+                                // Emit progress event
+                                let progress = DownloadProgress {
+                                    downloaded,
+                                    total: content_length,
+                                    percent,
+                                };
+
+                                app.emit("update-download-progress", progress).ok();
+                            },
+                            || {
+                                // Installation started
+                                app.emit("update-install-started", ()).ok();
+                            },
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            // Update installed successfully - app will restart
+                            app.emit("update-installed", ()).ok();
+                            Ok(())
+                        }
+                        Err(e) => {
+                            let error_msg = format!("Failed to download/install update: {}", e);
+                            app.emit("update-error", error_msg.clone()).ok();
+                            Err(error_msg)
+                        }
+                    }
+                }
+                Ok(None) => Err("No update available".to_string()),
+                Err(e) => Err(format!("Failed to check for updates: {}", e)),
+            }
+        }
+        Err(e) => Err(format!("Updater not available: {}", e)),
+    }
 }
 
 #[cfg(test)]
@@ -139,19 +124,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_version_parsing() {
-        assert_eq!(parse_version("0.1.1"), Some((0, 1, 1)));
-        assert_eq!(parse_version("v0.1.1"), Some((0, 1, 1)));
-        assert_eq!(parse_version("1.2.3"), Some((1, 2, 3)));
-        assert_eq!(parse_version("v1.0.0-beta"), Some((1, 0, 0)));
-    }
-
-    #[test]
-    fn test_version_comparison() {
-        assert!(is_newer_version("0.1.0", "0.1.1"));
-        assert!(is_newer_version("0.1.1", "0.2.0"));
-        assert!(is_newer_version("0.1.1", "1.0.0"));
-        assert!(!is_newer_version("0.1.1", "0.1.1"));
-        assert!(!is_newer_version("0.1.2", "0.1.1"));
+    fn test_version_format() {
+        let version = get_current_version();
+        assert!(!version.is_empty());
+        // Should be in semver format (x.y.z)
+        let parts: Vec<&str> = version.split('.').collect();
+        assert!(parts.len() >= 3);
     }
 }

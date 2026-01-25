@@ -1,6 +1,7 @@
 import {useState, useEffect} from 'react';
 import {open} from '@tauri-apps/plugin-shell';
 import {invoke} from '@tauri-apps/api/core';
+import {listen} from '@tauri-apps/api/event';
 import {useSettings} from '../hooks/useSettings';
 import {useEditorStore} from '../stores/editorStore';
 import {useLicenseStore} from '../stores/licenseStore';
@@ -33,11 +34,16 @@ const FONT_FAMILIES = [
 
 interface UpdateInfo {
     current_version: string;
-    latest_version: string;
+    latest_version: string | null;
     has_update: boolean;
-    release_url: string;
     release_notes: string | null;
     download_url: string | null;
+}
+
+interface DownloadProgress {
+    downloaded: number;
+    total: number | null;
+    percent: number | null;
 }
 
 type TabType = 'settings' | 'hotkeys' | 'license';
@@ -60,6 +66,9 @@ export function SettingsPanel() {
     const [appVersion, setAppVersion] = useState<string>('');
     const [obsidianExpanded, setObsidianExpanded] = useState(false);
     const [customTransformationsExpanded, setCustomTransformationsExpanded] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const [isInstalling, setIsInstalling] = useState(false);
+    const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
     const hasCustomThemes = isProFeatureEnabled('custom_themes');
     const hasFontCustomization = isProFeatureEnabled('font_customization');
@@ -84,6 +93,39 @@ export function SettingsPanel() {
     // Get app version on mount
     useEffect(() => {
         invoke<string>('get_app_version').then(setAppVersion).catch(console.error);
+    }, []);
+
+    // Listen for update events
+    useEffect(() => {
+        const unlistenPromises = [
+            listen('update-download-started', () => {
+                setIsDownloading(true);
+                setUpdateError(null);
+            }),
+            listen<DownloadProgress>('update-download-progress', (event) => {
+                setDownloadProgress(event.payload);
+            }),
+            listen('update-install-started', () => {
+                setIsDownloading(false);
+                setIsInstalling(true);
+            }),
+            listen('update-installed', () => {
+                setIsInstalling(false);
+                setUpdateError(null);
+                // App will restart automatically
+            }),
+            listen<string>('update-error', (event) => {
+                setIsDownloading(false);
+                setIsInstalling(false);
+                setUpdateError(event.payload);
+            }),
+        ];
+
+        Promise.all(unlistenPromises).then((unlisteners) => {
+            return () => {
+                unlisteners.forEach((unlisten) => unlisten());
+            };
+        });
     }, []);
 
     // Handle navigation from tray menu (open specific tab or check updates)
@@ -116,8 +158,19 @@ export function SettingsPanel() {
         }
     };
 
+    const downloadAndInstallUpdate = async () => {
+        setUpdateError(null);
+        setDownloadProgress(null);
+        try {
+            await invoke('download_and_install_update');
+            // App will restart automatically after installation
+        } catch (err) {
+            setUpdateError(err instanceof Error ? err.message : String(err));
+        }
+    };
+
     const openDownloadUrl = async () => {
-        const url = updateInfo?.download_url || updateInfo?.release_url;
+        const url = updateInfo?.download_url;
         if (url) {
             await open(url);
         }
@@ -683,17 +736,70 @@ export function SettingsPanel() {
                                             : 'bg-[var(--ui-surface)] border-[var(--ui-border)] text-[var(--ui-text)]'
                                     }`}>
                                         {updateInfo.has_update ? (
-                                            <div className="space-y-2">
-                                                <p className="font-medium">Update Available: v{updateInfo.latest_version}</p>
-                                                {updateInfo.release_notes && (
-                                                    <p className="text-xs opacity-80">{updateInfo.release_notes}</p>
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <p className="font-medium">Update Available: v{updateInfo.latest_version}</p>
+                                                    {updateInfo.release_notes && (
+                                                        <p className="text-xs opacity-80 mt-1 whitespace-pre-wrap line-clamp-3">
+                                                            {updateInfo.release_notes}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                {/* Download Progress */}
+                                                {isDownloading && downloadProgress && (
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center justify-between text-xs">
+                                                            <span>Downloading...</span>
+                                                            {downloadProgress.percent !== null && (
+                                                                <span>{downloadProgress.percent.toFixed(1)}%</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="w-full h-2 bg-[var(--ui-border)] rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-green-500 transition-all duration-200"
+                                                                style={{
+                                                                    width: `${downloadProgress.percent || 0}%`,
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        {downloadProgress.total && (
+                                                            <div className="text-[10px] opacity-70">
+                                                                {(downloadProgress.downloaded / 1024 / 1024).toFixed(1)} MB
+                                                                {' / '}
+                                                                {(downloadProgress.total / 1024 / 1024).toFixed(1)} MB
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 )}
-                                                <button
-                                                    onClick={openDownloadUrl}
-                                                    className="px-3 py-1.5 text-xs bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
-                                                >
-                                                    Download Update
-                                                </button>
+
+                                                {/* Installing Status */}
+                                                {isInstalling && (
+                                                    <div className="flex items-center gap-2 text-xs">
+                                                        <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                                                        <span>Installing update... App will restart automatically.</span>
+                                                    </div>
+                                                )}
+
+                                                {/* Action Buttons */}
+                                                {!isDownloading && !isInstalling && (
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={downloadAndInstallUpdate}
+                                                            className="flex-1 px-3 py-1.5 text-xs bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors font-medium"
+                                                        >
+                                                            Install Update
+                                                        </button>
+                                                        {updateInfo.download_url && (
+                                                            <button
+                                                                onClick={openDownloadUrl}
+                                                                className="px-3 py-1.5 text-xs border border-green-500/30 text-green-400 rounded-md hover:bg-green-500/10 transition-colors"
+                                                            >
+                                                                Manual Download
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : (
                                             <p>You're up to date!</p>

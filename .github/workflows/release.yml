@@ -130,6 +130,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           # Don't create release - just build
           args: ${{ matrix.args }}
@@ -209,6 +211,63 @@ jobs:
           git tag ${{ steps.get_version.outputs.TAG }}
           git push origin ${{ steps.get_version.outputs.TAG }}
 
+      - name: Generate update manifest (latest.json)
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Read signatures from release files
+          MACOS_ARM64_SIG=""
+          MACOS_X64_SIG=""
+          WINDOWS_SIG=""
+          LINUX_SIG=""
+
+          if [ -f "release-files/Wingman_aarch64.app.tar.gz.sig" ]; then
+            MACOS_ARM64_SIG=$(cat release-files/Wingman_aarch64.app.tar.gz.sig)
+          fi
+
+          if [ -f "release-files/Wingman_x64.app.tar.gz.sig" ]; then
+            MACOS_X64_SIG=$(cat release-files/Wingman_x64.app.tar.gz.sig)
+          fi
+
+          if [ -f "release-files/Wingman_x64-setup.nsis.zip.sig" ]; then
+            WINDOWS_SIG=$(cat release-files/Wingman_x64-setup.nsis.zip.sig)
+          fi
+
+          if [ -f "release-files/wingman_amd64.AppImage.tar.gz.sig" ]; then
+            LINUX_SIG=$(cat release-files/wingman_amd64.AppImage.tar.gz.sig)
+          fi
+
+          # Generate latest.json
+          cat > release-files/latest.json <<EOF
+          {
+            "version": "${VERSION}",
+            "notes": "See release notes at https://github.com/${{ github.repository }}/releases/tag/v${VERSION}",
+            "pub_date": "${PUB_DATE}",
+            "platforms": {
+              "darwin-aarch64": {
+                "signature": "${MACOS_ARM64_SIG}",
+                "url": "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Wingman_aarch64.app.tar.gz"
+              },
+              "darwin-x86_64": {
+                "signature": "${MACOS_X64_SIG}",
+                "url": "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Wingman_x64.app.tar.gz"
+              },
+              "windows-x86_64": {
+                "signature": "${WINDOWS_SIG}",
+                "url": "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Wingman_x64-setup.nsis.zip"
+              },
+              "linux-x86_64": {
+                "signature": "${LINUX_SIG}",
+                "url": "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/wingman_amd64.AppImage.tar.gz"
+              }
+            }
+          }
+          EOF
+
+          echo "Generated latest.json:"
+          cat release-files/latest.json
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -217,7 +276,7 @@ jobs:
           body: |
             ## Wingman ${{ steps.get_version.outputs.TAG }}
 
-            A lightweight, cross-platform text composition tool.
+            A lightweight, cross-platform text composition tool with seamless auto-updates!
 
             ### Installation
 
@@ -226,12 +285,17 @@ jobs:
             - **Windows:** Download `Wingman_*_x64-setup.exe` or `.msi`
             - **Linux:** Download `Wingman_*_amd64.deb` or `.AppImage`
 
+            ### Auto-Updates
+
+            After installing, Wingman will automatically check for updates. Click "Check for Updates" in Settings to download and install new versions seamlessly!
+
             ### Features
 
             - Global hotkey to summon floating editor
-            - Syntax highlighting
+            - Syntax highlighting for 100+ languages
             - History and snippets
-            - Dark/light themes
+            - Multiple themes (Dark, Light, Solarized, Dracula, Nord)
+            - In-app auto-updates
           draft: false
           prerelease: false
           files: release-files/*
