@@ -48,6 +48,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "category": "Utility",
     "shortDescription": "Cross-platform text composition tool",
