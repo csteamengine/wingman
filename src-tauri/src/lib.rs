@@ -1,4 +1,5 @@
 mod clipboard;
+mod formatters;
 mod history;
 mod hotkey;
 mod license;
@@ -241,10 +242,131 @@ fn minify_json(text: String) -> Result<String, String> {
     if !is_feature_enabled(ProFeature::JsonXmlFormatting) {
         return Err("This feature requires a Pro license".to_string());
     }
-    let parsed: serde_json::Value = serde_json::from_str(&text)
-        .map_err(|e| format!("Invalid JSON: {}", e))?;
-    serde_json::to_string(&parsed)
-        .map_err(|e| format!("Failed to minify JSON: {}", e))
+    formatters::minify_json_code(text)
+}
+
+#[tauri::command]
+fn detect_language(text: String) -> String {
+    let trimmed = text.trim();
+
+    // Try JSON first
+    if (trimmed.starts_with('{') || trimmed.starts_with('[')) && serde_json::from_str::<serde_json::Value>(&text).is_ok() {
+        return "json".to_string();
+    }
+
+    // Try XML/HTML
+    if trimmed.starts_with('<') {
+        if trimmed.to_lowercase().contains("<!doctype html") || trimmed.to_lowercase().contains("<html") {
+            return "html".to_string();
+        }
+        return "xml".to_string();
+    }
+
+    // Check for SQL keywords
+    let upper_text = text.to_uppercase();
+    if upper_text.trim_start().starts_with("SELECT") || upper_text.trim_start().starts_with("INSERT") ||
+       upper_text.trim_start().starts_with("UPDATE") || upper_text.trim_start().starts_with("DELETE") ||
+       upper_text.trim_start().starts_with("CREATE") {
+        return "sql".to_string();
+    }
+
+    // Check for Python patterns
+    if text.contains("def ") || (text.contains("import ") && !text.contains("import {")) ||
+       (text.contains("class ") && text.contains(":")) {
+        return "python".to_string();
+    }
+
+    // Check for JavaScript/TypeScript patterns
+    if text.contains("function ") || text.contains("const ") || text.contains("let ") || text.contains("var ") ||
+       text.contains("=>") || (text.contains("import ") && text.contains("from ")) {
+        // Check for JSX/React - any JSX is now considered React
+        if (text.contains("<") && text.contains("/>")) || text.contains("className=") ||
+           text.contains("useState") || text.contains("useEffect") || text.contains("React.") ||
+           text.contains("from 'react'") || text.contains("from \"react\"") {
+            return "react".to_string();
+        }
+        // Check for TypeScript
+        if text.contains(": ") && (text.contains("interface ") || text.contains("type ") || text.contains("enum ")) {
+            return "typescript".to_string();
+        }
+        return "javascript".to_string();
+    }
+
+    // Check for CSS
+    if text.contains("{") && text.contains("}") && (text.contains("@media") || text.contains("@import") ||
+       text.contains("px") || text.contains("rem")) {
+        return "css".to_string();
+    }
+
+    "plaintext".to_string()
+}
+
+#[tauri::command]
+fn format_code(text: String, language: String) -> Result<String, String> {
+    if !is_feature_enabled(ProFeature::JsonXmlFormatting) {
+        return Err("This feature requires a Pro license".to_string());
+    }
+
+    match language.as_str() {
+        "json" => formatters::format_json_code(text),
+        "xml" => format_xml(text),
+        "html" => formatters::format_html_code(text),
+        "css" => formatters::format_css_code(text),
+        "python" => formatters::format_python_code(text),
+        "react" | "jsx" | "tsx" => formatters::format_react_code(text),
+        "javascript" | "typescript" => formatters::format_javascript_code(text),
+        "sql" => formatters::format_sql_code(text),
+        "go" => formatters::format_go_code(text),
+        "rust" => formatters::format_rust_code(text),
+        "java" => formatters::format_java_code(text),
+        "php" => formatters::format_php_code(text),
+        "ruby" => formatters::format_ruby_code(text),
+        "swift" => formatters::format_swift_code(text),
+        "kotlin" => formatters::format_kotlin_code(text),
+        "csharp" => formatters::format_csharp_code(text),
+        "bash" => formatters::format_bash_code(text),
+        "c" | "cpp" => formatters::format_c_cpp_code(text),
+        "markdown" => formatters::format_markdown_code(text),
+        "yaml" => Err("YAML formatting is not recommended as YAML is whitespace-sensitive and formatting may change semantics.".to_string()),
+        "plaintext" => Err("Cannot format plain text. Please select a specific language mode first.".to_string()),
+        _ => Err(format!("Formatting not supported for {}", language))
+    }
+}
+
+#[tauri::command]
+fn minify_code(text: String, language: String) -> Result<String, String> {
+    if !is_feature_enabled(ProFeature::JsonXmlFormatting) {
+        return Err("This feature requires a Pro license".to_string());
+    }
+
+    match language.as_str() {
+        // Supported minification
+        "json" => formatters::minify_json_code(text),
+        "css" => formatters::minify_css_code(text),
+        "react" | "jsx" | "tsx" => formatters::minify_react_code(text),
+        "javascript" | "typescript" => formatters::minify_javascript_code(text),
+        "html" => formatters::minify_html_code(text),
+        "xml" => formatters::minify_xml_code(text),
+
+        // Languages that don't support minification
+        "sql" => Err("SQL minification is not recommended as it reduces readability without significant benefits.".to_string()),
+        "python" => Err("Python minification is not supported. Python relies on whitespace for syntax, making minification impractical.".to_string()),
+        "yaml" => Err("YAML minification is not supported. YAML is whitespace-sensitive and minification would break the format.".to_string()),
+        "markdown" => Err("Markdown minification is not supported. Markdown formatting is part of the content structure.".to_string()),
+        "bash" => Err("Bash/Shell script minification is not supported. Readability is more important for shell scripts.".to_string()),
+        "go" => Err("Go minification is not supported. Go code is compiled, so minification provides no runtime benefit.".to_string()),
+        "rust" => Err("Rust minification is not supported. Rust code is compiled, so minification provides no runtime benefit.".to_string()),
+        "java" => Err("Java minification is not supported. Java code is compiled, so minification provides no runtime benefit.".to_string()),
+        "php" => Err("PHP minification is not commonly used. Consider using opcode caching (OPcache) for performance instead.".to_string()),
+        "c" | "cpp" => Err("C/C++ minification is not supported. Code is compiled, so minification provides no runtime benefit.".to_string()),
+        "ruby" => Err("Ruby minification is not supported. Ruby emphasizes readability over minification.".to_string()),
+        "swift" => Err("Swift minification is not supported. Swift code is compiled, so minification provides no runtime benefit.".to_string()),
+        "kotlin" => Err("Kotlin minification is not supported. Kotlin code is compiled, so minification provides no runtime benefit.".to_string()),
+        "csharp" => Err("C# minification is not supported. C# code is compiled, so minification provides no runtime benefit.".to_string()),
+        "plaintext" => Err("Cannot minify plain text. Please select a specific language mode first.".to_string()),
+
+        _ => Err(format!("Minify not supported for {}", language))
+    }
 }
 
 #[tauri::command]
@@ -1347,7 +1469,11 @@ pub fn run() {
             count_pattern_occurrences,
             // Native clipboard
             write_native_clipboard,
-            // JSON/XML formatting
+            // Code formatting
+            detect_language,
+            format_code,
+            minify_code,
+            // JSON/XML formatting (legacy)
             format_json,
             minify_json,
             format_xml,

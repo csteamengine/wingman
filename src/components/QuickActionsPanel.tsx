@@ -22,34 +22,27 @@ interface Action {
     label: string;
     description: string;
     requiresInput?: boolean;
-    handler?: 'transform' | 'format' | 'encode' | 'generate' | 'custom' | 'chain';
+    handler?: 'transform' | 'format' | 'encode' | 'generate' | 'custom' | 'chain' | 'validate';
     section?: string;
     proFeature?: 'json_xml_formatting' | 'encode_decode' | 'custom_transformations';
 }
 
 const actionSections: ActionSection[] = [
     {
-        title: 'JSON/XML',
+        title: 'Formatting',
         proFeature: 'json_xml_formatting',
         actions: [
             {
-                id: 'format_json',
-                label: 'Format JSON',
-                description: 'Pretty-print JSON with indentation',
+                id: 'format',
+                label: 'Format',
+                description: 'Pretty-print code for all supported languages',
                 handler: 'format',
                 requiresInput: true
             },
             {
-                id: 'minify_json',
-                label: 'Minify JSON',
-                description: 'Compact JSON to single line',
-                handler: 'format',
-                requiresInput: true
-            },
-            {
-                id: 'format_xml',
-                label: 'Format XML',
-                description: 'Pretty-print XML with indentation',
+                id: 'minify',
+                label: 'Minify',
+                description: 'Compact code (JSON, XML, CSS, JavaScript, React, HTML)',
                 handler: 'format',
                 requiresInput: true
             },
@@ -167,6 +160,8 @@ export function QuickActionsPanel() {
         transformText,
         content,
         setContent,
+        language,
+        setLanguage,
         applyBulletList,
         applyNumberedList,
         editorView
@@ -503,7 +498,31 @@ export function QuickActionsPanel() {
                         setError('No text to format');
                         return;
                     }
-                    const formatted = await invoke<string>(action.id, {text});
+
+                    let detectedLang = language;
+
+                    // Auto-detect language for plaintext
+                    if (language === 'plaintext') {
+                        detectedLang = await invoke<string>('detect_language', { text });
+
+                        if (detectedLang === 'plaintext') {
+                            setError('Cannot detect language. Please select a language mode first.');
+                            return;
+                        }
+
+                        // Switch to detected language
+                        setLanguage(detectedLang);
+                    }
+
+                    let formatted: string;
+                    if (action.id === 'format') {
+                        formatted = await invoke<string>('format_code', { text, language: detectedLang });
+                    } else if (action.id === 'minify') {
+                        formatted = await invoke<string>('minify_code', { text, language: detectedLang });
+                    } else {
+                        setError('Unknown format action');
+                        return;
+                    }
 
                     // Check if diff preview is enabled (and user has PRO)
                     const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
@@ -670,7 +689,7 @@ export function QuickActionsPanel() {
         } catch (err) {
             setError(String(err));
         }
-    }, [content, isPro, setContent, transformText, applyBulletList, applyNumberedList, getTextToProcess, applyProcessedText, executeTransformation, executeChain]);
+    }, [content, language, isPro, setContent, setLanguage, transformText, applyBulletList, applyNumberedList, getTextToProcess, applyProcessedText, executeTransformation, executeChain, editorView]);
 
     // Keyboard navigation
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -980,7 +999,7 @@ export function QuickActionsPanel() {
 
             {error && (
                 <div
-                    className="mx-2 mt-2 px-3 py-2 text-xs bg-red-500/10 border border-red-500/20 rounded-md text-red-400">
+                    className="mx-2 mt-2 px-3 py-2 text-xs bg-red-500/10 border border-red-500/20 rounded-md text-red-400 whitespace-pre-wrap font-mono">
                     {error}
                 </div>
             )}
