@@ -691,6 +691,39 @@ export function SettingsPanel() {
                             </div>
                         )}
 
+                        {/* Subscription Management - Premium only */}
+                        {isPremium && (
+                            <div className="pt-6 border-t border-[var(--ui-border)]">
+                                <h3 className="text-sm font-medium mb-3">Subscription Management</h3>
+                                <div className="space-y-3">
+                                    <p className="text-xs text-[var(--ui-text-muted)] mb-3">
+                                        Manage your Premium subscription, update payment methods, or cancel your subscription through the Stripe customer portal.
+                                    </p>
+                                    <button
+                                        onClick={async () => {
+                                            const licenseKey = localStorage.getItem('wingman_license_key');
+                                            if (!licenseKey) {
+                                                alert('License key not found. Please activate your license first.');
+                                                return;
+                                            }
+                                            try {
+                                                const portalUrl = await invoke<string>('create_customer_portal_session_cmd', {
+                                                    licenseKey
+                                                });
+                                                await open(portalUrl);
+                                            } catch (error) {
+                                                console.error('Failed to open customer portal:', error);
+                                                alert(`Failed to open customer portal: ${error}`);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-2 text-sm bg-[var(--ui-accent)] text-white rounded-md hover:opacity-90 transition-opacity"
+                                    >
+                                        Manage Subscription
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Updates */}
                         <div className="pt-6 border-t border-[var(--ui-border)]">
                             <h3 className="text-sm font-medium mb-3">Updates</h3>

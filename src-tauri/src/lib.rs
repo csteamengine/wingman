@@ -33,7 +33,7 @@ use license::{
     LicenseStatusInfo, ProFeature,
 };
 use premium::{
-    validate_premium_license, get_ai_usage, call_ai_feature,
+    validate_premium_license, get_ai_usage, call_ai_feature, create_customer_portal_session,
     load_obsidian_config, save_obsidian_config, add_to_obsidian_vault, validate_obsidian_vault,
     load_ai_config, save_ai_config, load_ai_presets, save_ai_presets,
     SubscriptionStatus, UsageStats, AIResponse, ObsidianConfig, ObsidianResult, AIConfig, AIPresetsConfig,
@@ -555,6 +555,13 @@ async fn validate_premium_license_cmd(license_key: String) -> Result<Subscriptio
 #[tauri::command]
 async fn get_ai_usage_cmd(license_key: String) -> Result<UsageStats, String> {
     get_ai_usage(&license_key)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn create_customer_portal_session_cmd(license_key: String) -> Result<String, String> {
+    create_customer_portal_session(&license_key)
         .await
         .map_err(|e| e.to_string())
 }
@@ -1368,6 +1375,7 @@ pub fn run() {
             // Premium
             validate_premium_license_cmd,
             get_ai_usage_cmd,
+            create_customer_portal_session_cmd,
             call_ai_feature_cmd,
             // Obsidian
             get_obsidian_config,

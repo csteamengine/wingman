@@ -601,6 +601,62 @@ pub async fn call_ai_feature(
     })
 }
 
+/// Response from create-portal-session edge function
+#[derive(Debug, Deserialize)]
+struct PortalSessionResponse {
+    success: Option<bool>,
+    url: Option<String>,
+    error: Option<String>,
+}
+
+/// Create a Stripe Customer Portal session URL for subscription management
+pub async fn create_customer_portal_session(license_key: &str) -> Result<String, PremiumError> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| PremiumError::NetworkError(e.to_string()))?;
+
+    let url = format!("{}/functions/v1/create-portal-session", SUPABASE_URL);
+
+    log::info!("Creating customer portal session for license");
+
+    let response = client
+        .post(&url)
+        .header("apikey", SUPABASE_PUBLISHABLE_KEY)
+        .header("Authorization", format!("Bearer {}", SUPABASE_PUBLISHABLE_KEY))
+        .header("Content-Type", "application/json")
+        .json(&serde_json::json!({
+            "license_key": license_key
+        }))
+        .send()
+        .await
+        .map_err(|e| {
+            log::error!("Portal session request failed: {}", e);
+            PremiumError::NetworkError(e.to_string())
+        })?;
+
+    let status = response.status();
+    let body: PortalSessionResponse = response
+        .json()
+        .await
+        .map_err(|e| PremiumError::NetworkError(e.to_string()))?;
+
+    // Handle error responses
+    if !status.is_success() {
+        let error_message = body.error.unwrap_or_else(|| "Failed to create portal session".to_string());
+        log::error!("Portal session creation failed: {}", error_message);
+        return Err(PremiumError::ValidationError(error_message));
+    }
+
+    // Extract the portal URL
+    let portal_url = body.url.ok_or_else(|| {
+        PremiumError::ValidationError("No portal URL in response".to_string())
+    })?;
+
+    log::info!("Portal session created successfully");
+    Ok(portal_url)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
