@@ -114,12 +114,12 @@ export type ProFeature =
   | 'sticky_mode'
   | 'diff_preview'
   | 'custom_transformations'
-  | 'transformation_chains'
-  | 'custom_ai_prompts';
+  | 'transformation_chains';
 
 export type PremiumFeature =
   | 'prompt_optimizer'
-  | 'ai_features';
+  | 'ai_features'
+  | 'custom_ai_prompts';
 
 export interface LicenseStatusInfo {
   tier: LicenseTier;

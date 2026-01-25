@@ -121,6 +121,7 @@ function FeatureLabel({ feature }: { feature: PremiumFeature }) {
   const labels: Record<PremiumFeature, string> = {
     prompt_optimizer: 'AI Prompt Optimizer',
     ai_features: 'AI Features',
+    custom_ai_prompts: 'Custom AI Prompts',
   };
   return <span>{labels[feature]}</span>;
 }
@@ -166,6 +167,10 @@ function UpgradeContent({
         <li className="flex items-center gap-2 text-sm text-gray-300">
           <span className="text-green-400">✓</span>
           AI Prompt Optimizer - Transform rough notes into polished prompts
+        </li>
+        <li className="flex items-center gap-2 text-sm text-gray-300">
+          <span className="text-green-400">✓</span>
+          Custom AI Prompts - Create your own AI prompt templates
         </li>
         <li className="flex items-center gap-2 text-sm text-gray-300">
           <span className="text-green-400">✓</span>

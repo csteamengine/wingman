@@ -1,13 +1,13 @@
 import { useEditorStore } from '../stores/editorStore';
-import { ProFeatureGate } from './ProFeatureGate';
+import { PremiumFeatureGate } from './PremiumFeatureGate';
 import { CustomAIPromptConfig } from './CustomAIPromptConfig';
 import { X } from 'lucide-react';
 
 export function CustomAIPromptsPanel() {
   return (
-    <ProFeatureGate feature="custom_ai_prompts">
+    <PremiumFeatureGate feature="custom_ai_prompts">
       <CustomAIPromptsPanelContent />
-    </ProFeatureGate>
+    </PremiumFeatureGate>
   );
 }
 
