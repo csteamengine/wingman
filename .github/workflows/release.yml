@@ -11,6 +11,11 @@ on:
         required: true
         type: string
 
+# Ensure only one release runs at a time - subsequent releases queue
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -306,6 +311,8 @@ jobs:
             echo "No version changes to commit (version may already be correct)"
           else
             git commit -m "Release $TAG"
+            # Pull and rebase in case main moved (e.g., manual push during build)
+            git pull --rebase origin main
             git push origin HEAD:main
           fi
 
