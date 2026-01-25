@@ -27,10 +27,12 @@ import {
 } from './components';
 import { useGlobalHotkey, useKeyboardShortcuts, useSettings, useLicense } from './hooks';
 import { useEditorStore } from './stores/editorStore';
+import { usePremiumStore } from './stores/premiumStore';
 
 function App() {
   const { settings } = useSettings();
   const { activePanel, setActivePanel, isFocusMode, toggleFocusMode, isQuickActionsOpen, toggleQuickActions } = useEditorStore();
+  const { isPremiumFeatureEnabled } = usePremiumStore();
 
   // Initialize license check
   useLicense();
@@ -275,19 +277,24 @@ function App() {
           </button>
 
           {/* Custom AI Prompts button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setActivePanel(activePanel === 'customAIPrompts' ? 'editor' : 'customAIPrompts');
-            }}
-            tabIndex={-1}
-            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
-              activePanel === 'customAIPrompts' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
-            }`}
-            title="Custom AI Prompts"
-          >
-            <Sparkles className="w-4 h-4" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setActivePanel(activePanel === 'customAIPrompts' ? 'editor' : 'customAIPrompts');
+              }}
+              tabIndex={-1}
+              className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
+                activePanel === 'customAIPrompts' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
+              }`}
+              title={isPremiumFeatureEnabled('custom_ai_prompts') ? "Custom AI Prompts" : "Custom AI Prompts (Premium)"}
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+            {!isPremiumFeatureEnabled('custom_ai_prompts') && (
+              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full border border-[var(--ui-surface)]" />
+            )}
+          </div>
         </div>
 
         {/* Center dots */}

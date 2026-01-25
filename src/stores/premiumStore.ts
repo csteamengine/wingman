@@ -411,11 +411,11 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
     }
 
     // For AI features, also check token limit
-    if (feature === 'prompt_optimizer' || feature === 'ai_features') {
+    if (feature === 'prompt_optimizer' || feature === 'ai_features' || feature === 'custom_ai_prompts') {
       return !isAtTokenLimit;
     }
 
-    // Obsidian integration is available as long as subscription is active
+    // Other premium features are available as long as subscription is active
     return true;
   },
 

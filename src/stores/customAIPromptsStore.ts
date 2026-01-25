@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import type { CustomAIPrompt, CustomAIPromptsData } from '../types';
+import { usePremiumStore } from './premiumStore';
 
 interface CustomAIPromptsState {
   prompts: CustomAIPrompt[];
@@ -114,6 +115,11 @@ export const useCustomAIPromptsStore = create<CustomAIPromptsState>((set, get) =
   },
 
   getEnabledPrompts: () => {
+    // Check if user has premium access to custom AI prompts
+    const isPremiumEnabled = usePremiumStore.getState().isPremiumFeatureEnabled('custom_ai_prompts');
+    if (!isPremiumEnabled) {
+      return [];
+    }
     return get().prompts.filter((p) => p.enabled);
   },
 
