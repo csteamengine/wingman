@@ -81,8 +81,17 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
   ...defaultState,
 
   loadSubscriptionStatus: async (licenseKey: string) => {
+    // Preserve user configurations that shouldn't be reset on subscription validation
+    const { obsidianConfig, aiConfig, aiPresets } = get();
+
     if (!licenseKey) {
-      set({ ...defaultState });
+      set({
+        ...defaultState,
+        // Preserve user configurations
+        obsidianConfig,
+        aiConfig,
+        aiPresets,
+      });
       return;
     }
 
@@ -110,6 +119,10 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
       console.error('Failed to load subscription status:', error);
       set({
         ...defaultState,
+        // Preserve user configurations
+        obsidianConfig,
+        aiConfig,
+        aiPresets,
         loading: false,
         error: String(error),
       });
@@ -141,16 +154,20 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
       set({ obsidianConfig: config });
     } catch (error) {
       console.error('Failed to load Obsidian config:', error);
-      // Set default config on error
-      set({
-        obsidianConfig: {
-          vault_path: '',
-          default_location: 'daily_note',
-          specific_note_path: null,
-          new_note_folder: null,
-          template: null,
-        },
-      });
+      // Only set default config if no config exists yet
+      // Don't overwrite existing config on error
+      const { obsidianConfig } = get();
+      if (!obsidianConfig) {
+        set({
+          obsidianConfig: {
+            vault_path: '',
+            default_location: 'daily_note',
+            specific_note_path: null,
+            new_note_folder: null,
+            template: null,
+          },
+        });
+      }
     }
   },
 
@@ -172,12 +189,15 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
       set({ aiConfig: config });
     } catch (error) {
       console.error('Failed to load AI config:', error);
-      // Set default config on error
-      set({
-        aiConfig: {
-          system_instructions: 'You are an expert at refining text for AI prompts. Take the user\'s stream of consciousness or rough notes and transform them into clear, well-structured prompts optimized for Claude Code or other AI assistants. Focus on clarity, specificity, and actionable instructions.',
-        },
-      });
+      // Only set default config if no config exists yet
+      const { aiConfig } = get();
+      if (!aiConfig) {
+        set({
+          aiConfig: {
+            system_instructions: 'You are an expert at refining text for AI prompts. Take the user\'s stream of consciousness or rough notes and transform them into clear, well-structured prompts optimized for Claude Code or other AI assistants. Focus on clarity, specificity, and actionable instructions.',
+          },
+        });
+      }
     }
   },
 

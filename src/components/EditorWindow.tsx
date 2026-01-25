@@ -11,7 +11,7 @@ import {listen} from '@tauri-apps/api/event';
 
 import {useEditorStore} from '../stores/editorStore';
 import {useSettingsStore} from '../stores/settingsStore';
-import {useLicenseStore} from '../stores/licenseStore';
+import {useLicenseStore, isDev} from '../stores/licenseStore';
 import {usePremiumStore} from '../stores/premiumStore';
 import {useDragStore} from '../stores/dragStore';
 
@@ -85,7 +85,7 @@ export function EditorWindow() {
     } = useEditorStore();
 
     const {settings, updateSettings} = useSettingsStore();
-    const {isProFeatureEnabled, isPremiumTier} = useLicenseStore();
+    const {tier, devTierOverride} = useLicenseStore();
 
     const {
         aiLoading,
@@ -100,20 +100,27 @@ export function EditorWindow() {
         openObsidianNote,
     } = usePremiumStore();
 
-    // Feature flags
-    const isPremium = isPremiumTier();
-    const hasObsidianAccess = isProFeatureEnabled('obsidian_integration');
+    // Feature flags - compute effective tier to react to dev tier changes
+    // Premium tier has access to all Pro features
+    const effectiveTier = (isDev && devTierOverride !== null) ? devTierOverride : tier;
+    const isPremium = effectiveTier === 'premium';
+    const isPro = effectiveTier === 'pro' || effectiveTier === 'premium';
+    const hasObsidianAccess = isPro;
     const hasObsidianConfigured = obsidianConfig && obsidianConfig.vault_path;
-    const hasImageSupport = isProFeatureEnabled('image_attachments');
-    const hasClipboardDragDrop = isProFeatureEnabled('history');
-    const hasStatsDisplay = isProFeatureEnabled('stats_display');
-    const hasProEditorFeatures = isProFeatureEnabled('syntax_highlighting');
+    const hasImageSupport = isPro;
+    const hasClipboardDragDrop = isPro;
+    const hasStatsDisplay = isPro;
+    const hasProEditorFeatures = isPro;
 
-    // Load configs on mount
+    // Load Obsidian config when user has Pro/Premium access
     useEffect(() => {
         if (hasObsidianAccess) {
             loadObsidianConfig();
         }
+    }, [hasObsidianAccess, loadObsidianConfig]);
+
+    // Load Premium features when user has Premium tier
+    useEffect(() => {
         if (isPremium) {
             loadAIConfig();
             loadAIPresets();
@@ -122,7 +129,7 @@ export function EditorWindow() {
                 loadSubscriptionStatus(licenseKey);
             }
         }
-    }, [isPremium, hasObsidianAccess, loadAIConfig, loadObsidianConfig, loadAIPresets, loadSubscriptionStatus]);
+    }, [isPremium, loadAIConfig, loadAIPresets, loadSubscriptionStatus]);
 
     // Auto-hide toasts
     useEffect(() => {
@@ -564,7 +571,7 @@ export function EditorWindow() {
                     language={language}
                     setLanguage={setLanguage}
                     hasStatsDisplay={hasStatsDisplay}
-                    isProFeatureEnabled={isProFeatureEnabled}
+                    isProFeatureEnabled={() => isPro}
                 />
             )}
 
