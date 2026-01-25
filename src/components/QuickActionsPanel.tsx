@@ -757,7 +757,7 @@ export function QuickActionsPanel() {
         <span className="text-[var(--ui-text)]">
           {action.label}
         </span>
-                {!isPro && (
+                {action.proFeature && !isPro && (
                     <span
                         className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--ui-accent)]/20 text-[var(--ui-accent)]">
             PRO
