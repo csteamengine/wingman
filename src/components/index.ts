@@ -4,6 +4,7 @@ export { HistoryPanel } from './HistoryPanel';
 export { SnippetsPanel } from './SnippetsPanel';
 export { QuickActionsPanel } from './QuickActionsPanel';
 export { TransformationChainsPanel } from './TransformationChainsPanel';
+export { CustomTransformationsPanel } from './CustomTransformationsPanel';
 export { StatsDisplay } from './StatsDisplay';
 export { ProFeatureGate } from './ProFeatureGate';
 export { LicenseActivation } from './LicenseActivation';

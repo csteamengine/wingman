@@ -8,7 +8,6 @@ import {useLicenseStore} from '../stores/licenseStore';
 import {usePremiumStore, formatTokenUsage} from '../stores/premiumStore';
 import {LicenseActivation} from './LicenseActivation';
 import {ObsidianConfig} from './ObsidianConfig';
-import {CustomTransformationsPanel} from './CustomTransformationsPanel';
 import {ProBadge} from './ProFeatureGate';
 import type {ThemeType} from '../types';
 
@@ -65,7 +64,6 @@ export function SettingsPanel() {
     const [updateError, setUpdateError] = useState<string | null>(null);
     const [appVersion, setAppVersion] = useState<string>('');
     const [obsidianExpanded, setObsidianExpanded] = useState(false);
-    const [customTransformationsExpanded, setCustomTransformationsExpanded] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isInstalling, setIsInstalling] = useState(false);
     const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
@@ -82,7 +80,6 @@ export function SettingsPanel() {
     const hasStatsDisplay = isPro;
     const hasObsidianAccess = isPro;
     const hasDiffPreview = isPro;
-    const hasCustomTransformations = isPro;
 
     // Mock subscription status for dev mode
     const effectiveSubscriptionStatus = subscriptionStatus || (devTierOverride === 'premium' ? {
@@ -530,35 +527,6 @@ export function SettingsPanel() {
                                 )}
                             </div>
                         )}
-
-                        {/* Custom Transformations - PRO feature */}
-                        <div className="pt-4 border-t border-[var(--ui-border)]">
-                            <button
-                                onClick={() => setCustomTransformationsExpanded(!customTransformationsExpanded)}
-                                className="w-full flex items-center justify-between py-2 text-left"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--ui-text-muted)]">
-                                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-                                    </svg>
-                                    <span className="text-sm font-medium text-[var(--ui-text)]">Custom Transformations</span>
-                                    {!hasCustomTransformations && <ProBadge />}
-                                </div>
-                                <svg
-                                    className={`w-4 h-4 text-[var(--ui-text-muted)] transition-transform ${customTransformationsExpanded ? 'rotate-180' : ''}`}
-                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-                            {customTransformationsExpanded && (
-                                <div className="mt-3 -mx-4 border-t border-[var(--ui-border)]">
-                                    <div className="h-[300px]">
-                                        <CustomTransformationsPanel />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
 
                         {/* Reset Button */}
                         <div className="pt-4 border-t border-[var(--ui-border)]">

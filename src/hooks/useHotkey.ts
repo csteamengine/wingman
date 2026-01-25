@@ -159,6 +159,10 @@ export function useKeyboardShortcuts() {
             break;
           case 't':
             e.preventDefault();
+            setActivePanel(activePanel === 'customTransformations' ? 'editor' : 'customTransformations');
+            break;
+          case 'c':
+            e.preventDefault();
             setActivePanel(activePanel === 'chains' ? 'editor' : 'chains');
             break;
           case 'f':

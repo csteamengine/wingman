@@ -77,7 +77,7 @@ export type TextTransform =
   | 'deduplicate'
   | 'reverse';
 
-export type PanelType = 'editor' | 'settings' | 'history' | 'snippets' | 'chains';
+export type PanelType = 'editor' | 'settings' | 'history' | 'snippets' | 'customTransformations' | 'chains';
 
 // License types
 export type LicenseTier = 'free' | 'pro' | 'premium';
@@ -112,6 +112,7 @@ export interface LicenseStatusInfo {
   email: string | null;
   days_until_expiry: number | null;
   needs_revalidation: boolean;
+  is_dev: boolean;
 }
 
 // Premium subscription types

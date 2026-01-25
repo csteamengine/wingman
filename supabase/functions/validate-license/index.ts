@@ -167,6 +167,7 @@ serve(async (req) => {
         JSON.stringify({
           valid: true,
           tier: license.tier,
+          is_dev: license.is_dev || false,
           message: "License validated successfully",
         }),
         {
@@ -209,6 +210,7 @@ serve(async (req) => {
       JSON.stringify({
         valid: true,
         tier: license.tier,
+        is_dev: license.is_dev || false,
         message: "License activated successfully on this device",
       }),
       {

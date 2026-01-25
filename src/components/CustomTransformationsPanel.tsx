@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useCustomTransformationsStore } from '../stores/customTransformationsStore';
-import { useLicenseStore } from '../stores/licenseStore';
+import { useEditorStore } from '../stores/editorStore';
+import { ProFeatureGate } from './ProFeatureGate';
 import type { CustomTransformation } from '../types';
 
 const DEFAULT_CODE = `// Transform the input text and return the result
@@ -213,6 +214,14 @@ function TransformationEditor({ transformation, onSave, onCancel, onTest }: Tran
 }
 
 export function CustomTransformationsPanel() {
+  return (
+    <ProFeatureGate feature="custom_transformations">
+      <CustomTransformationsPanelContent />
+    </ProFeatureGate>
+  );
+}
+
+function CustomTransformationsPanelContent() {
   const {
     transformations,
     loading,
@@ -223,11 +232,7 @@ export function CustomTransformationsPanel() {
     toggleTransformation,
   } = useCustomTransformationsStore();
 
-  const { getEffectiveTier } = useLicenseStore();
-
-  // Premium tier has access to all Pro features
-  const effectiveTier = getEffectiveTier();
-  const hasAccess = effectiveTier === 'pro' || effectiveTier === 'premium';
+  const { setActivePanel } = useEditorStore();
 
   const [editing, setEditing] = useState<CustomTransformation | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -274,20 +279,6 @@ export function CustomTransformationsPanel() {
     setDeleteConfirm(null);
   }, [deleteTransformation]);
 
-  if (!hasAccess) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <svg className="w-12 h-12 text-[var(--ui-accent)] mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-        <h3 className="text-sm font-medium text-[var(--ui-text)] mb-2">Pro Feature</h3>
-        <p className="text-xs text-[var(--ui-text-muted)]">
-          Custom text transformations require a Pro license.
-        </p>
-      </div>
-    );
-  }
-
   if (isCreating || editing) {
     return (
       <TransformationEditor
@@ -303,10 +294,19 @@ export function CustomTransformationsPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--ui-border)]">
-        <h3 className="text-sm font-medium text-[var(--ui-text)]">Custom Transformations</h3>
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--ui-border)]">
+        <button
+          onClick={() => setActivePanel('editor')}
+          className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors flex-shrink-0"
+          aria-label="Back to editor"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8.5 3L4.5 7L8.5 11" />
+          </svg>
+        </button>
+        <h2 className="text-sm font-medium text-[var(--ui-text)] flex-1">Custom Transformations</h2>
         <button
           onClick={() => setIsCreating(true)}
           className="flex items-center gap-1 px-2 py-1 text-xs bg-[var(--ui-accent)] text-white rounded-md hover:opacity-90"

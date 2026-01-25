@@ -9,6 +9,7 @@ import {
   SnippetsPanel,
   QuickActionsPanel,
   TransformationChainsPanel,
+  CustomTransformationsPanel,
   LicenseStatusBanner,
   DevModeTierSwitcher,
 } from './components';
@@ -242,6 +243,25 @@ function App() {
             </svg>
           </button>
 
+          {/* Custom Transformations button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActivePanel(activePanel === 'customTransformations' ? 'editor' : 'customTransformations');
+            }}
+            tabIndex={-1}
+            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
+              activePanel === 'customTransformations' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
+            }`}
+            title="Custom Transformations (Cmd+Shift+T)"
+          >
+            {/* Curly braces/function icon */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 3.5a2.5 2.5 0 0 0-2.5 2.5v3a2 2 0 0 1-2 2 2 2 0 0 1 2 2v3a2.5 2.5 0 0 0 2.5 2.5"/>
+              <path d="M17 3.5a2.5 2.5 0 0 1 2.5 2.5v3a2 2 0 0 0 2 2 2 2 0 0 0-2 2v3a2.5 2.5 0 0 1-2.5 2.5"/>
+            </svg>
+          </button>
+
           {/* Chains button */}
           <button
             onClick={(e) => {
@@ -252,7 +272,7 @@ function App() {
             className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
               activePanel === 'chains' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
             }`}
-            title="Transformation Chains (Cmd+Shift+T)"
+            title="Transformation Chains (Cmd+Shift+C)"
           >
             {/* Link chain icon */}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -352,6 +372,12 @@ function App() {
         {activePanel === 'snippets' && (
           <div className="flex-1">
             <SnippetsPanel />
+          </div>
+        )}
+
+        {activePanel === 'customTransformations' && (
+          <div className="flex-1">
+            <CustomTransformationsPanel />
           </div>
         )}
 

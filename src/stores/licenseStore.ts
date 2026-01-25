@@ -11,10 +11,11 @@ interface LicenseState {
   email: string | null;
   daysUntilExpiry: number | null;
   needsRevalidation: boolean;
+  isDev: boolean; // True if this is a dev license (enables tier switcher)
   loading: boolean;
   error: string | null;
 
-  // Dev mode tier override (only works in dev mode)
+  // Dev mode tier override (only works in dev mode OR dev license)
   devTierOverride: LicenseTier | null;
 
   // Actions
@@ -36,6 +37,7 @@ const defaultLicenseState = {
   email: null,
   daysUntilExpiry: null,
   needsRevalidation: false,
+  isDev: false,
   devTierOverride: null as LicenseTier | null,
 };
 
@@ -54,6 +56,7 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
         email: status.email,
         daysUntilExpiry: status.days_until_expiry,
         needsRevalidation: status.needs_revalidation,
+        isDev: status.is_dev || false,
         loading: false,
         error: null,
       });
@@ -80,6 +83,7 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
         email: status.email,
         daysUntilExpiry: status.days_until_expiry,
         needsRevalidation: status.needs_revalidation,
+        isDev: status.is_dev || false,
         loading: false,
         error: null,
       });
@@ -127,6 +131,7 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
         email: status.email,
         daysUntilExpiry: status.days_until_expiry,
         needsRevalidation: status.needs_revalidation,
+        isDev: status.is_dev || false,
         loading: false,
         error: null,
       });

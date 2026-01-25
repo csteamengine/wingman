@@ -489,6 +489,7 @@ async fn activate_license(license_key: String, email: String) -> Result<LicenseS
             email: cache.email,
             days_until_expiry: Some(30),
             needs_revalidation: false,
+            is_dev: cache.is_dev,
         })
         .map_err(|e| e.to_string())
 }

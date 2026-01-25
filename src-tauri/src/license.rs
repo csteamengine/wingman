@@ -99,6 +99,7 @@ pub struct LicenseCache {
     pub tier: LicenseTier,
     pub status: LicenseStatus,
     pub device_id: String,
+    pub is_dev: bool,
     pub last_validated: Option<String>, // ISO 8601 timestamp
     pub validation_expires: Option<String>, // ISO 8601 timestamp
     pub grace_period_start: Option<String>, // ISO 8601 timestamp
@@ -112,6 +113,7 @@ impl Default for LicenseCache {
             tier: LicenseTier::Free,
             status: LicenseStatus::NotActivated,
             device_id: String::new(),
+            is_dev: false,
             last_validated: None,
             validation_expires: None,
             grace_period_start: None,
@@ -127,6 +129,7 @@ pub struct LicenseStatusInfo {
     pub email: Option<String>,
     pub days_until_expiry: Option<i64>,
     pub needs_revalidation: bool,
+    pub is_dev: bool,
 }
 
 /// Response from Supabase validate-license function
@@ -134,6 +137,7 @@ pub struct LicenseStatusInfo {
 struct ValidateLicenseResponse {
     valid: bool,
     tier: Option<String>,
+    is_dev: Option<bool>,
     error: Option<String>,
     message: Option<String>,
 }
@@ -352,6 +356,7 @@ pub async fn validate_license_online(
         tier,
         status: LicenseStatus::Valid,
         device_id,
+        is_dev: body.is_dev.unwrap_or(false),
         last_validated: Some(now.to_rfc3339()),
         validation_expires: Some(expires.to_rfc3339()),
         grace_period_start: None,
@@ -407,6 +412,7 @@ pub fn check_license_status() -> Result<LicenseStatusInfo, LicenseError> {
             email: None,
             days_until_expiry: None,
             needs_revalidation: false,
+            is_dev: false,
         });
     }
 
@@ -437,6 +443,7 @@ pub fn check_license_status() -> Result<LicenseStatusInfo, LicenseError> {
                         email: cache.email,
                         days_until_expiry: Some(0),
                         needs_revalidation: true,
+                        is_dev: cache.is_dev,
                     });
                 }
 
@@ -447,6 +454,7 @@ pub fn check_license_status() -> Result<LicenseStatusInfo, LicenseError> {
                     email: cache.email,
                     days_until_expiry: Some(days_left.max(0)),
                     needs_revalidation: true,
+                    is_dev: cache.is_dev,
                 });
             }
 
@@ -458,6 +466,7 @@ pub fn check_license_status() -> Result<LicenseStatusInfo, LicenseError> {
                 email: cache.email,
                 days_until_expiry: Some(days_left.max(0)),
                 needs_revalidation: days_left < 7, // Suggest revalidation when close to expiry
+                is_dev: cache.is_dev,
             });
         }
     }
@@ -469,6 +478,7 @@ pub fn check_license_status() -> Result<LicenseStatusInfo, LicenseError> {
         email: cache.email,
         days_until_expiry: None,
         needs_revalidation: true,
+        is_dev: cache.is_dev,
     })
 }
 
@@ -485,6 +495,7 @@ pub async fn refresh_license() -> Result<LicenseStatusInfo, LicenseError> {
                 email: None,
                 days_until_expiry: None,
                 needs_revalidation: false,
+                is_dev: false,
             });
         }
     };
@@ -497,6 +508,7 @@ pub async fn refresh_license() -> Result<LicenseStatusInfo, LicenseError> {
         email: new_cache.email,
         days_until_expiry: Some(OFFLINE_CHECK_DAYS),
         needs_revalidation: false,
+        is_dev: new_cache.is_dev,
     })
 }
 
@@ -591,6 +603,7 @@ mod tests {
             email: Some("test@example.com".to_string()),
             days_until_expiry: Some(30),
             needs_revalidation: false,
+            is_dev: false,
         };
 
         let json = serde_json::to_string(&info).unwrap();

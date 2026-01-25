@@ -9,10 +9,10 @@ const tiers: { value: LicenseTier | null; label: string }[] = [
 ];
 
 export function DevModeTierSwitcher() {
-  const { devTierOverride, setDevTierOverride, tier } = useLicenseStore();
+  const { devTierOverride, setDevTierOverride, tier, isDev: isDevLicense } = useLicenseStore();
 
-  // Only show in development mode
-  if (!isDev) return null;
+  // Only show in development mode OR if user has a dev license
+  if (!isDev && !isDevLicense) return null;
 
   const activeTier = devTierOverride ?? null;
 
