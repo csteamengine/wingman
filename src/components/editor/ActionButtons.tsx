@@ -1,4 +1,5 @@
 import {useRef, useState, useEffect} from 'react';
+import {Bot, ChevronDown, Check, Download, Loader2, Diamond} from 'lucide-react';
 import type {AIPreset, AppSettings} from '../../types';
 
 interface ActionButtonsProps {
@@ -97,16 +98,9 @@ export function ActionButtons({
                         className="btn-ai flex items-center justify-center gap-1.5 pl-3 pr-2 py-2.5 rounded-l-md text-sm transition-colors disabled:opacity-40 border-r-0"
                     >
                         {aiLoading ? (
-                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                            </svg>
+                            <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
-                                <path d="M7.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
-                                <path d="M16.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
-                            </svg>
+                            <Bot className="w-4 h-4" />
                         )}
                         <span>{selectedPreset?.name || 'AI'}</span>
                     </button>
@@ -117,9 +111,7 @@ export function ActionButtons({
                         title="Select AI preset"
                         className="btn-ai flex items-center justify-center px-1.5 py-2.5 rounded-r-md text-sm transition-colors disabled:opacity-40"
                     >
-                        <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
-                        </svg>
+                        <ChevronDown className="w-3 h-3 opacity-60" />
                     </button>
 
                     {/* AI Presets Popover */}
@@ -140,9 +132,7 @@ export function ActionButtons({
                                     >
                                         <div className="flex items-center gap-2">
                                             {selectedPreset?.id === preset.id && (
-                                                <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
-                                                </svg>
+                                                <Check className="w-3 h-3 text-emerald-400" />
                                             )}
                                             <div className={selectedPreset?.id === preset.id ? '' : 'ml-5'}>
                                                 <p className="text-xs font-medium text-[var(--ui-text)]">{preset.name}</p>
@@ -166,9 +156,7 @@ export function ActionButtons({
                     title={!hasObsidianAccess ? "Pro feature - Send to Obsidian" : (!hasObsidianConfigured ? "Configure Obsidian vault in Settings first" : "Send to Obsidian")}
                     className="btn-obsidian flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm transition-colors disabled:opacity-40"
                 >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l6.9 3.45L12 11.09 5.1 7.63 12 4.18zM4 8.82l7 3.5v7.36l-7-3.5V8.82zm9 10.86v-7.36l7-3.5v7.36l-7 3.5z"/>
-                    </svg>
+                    <Diamond className="w-4 h-4" />
                     <span>Obsidian</span>
                 </button>
 
@@ -188,11 +176,7 @@ export function ActionButtons({
                     >
                         {settings?.primary_action === 'save_file' ? (
                             <>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                    <polyline points="7 10 12 15 17 10" />
-                                    <line x1="12" y1="15" x2="12" y2="3" />
-                                </svg>
+                                <Download className="w-3.5 h-3.5" />
                                 <span>Save to File</span>
                             </>
                         ) : (
@@ -207,9 +191,7 @@ export function ActionButtons({
                         title="Select primary action"
                         className="btn-primary flex items-center justify-center px-1.5 py-2.5 rounded-r-md text-sm disabled:opacity-40 transition-colors border-l border-white/20"
                     >
-                        <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
-                        </svg>
+                        <ChevronDown className="w-3 h-3 opacity-60" />
                     </button>
 
                     {/* Primary Action Popover */}
@@ -231,9 +213,7 @@ export function ActionButtons({
                                 >
                                     <div className="flex items-center gap-2">
                                         {settings?.primary_action !== 'save_file' && (
-                                            <svg className="w-3 h-3 text-[var(--ui-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
-                                            </svg>
+                                            <Check className="w-3 h-3 text-[var(--ui-accent)]" />
                                         )}
                                         <div className={settings?.primary_action !== 'save_file' ? '' : 'ml-5'}>
                                             <p className="text-xs font-medium text-[var(--ui-text)]">Copy to Clipboard</p>
@@ -252,9 +232,7 @@ export function ActionButtons({
                                 >
                                     <div className="flex items-center gap-2">
                                         {settings?.primary_action === 'save_file' && (
-                                            <svg className="w-3 h-3 text-[var(--ui-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
-                                            </svg>
+                                            <Check className="w-3 h-3 text-[var(--ui-accent)]" />
                                         )}
                                         <div className={settings?.primary_action === 'save_file' ? '' : 'ml-5'}>
                                             <p className="text-xs font-medium text-[var(--ui-text)]">Save to File</p>

@@ -1,3 +1,4 @@
+import {Eye, Undo2, X} from 'lucide-react';
 import { useDiffStore } from '../stores/diffStore';
 import { useLicenseStore } from '../stores/licenseStore';
 
@@ -28,10 +29,7 @@ export function TransformationFloatingButton() {
           onClick={openReviewModal}
           className="flex items-center gap-2 px-3 py-2.5 text-sm text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
+          <Eye className="w-3.5 h-3.5" />
           <span>Review</span>
         </button>
 
@@ -42,10 +40,7 @@ export function TransformationFloatingButton() {
           onClick={undoLastTransformation}
           className="flex items-center gap-2 px-3 py-2.5 text-sm text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 7v6h6"/>
-            <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>
-          </svg>
+          <Undo2 className="w-3.5 h-3.5" />
           <span>Undo</span>
         </button>
 
@@ -57,9 +52,7 @@ export function TransformationFloatingButton() {
           className="flex items-center justify-center w-8 h-full py-2.5 text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
           aria-label="Dismiss"
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M2 2l8 8M10 2l-8 8"/>
-          </svg>
+          <X className="w-3 h-3" />
         </button>
       </div>
     </div>

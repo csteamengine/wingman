@@ -3,6 +3,16 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import {
+  Settings,
+  Clock,
+  Code2,
+  Braces,
+  Link2,
+  Maximize2,
+  Minimize2,
+  Zap
+} from 'lucide-react';
+import {
   EditorWindow,
   SettingsPanel,
   HistoryPanel,
@@ -199,10 +209,7 @@ function App() {
             }`}
             title="Settings (Cmd+,)"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
+            <Settings className="w-4 h-4" />
           </button>
 
           {/* History button */}
@@ -217,11 +224,7 @@ function App() {
             }`}
             title="History (Cmd+H)"
           >
-            {/* Clock icon */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
+            <Clock className="w-4 h-4" />
           </button>
 
           {/* Snippets button */}
@@ -236,11 +239,7 @@ function App() {
             }`}
             title="Snippets (Cmd+K)"
           >
-            {/* Code brackets icon */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="16 18 22 12 16 6" />
-              <polyline points="8 6 2 12 8 18" />
-            </svg>
+            <Code2 className="w-4 h-4" />
           </button>
 
           {/* Custom Transformations button */}
@@ -255,11 +254,7 @@ function App() {
             }`}
             title="Custom Transformations (Cmd+Shift+T)"
           >
-            {/* Curly braces/function icon */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7 3.5a2.5 2.5 0 0 0-2.5 2.5v3a2 2 0 0 1-2 2 2 2 0 0 1 2 2v3a2.5 2.5 0 0 0 2.5 2.5"/>
-              <path d="M17 3.5a2.5 2.5 0 0 1 2.5 2.5v3a2 2 0 0 0 2 2 2 2 0 0 0-2 2v3a2.5 2.5 0 0 1-2.5 2.5"/>
-            </svg>
+            <Braces className="w-4 h-4" />
           </button>
 
           {/* Chains button */}
@@ -274,11 +269,7 @@ function App() {
             }`}
             title="Transformation Chains (Cmd+Shift+C)"
           >
-            {/* Link chain icon */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-            </svg>
+            <Link2 className="w-4 h-4" />
           </button>
         </div>
 
@@ -306,21 +297,10 @@ function App() {
             }`}
             title="Focus Mode (Cmd+Shift+F)"
           >
-            {/* Expand/Minimize icon - shows minimize when in focus mode */}
             {isFocusMode ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="4 14 10 14 10 20" />
-                <polyline points="20 10 14 10 14 4" />
-                <line x1="14" y1="10" x2="21" y2="3" />
-                <line x1="3" y1="21" x2="10" y2="14" />
-              </svg>
+              <Minimize2 className="w-4 h-4" />
             ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 3 21 3 21 9" />
-                <polyline points="9 21 3 21 3 15" />
-                <line x1="21" y1="3" x2="14" y2="10" />
-                <line x1="3" y1="21" x2="10" y2="14" />
-              </svg>
+              <Maximize2 className="w-4 h-4" />
             )}
           </button>
 
@@ -336,10 +316,7 @@ function App() {
             }`}
             title="Clipboard & Quick Actions"
           >
-            {/* Lightning bolt icon */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
+            <Zap className="w-4 h-4" />
           </button>
         </div>
       </div>
