@@ -23,6 +23,8 @@ import {languages as codeLanguages} from '@codemirror/language-data';
 export const languages: Record<string, () => any> = {
     javascript: javascript,
     typescript: () => javascript({typescript: true}),
+    react: () => javascript({jsx: true, typescript: true}), // Support both JSX and TSX
+    // Keep jsx/tsx for backward compatibility but hidden from UI
     jsx: () => javascript({jsx: true}),
     tsx: () => javascript({jsx: true, typescript: true}),
     python: python,
@@ -61,8 +63,7 @@ export const LANGUAGE_OPTIONS: LanguageOption[] = [
     // Web languages
     {value: 'javascript', label: 'JavaScript'},
     {value: 'typescript', label: 'TypeScript'},
-    {value: 'jsx', label: 'JSX'},
-    {value: 'tsx', label: 'TSX'},
+    {value: 'react', label: 'React'},
     {value: 'html', label: 'HTML'},
     {value: 'css', label: 'CSS'},
     {value: 'json', label: 'JSON'},

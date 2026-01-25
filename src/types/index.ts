@@ -91,7 +91,7 @@ export type TextTransform =
   | 'deduplicate'
   | 'reverse';
 
-export type PanelType = 'editor' | 'settings' | 'history' | 'snippets' | 'customTransformations' | 'chains';
+export type PanelType = 'editor' | 'settings' | 'history' | 'snippets' | 'customTransformations' | 'chains' | 'customAIPrompts';
 
 // License types
 export type LicenseTier = 'free' | 'pro' | 'premium';
@@ -114,7 +114,8 @@ export type ProFeature =
   | 'sticky_mode'
   | 'diff_preview'
   | 'custom_transformations'
-  | 'transformation_chains';
+  | 'transformation_chains'
+  | 'custom_ai_prompts';
 
 export type PremiumFeature =
   | 'prompt_optimizer'

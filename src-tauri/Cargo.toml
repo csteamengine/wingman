@@ -46,6 +46,10 @@ sha1 = "0.10"
 md-5 = "0.10"
 hostname = "0.4"
 image = { version = "0.25", default-features = false, features = ["png"] }
+# Linting/validation dependencies
+rustpython-parser = "0.4"
+# Regex for pattern matching in formatters
+regex = "1.10"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.24"

@@ -1,5 +1,10 @@
 import type {ObsidianResult} from '../../types';
 
+export interface ValidationToast {
+    type: 'success' | 'error';
+    message: string;
+}
+
 interface FloatingNotificationsProps {
     // URL Parser state
     parsedUrlInfo: {url: string; cursorPos: number} | null;
@@ -9,6 +14,10 @@ interface FloatingNotificationsProps {
     // Obsidian toast state
     obsidianToast: ObsidianResult | null;
     onToastClick: () => void;
+
+    // Validation toast state
+    validationToast: ValidationToast | null;
+    onDismissValidation: () => void;
 }
 
 export function FloatingNotifications({
@@ -17,9 +26,43 @@ export function FloatingNotifications({
     onDismissUrlParser,
     obsidianToast,
     onToastClick,
+    validationToast,
+    onDismissValidation,
 }: FloatingNotificationsProps) {
     return (
         <>
+            {/* Validation Toast */}
+            {validationToast && (
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 animate-slide-up max-w-md">
+                    <div className={`flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg border ${
+                        validationToast.type === 'success'
+                            ? 'bg-green-600/95 border-green-500/50'
+                            : 'bg-red-600/95 border-red-500/50'
+                    }`}>
+                        {validationToast.type === 'success' ? (
+                            <svg className="w-5 h-5 text-white flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                            </svg>
+                        ) : (
+                            <svg className="w-5 h-5 text-white flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        )}
+                        <div className="flex-1 text-white min-w-0">
+                            <p className="text-sm font-mono whitespace-pre-wrap break-words">{validationToast.message}</p>
+                        </div>
+                        <button
+                            onClick={onDismissValidation}
+                            className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+                        >
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* URL Parser Floating Button */}
             {parsedUrlInfo && (
                 <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 animate-slide-up">

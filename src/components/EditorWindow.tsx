@@ -44,7 +44,7 @@ import {
     AILoadingOverlay,
 } from './editor';
 
-import type {ObsidianResult} from '../types';
+import type {ObsidianResult, AIPreset} from '../types';
 
 export function EditorWindow() {
     const editorRef = useRef<HTMLDivElement>(null);
@@ -108,7 +108,6 @@ export function EditorWindow() {
     } = usePremiumStore();
 
     const {
-        prompts: customAIPrompts,
         loadPrompts: loadCustomAIPrompts,
         getEnabledPrompts: getEnabledCustomPrompts,
     } = useCustomAIPromptsStore();
@@ -243,7 +242,7 @@ export function EditorWindow() {
     const enabledPresets = getEnabledPresets();
     const enabledCustomPrompts = getEnabledCustomPrompts();
     const selectedPreset = enabledPresets.find(p => p.id === selectedPresetId) || enabledPresets[0] || null;
-    const selectedCustomPrompt = enabledCustomPrompts.find(p => p.id === selectedCustomPromptId) || null;
+    const selectedCustomPrompt = enabledCustomPrompts.find(p => p.id === selectedCustomPromptId);
 
     const handleSelectPreset = useCallback((presetId: string) => {
         setSelectedPresetId(presetId);
@@ -285,12 +284,12 @@ export function EditorWindow() {
         if (selectedCustomPrompt) {
             // Convert custom prompt to preset format for AI call
             const customAsPreset = {
-                id: selectedCustomPrompt.id,
+                id: selectedCustomPrompt.id as any,
                 name: selectedCustomPrompt.name,
                 description: selectedCustomPrompt.description,
                 systemPrompt: selectedCustomPrompt.system_prompt,
                 enabled: selectedCustomPrompt.enabled,
-            };
+            } as AIPreset;
             await handleAiRefineWithPreset(customAsPreset);
         } else if (selectedPreset) {
             await handleAiRefineWithPreset(selectedPreset);

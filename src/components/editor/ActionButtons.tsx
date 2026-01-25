@@ -59,7 +59,7 @@ export function ActionButtons({
     const aiPopoverRef = useRef<HTMLDivElement>(null);
     const primaryActionRef = useRef<HTMLDivElement>(null);
 
-    // Close AI popover when clicking outside
+    // Close AI popover when clicking outside or pressing Escape
     useEffect(() => {
         if (!showAiPopover) return;
         const handleClickOutside = (e: MouseEvent) => {
@@ -67,8 +67,19 @@ export function ActionButtons({
                 setShowAiPopover(false);
             }
         };
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowAiPopover(false);
+            }
+        };
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
+        };
     }, [showAiPopover]);
 
     // Close primary action popover when clicking outside

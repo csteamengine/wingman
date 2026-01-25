@@ -10,7 +10,8 @@ import {
   Link2,
   Maximize2,
   Minimize2,
-  Zap
+  Zap,
+  Sparkles
 } from 'lucide-react';
 import {
   EditorWindow,
@@ -20,6 +21,7 @@ import {
   QuickActionsPanel,
   TransformationChainsPanel,
   CustomTransformationsPanel,
+  CustomAIPromptsPanel,
   LicenseStatusBanner,
   DevModeTierSwitcher,
 } from './components';
@@ -271,6 +273,21 @@ function App() {
           >
             <Link2 className="w-4 h-4" />
           </button>
+
+          {/* Custom AI Prompts button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActivePanel(activePanel === 'customAIPrompts' ? 'editor' : 'customAIPrompts');
+            }}
+            tabIndex={-1}
+            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
+              activePanel === 'customAIPrompts' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
+            }`}
+            title="Custom AI Prompts"
+          >
+            <Sparkles className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Center dots */}
@@ -361,6 +378,12 @@ function App() {
         {activePanel === 'chains' && (
           <div className="flex-1">
             <TransformationChainsPanel />
+          </div>
+        )}
+
+        {activePanel === 'customAIPrompts' && (
+          <div className="flex-1">
+            <CustomAIPromptsPanel />
           </div>
         )}
 

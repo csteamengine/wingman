@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react';
 import {useCustomAIPromptsStore} from '../stores/customAIPromptsStore';
-import {Pencil, Trash2, Plus, X, Check} from 'lucide-react';
+import {Pencil, Trash2, Plus} from 'lucide-react';
 
 export function CustomAIPromptConfig() {
     const {prompts, loadPrompts, addPrompt, updatePrompt, deletePrompt, togglePromptEnabled} = useCustomAIPromptsStore();

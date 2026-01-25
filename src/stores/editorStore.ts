@@ -25,6 +25,11 @@ export interface EditorAttachment {
 // Keep EditorImage as alias for backwards compatibility with history
 export type EditorImage = EditorAttachment;
 
+export interface ValidationToast {
+  type: 'success' | 'error';
+  message: string;
+}
+
 interface EditorState {
   content: string;
   language: string;
@@ -37,11 +42,13 @@ interface EditorState {
   editorView: EditorView | null;
   images: EditorAttachment[]; // Keep as 'images' for compatibility
   nextImageId: number;
+  validationToast: ValidationToast | null;
   // Settings panel navigation state
   initialSettingsTab: SettingsTab | null;
   shouldCheckUpdates: boolean;
   setContent: (content: string) => void;
   setLanguage: (language: string) => void;
+  setValidationToast: (toast: ValidationToast | null) => void;
   setActivePanel: (panel: PanelType) => void;
   setEditorView: (view: EditorView | null) => void;
   addFile: (file: File) => Promise<number>;
@@ -100,6 +107,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   editorView: null,
   images: [],
   nextImageId: 1,
+  validationToast: null,
   initialSettingsTab: null,
   shouldCheckUpdates: false,
 
@@ -110,6 +118,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setLanguage: (language: string) => {
     set({ language });
+  },
+
+  setValidationToast: (toast: ValidationToast | null) => {
+    set({ validationToast: toast });
   },
 
   setActivePanel: (panel: PanelType) => {
