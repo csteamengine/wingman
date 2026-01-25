@@ -171,7 +171,7 @@ export function QuickActionsPanel() {
         applyNumberedList,
         editorView
     } = useEditorStore();
-    const {getEffectiveTier, devTierOverride} = useLicenseStore();
+    const { getEffectiveTier } = useLicenseStore();
 
     // Premium tier has access to all Pro features
     const effectiveTier = getEffectiveTier();
@@ -1050,7 +1050,6 @@ export function QuickActionsPanel() {
                                 return (
                                     <>
                                         {actionSections.map((section) => {
-                                            const hasAccess = section.proFeature ? isPro : true;
                                             const sectionStartIndex = globalIndex;
 
                                             return (

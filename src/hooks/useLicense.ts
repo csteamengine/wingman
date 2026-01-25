@@ -4,7 +4,6 @@ import type { ProFeature } from '../types';
 
 export function useLicense() {
   const {
-    tier,
     status,
     email,
     daysUntilExpiry,

@@ -10,7 +10,7 @@ export function DiffPreviewModal() {
     confirmTransformation,
     cancelTransformation,
   } = useDiffStore();
-  const { getEffectiveTier, devTierOverride } = useLicenseStore();
+  const { getEffectiveTier } = useLicenseStore();
 
   // Premium tier has access to all Pro features
   const effectiveTier = getEffectiveTier();

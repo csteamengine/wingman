@@ -17,7 +17,7 @@ export function PromptOptimizer({ initialText = '', onOptimized, onClose }: Prom
 
   const { callAIFeature, aiLoading, subscriptionStatus, isSubscriptionActive } =
     usePremiumStore();
-  const { tier, devTierOverride, getEffectiveTier } = useLicenseStore();
+  const { devTierOverride, getEffectiveTier } = useLicenseStore();
   const effectiveTier = getEffectiveTier();
 
   // Get license key from localStorage (stored during activation)
@@ -268,7 +268,7 @@ export function PromptOptimizerButton({
   onClick: () => void;
   disabled?: boolean;
 }) {
-  const { tier, devTierOverride, getEffectiveTier } = useLicenseStore();
+  const { devTierOverride, getEffectiveTier } = useLicenseStore();
   const { isSubscriptionActive } = usePremiumStore();
   const effectiveTier = getEffectiveTier();
   const isPremium = effectiveTier === 'premium' && (isSubscriptionActive || devTierOverride === 'premium');

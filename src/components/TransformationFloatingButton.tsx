@@ -9,7 +9,7 @@ export function TransformationFloatingButton() {
     undoLastTransformation,
     dismissFloatingButton,
   } = useDiffStore();
-  const { getEffectiveTier, devTierOverride } = useLicenseStore();
+  const { getEffectiveTier } = useLicenseStore();
 
   // Premium tier has access to all Pro features
   const effectiveTier = getEffectiveTier();

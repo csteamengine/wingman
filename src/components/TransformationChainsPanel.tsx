@@ -43,7 +43,7 @@ function TransformationChainsPanelContent() {
     loadTransformations: loadCustomTransformations,
     getEnabledTransformations,
   } = useCustomTransformationsStore();
-  const { isProFeatureEnabled, devTierOverride, getEffectiveTier } = useLicenseStore();
+  const { getEffectiveTier } = useLicenseStore();
   const effectiveTier = getEffectiveTier();
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');

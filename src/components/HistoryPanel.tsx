@@ -75,7 +75,7 @@ function HistoryPanelContent() {
   const { entries, loading, searchQuery, handleSearch, handleSelect, handleDelete } = useHistory();
   const { setActivePanel } = useEditorStore();
   const { exportHistory } = useHistoryStore();
-  const { getEffectiveTier, devTierOverride } = useLicenseStore();
+  const { getEffectiveTier } = useLicenseStore();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [exporting, setExporting] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);

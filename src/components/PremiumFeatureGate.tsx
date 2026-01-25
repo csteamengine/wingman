@@ -22,7 +22,7 @@ export function PremiumFeatureGate({
   showUpgradePrompt = true,
 }: PremiumFeatureGateProps) {
   const { isPremiumFeatureEnabled, isAtTokenLimit, subscriptionStatus } = usePremiumStore();
-  const { tier, devTierOverride, getEffectiveTier } = useLicenseStore();
+  const { getEffectiveTier } = useLicenseStore();
   const effectiveTier = getEffectiveTier();
   const [showModal, setShowModal] = useState(false);
 
