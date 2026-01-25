@@ -40,7 +40,7 @@
       "endpoints": [
         "https://github.com/csteamengine/wingman/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ5RTcwRDQzRkUyMkVEN0MKUldSODdTTCtRdzNuU2NpWXZ4WHVJNUxuR09JelRsTm03a3c0UjQyUnRFM2dSMitWUk5FRlVtMEsK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUwOTM2MTQ2NjIzMzU3ODgKUldTSVZ6TmlSbUdUVUlCSkRQZTd1enVvejY2QTlXUVVjU0xpOGNXb2E4REhDZlp5R3FMTGpITWUK",
       "windows": {
         "installMode": "passive"
       }
