@@ -12,6 +12,7 @@ import type {
   AIPresetsConfig,
 } from '../types';
 import { DEFAULT_AI_PRESETS } from '../data/aiPresets';
+import { useLicenseStore, isDev } from './licenseStore';
 
 // Token limit for Premium tier
 const MONTHLY_TOKEN_LIMIT = 1_000_000;
@@ -403,9 +404,24 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
   },
 
   isPremiumFeatureEnabled: (feature: PremiumFeature) => {
-    const { isPremium, isSubscriptionActive, isAtTokenLimit } = get();
+    const { isSubscriptionActive, isAtTokenLimit } = get();
 
-    // Must be Premium tier with active subscription
+    // In dev mode, check the effective tier from licenseStore
+    const effectiveTier = useLicenseStore.getState().getEffectiveTier();
+    const devTierOverride = useLicenseStore.getState().devTierOverride;
+
+    // If in dev mode with override, simulate premium access
+    if (isDev && devTierOverride !== null) {
+      const isPremiumDev = effectiveTier === 'premium';
+      if (!isPremiumDev) {
+        return false;
+      }
+      // In dev mode, don't check subscription or token limits
+      return true;
+    }
+
+    // For production: must be Premium tier with active subscription
+    const isPremium = effectiveTier === 'premium';
     if (!isPremium || !isSubscriptionActive) {
       return false;
     }
