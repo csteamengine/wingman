@@ -1,6 +1,9 @@
 name: Build and Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
@@ -60,13 +63,20 @@ jobs:
         id: get_version
         shell: bash
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual trigger - use input version
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Tag trigger - extract from tag
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
           # Remove 'v' prefix if accidentally included
           VERSION="${VERSION#v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
 
       - name: Update version in package.json
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
@@ -79,6 +89,7 @@ jobs:
           echo "Updated package.json to version $VERSION"
 
       - name: Update version in tauri.conf.json
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
@@ -91,6 +102,7 @@ jobs:
           echo "Updated tauri.conf.json to version $VERSION"
 
       - name: Update version in Cargo.toml
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
@@ -167,7 +179,11 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
           VERSION="${VERSION#v}"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
@@ -205,6 +221,7 @@ jobs:
           ls -la release-files/
 
       - name: Create tag
+        if: github.event_name == 'workflow_dispatch'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
