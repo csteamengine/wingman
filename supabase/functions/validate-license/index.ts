@@ -2,7 +2,7 @@
 // Validates a license key and registers/updates device activation
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,6 +32,36 @@ serve(async (req) => {
     const body: ValidateRequest = await req.json();
     const { license_key, email, device_id, device_name, os } = body;
 
+    // Get client IP address for rate limiting
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                     req.headers.get("x-real-ip") ||
+                     "unknown";
+
+    // Rate limiting: max 10 attempts per IP per minute
+    const rateLimitIdentifier = `${clientIp}:validate-license`;
+    const { data: isRateLimited, error: rateLimitError } = await supabase.rpc("check_rate_limit", {
+      p_identifier: rateLimitIdentifier,
+      p_endpoint: "validate-license",
+      p_max_attempts: 10,
+      p_window_minutes: 1,
+    });
+
+    if (rateLimitError) {
+      console.error("Rate limit check error:", rateLimitError);
+      // Continue without rate limiting if there's an error
+    } else if (isRateLimited) {
+      return new Response(
+        JSON.stringify({
+          valid: false,
+          error: "Too many validation attempts. Please try again in a minute.",
+        }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Validate required fields
     if (!license_key || !email || !device_id) {
       return new Response(
@@ -41,6 +71,32 @@ serve(async (req) => {
         }),
         {
           status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Additional rate limiting: max 5 failed attempts per license key per hour
+    // This prevents brute forcing of email addresses for a given license key
+    const licenseRateLimitIdentifier = `${license_key}:validate-license`;
+    const { data: isLicenseRateLimited, error: licenseRateLimitError } = await supabase.rpc("check_rate_limit", {
+      p_identifier: licenseRateLimitIdentifier,
+      p_endpoint: "validate-license-key",
+      p_max_attempts: 5,
+      p_window_minutes: 60,
+    });
+
+    if (licenseRateLimitError) {
+      console.error("License rate limit check error:", licenseRateLimitError);
+      // Continue without rate limiting if there's an error
+    } else if (isLicenseRateLimited) {
+      return new Response(
+        JSON.stringify({
+          valid: false,
+          error: "Too many failed attempts for this license key. Please try again later.",
+        }),
+        {
+          status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );

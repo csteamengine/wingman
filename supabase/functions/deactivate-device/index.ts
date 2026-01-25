@@ -2,7 +2,7 @@
 // Removes a device activation from a license
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,6 +29,36 @@ serve(async (req) => {
     const body: DeactivateRequest = await req.json();
     const { license_key, device_id } = body;
 
+    // Get client IP address for rate limiting
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                     req.headers.get("x-real-ip") ||
+                     "unknown";
+
+    // Rate limiting: max 10 deactivations per IP per hour
+    const rateLimitIdentifier = `${clientIp}:deactivate-device`;
+    const { data: isRateLimited, error: rateLimitError } = await supabase.rpc("check_rate_limit", {
+      p_identifier: rateLimitIdentifier,
+      p_endpoint: "deactivate-device",
+      p_max_attempts: 10,
+      p_window_minutes: 60,
+    });
+
+    if (rateLimitError) {
+      console.error("Rate limit check error:", rateLimitError);
+      // Continue without rate limiting if there's an error
+    } else if (isRateLimited) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Too many deactivation attempts. Please try again later.",
+        }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Validate required fields
     if (!license_key || !device_id) {
       return new Response(
@@ -38,6 +68,31 @@ serve(async (req) => {
         }),
         {
           status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Additional rate limiting: max 5 deactivations per license key per hour
+    const licenseRateLimitIdentifier = `${license_key}:deactivate-device`;
+    const { data: isLicenseRateLimited, error: licenseRateLimitError } = await supabase.rpc("check_rate_limit", {
+      p_identifier: licenseRateLimitIdentifier,
+      p_endpoint: "deactivate-device-license",
+      p_max_attempts: 5,
+      p_window_minutes: 60,
+    });
+
+    if (licenseRateLimitError) {
+      console.error("License rate limit check error:", licenseRateLimitError);
+      // Continue without rate limiting if there's an error
+    } else if (isLicenseRateLimited) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Too many deactivations for this license. Please try again later.",
+        }),
+        {
+          status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );

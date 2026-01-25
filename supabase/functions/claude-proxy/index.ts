@@ -2,7 +2,7 @@
 // Proxies requests to Claude API with Premium license validation and token limiting
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,6 +101,36 @@ serve(async (req) => {
     // Parse request body
     const body: ClaudeProxyRequest = await req.json();
     const { prompt, feature, license_key, system_instructions } = body;
+
+    // Get client IP address for rate limiting
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                     req.headers.get("x-real-ip") ||
+                     "unknown";
+
+    // Rate limiting: max 30 requests per IP per minute (in addition to token-based limiting)
+    const rateLimitIdentifier = `${clientIp}:claude-proxy`;
+    const { data: isRateLimited, error: rateLimitError } = await supabase.rpc("check_rate_limit", {
+      p_identifier: rateLimitIdentifier,
+      p_endpoint: "claude-proxy",
+      p_max_attempts: 30,
+      p_window_minutes: 1,
+    });
+
+    if (rateLimitError) {
+      console.error("Rate limit check error:", rateLimitError);
+      // Continue without rate limiting if there's an error
+    } else if (isRateLimited) {
+      return new Response(
+        JSON.stringify({
+          error: "Too many AI requests. Please wait a moment and try again.",
+          code: "RATE_LIMITED",
+        }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     // Validate required fields
     if (!prompt || !license_key) {
@@ -252,14 +282,12 @@ serve(async (req) => {
 
     const userId = licenseData.id;
 
-    // Sanitize user input (basic XSS prevention)
-    const sanitizedPrompt = prompt
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-      .trim();
+    // Validate prompt is not empty
+    const trimmedPrompt = prompt.trim();
 
-    if (!sanitizedPrompt) {
+    if (!trimmedPrompt) {
       return new Response(
-        JSON.stringify({ error: "Prompt cannot be empty after sanitization" }),
+        JSON.stringify({ error: "Prompt cannot be empty" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -287,7 +315,7 @@ serve(async (req) => {
         messages: [
           {
             role: "user",
-            content: sanitizedPrompt,
+            content: trimmedPrompt,
           },
         ],
       }),
