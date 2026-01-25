@@ -159,6 +159,7 @@ export interface AIConfig {
 
 // AI Preset types
 export type AIPresetId =
+  | 'ask_ai'
   | 'email'
   | 'slack'
   | 'claude_code'
