@@ -147,7 +147,10 @@ CREATE OR REPLACE FUNCTION increment_token_usage(
 RETURNS TABLE (
     new_tokens_used BIGINT,
     request_count INTEGER
-) AS $$
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 DECLARE
     v_current_month VARCHAR(7);
 BEGIN
@@ -167,7 +170,7 @@ BEGIN
 
     RETURN NEXT;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Function to check if user has Premium access
 -- Returns true if:
@@ -181,7 +184,10 @@ RETURNS TABLE (
     tokens_used BIGINT,
     tokens_remaining BIGINT,
     current_period_end TIMESTAMP WITH TIME ZONE
-) AS $$
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 DECLARE
     v_user_id UUID;
     v_license_active BOOLEAN;
@@ -269,7 +275,7 @@ BEGIN
 
     RETURN NEXT;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- ============================================
 -- ROW LEVEL SECURITY

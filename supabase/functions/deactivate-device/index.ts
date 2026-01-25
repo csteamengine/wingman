@@ -105,14 +105,17 @@ serve(async (req) => {
       .eq("license_key", license_key)
       .single();
 
+    // If license doesn't exist, treat as success (allows app to unregister)
+    // This is safe because we're just removing a device that doesn't exist server-side
     if (licenseError || !license) {
+      console.log("License not found, treating deactivation as success:", license_key);
       return new Response(
         JSON.stringify({
-          success: false,
-          error: "Invalid license key",
+          success: true,
+          message: "Device deactivated successfully",
         }),
         {
-          status: 401,
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );

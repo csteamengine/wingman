@@ -223,8 +223,11 @@ export function CustomTransformationsPanel() {
     toggleTransformation,
   } = useCustomTransformationsStore();
 
-  const { isProFeatureEnabled } = useLicenseStore();
-  const hasAccess = isProFeatureEnabled('custom_transformations');
+  const { getEffectiveTier, devTierOverride } = useLicenseStore();
+
+  // Premium tier has access to all Pro features
+  const effectiveTier = getEffectiveTier();
+  const hasAccess = effectiveTier === 'pro' || effectiveTier === 'premium';
 
   const [editing, setEditing] = useState<CustomTransformation | null>(null);
   const [isCreating, setIsCreating] = useState(false);

@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { useLicenseStore } from '../stores/licenseStore';
+import { useLicenseStore, isDev } from '../stores/licenseStore';
 import type { ProFeature } from '../types';
 
 export function useLicense() {
@@ -16,6 +16,8 @@ export function useLicense() {
     deactivateLicense,
     refreshLicense,
     isProFeatureEnabled,
+    devTierOverride,
+    getEffectiveTier,
   } = useLicenseStore();
 
   // Load license status on mount
@@ -48,16 +50,22 @@ export function useLicense() {
 
   // Derived state helpers
   // Premium tier also has access to all Pro features
-  const isPro = (tier === 'pro' || tier === 'premium') && (status === 'valid' || status === 'grace_period');
-  const isPremium = tier === 'premium' && (status === 'valid' || status === 'grace_period');
-  const isGracePeriod = status === 'grace_period';
-  const isExpired = status === 'expired';
-  const showUpgradePrompt = tier === 'free' || status === 'expired' || status === 'invalid';
+  // Use effective tier (considers dev override)
+  const effectiveTier = getEffectiveTier();
+
+  // In dev mode with override, simulate valid status
+  const effectiveStatus = (isDev && devTierOverride !== null) ? 'valid' : status;
+
+  const isPro = (effectiveTier === 'pro' || effectiveTier === 'premium') && (effectiveStatus === 'valid' || effectiveStatus === 'grace_period');
+  const isPremium = effectiveTier === 'premium' && (effectiveStatus === 'valid' || effectiveStatus === 'grace_period');
+  const isGracePeriod = effectiveStatus === 'grace_period';
+  const isExpired = effectiveStatus === 'expired';
+  const showUpgradePrompt = effectiveTier === 'free' || effectiveStatus === 'expired' || effectiveStatus === 'invalid';
 
   return {
-    // State
-    tier,
-    status,
+    // State (use effective tier for display)
+    tier: effectiveTier,
+    status: effectiveStatus,
     email,
     daysUntilExpiry,
     needsRevalidation,

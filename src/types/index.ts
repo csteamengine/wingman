@@ -99,7 +99,8 @@ export type ProFeature =
   | 'opacity_control'
   | 'sticky_mode'
   | 'diff_preview'
-  | 'custom_transformations';
+  | 'custom_transformations'
+  | 'transformation_chains';
 
 export type PremiumFeature =
   | 'prompt_optimizer'

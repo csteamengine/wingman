@@ -9,9 +9,11 @@ export function TransformationFloatingButton() {
     undoLastTransformation,
     dismissFloatingButton,
   } = useDiffStore();
-  const { isProFeatureEnabled } = useLicenseStore();
+  const { getEffectiveTier, devTierOverride } = useLicenseStore();
 
-  const hasDiffPreview = isProFeatureEnabled('diff_preview');
+  // Premium tier has access to all Pro features
+  const effectiveTier = getEffectiveTier();
+  const hasDiffPreview = effectiveTier === 'pro' || effectiveTier === 'premium';
   const latestTransformation = transformationHistory[0];
 
   if (!hasDiffPreview || !showFloatingButton || !latestTransformation) {

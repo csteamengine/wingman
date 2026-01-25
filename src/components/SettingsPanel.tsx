@@ -55,7 +55,7 @@ const isLinux = navigator.platform.includes('Linux');
 export function SettingsPanel() {
     const {settings, handleUpdate, handleReset} = useSettings();
     const {setActivePanel, initialSettingsTab, shouldCheckUpdates, clearSettingsNavigation} = useEditorStore();
-    const {isProFeatureEnabled, isPremiumTier} = useLicenseStore();
+    const {getEffectiveTier, devTierOverride} = useLicenseStore();
     const {subscriptionStatus, tokenUsagePercent, loadSubscriptionStatus} = usePremiumStore();
     const [activeTab, setActiveTab] = useState<TabType>('settings');
     const [hotkeyInput, setHotkeyInput] = useState('');
@@ -70,15 +70,32 @@ export function SettingsPanel() {
     const [isInstalling, setIsInstalling] = useState(false);
     const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
-    const hasCustomThemes = isProFeatureEnabled('custom_themes');
-    const hasFontCustomization = isProFeatureEnabled('font_customization');
-    const hasOpacityControl = isProFeatureEnabled('opacity_control');
-    const hasStickyMode = isProFeatureEnabled('sticky_mode');
-    const hasStatsDisplay = isProFeatureEnabled('stats_display');
-    const hasObsidianAccess = isProFeatureEnabled('obsidian_integration');
-    const hasDiffPreview = isProFeatureEnabled('diff_preview');
-    const hasCustomTransformations = isProFeatureEnabled('custom_transformations');
-    const isPremium = isPremiumTier();
+    // Feature flags - use effective tier to react to dev tier changes
+    // Premium tier has access to all Pro features
+    const effectiveTier = getEffectiveTier();
+    const isPremium = effectiveTier === 'premium';
+    const isPro = effectiveTier === 'pro' || effectiveTier === 'premium';
+    const hasCustomThemes = isPro;
+    const hasFontCustomization = isPro;
+    const hasOpacityControl = isPro;
+    const hasStickyMode = isPro;
+    const hasStatsDisplay = isPro;
+    const hasObsidianAccess = isPro;
+    const hasDiffPreview = isPro;
+    const hasCustomTransformations = isPro;
+
+    // Mock subscription status for dev mode
+    const effectiveSubscriptionStatus = subscriptionStatus || (devTierOverride === 'premium' ? {
+        tier: 'premium' as const,
+        is_active: true,
+        tokens_used: 125000,
+        tokens_remaining: 875000,
+        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    } : null);
+
+    const effectiveTokenUsagePercent = effectiveSubscriptionStatus
+        ? Math.round((effectiveSubscriptionStatus.tokens_used / 1000000) * 100)
+        : tokenUsagePercent;
 
     // Load subscription status for Premium users
     useEffect(() => {
@@ -656,7 +673,7 @@ export function SettingsPanel() {
                         </div>
 
                         {/* AI Token Usage - Premium only */}
-                        {isPremium && subscriptionStatus && (
+                        {isPremium && effectiveSubscriptionStatus && (
                             <div className="pt-6 border-t border-[var(--ui-border)]">
                                 <h3 className="text-sm font-medium mb-3">AI Token Usage</h3>
                                 <div className="space-y-3">
@@ -665,24 +682,24 @@ export function SettingsPanel() {
                                         <div className="flex items-center justify-between mb-2">
                                             <span className="text-xs text-[var(--ui-text-muted)]">Monthly Usage</span>
                                             <span className="text-xs font-medium text-[var(--ui-text)]">
-                                                {formatTokenUsage(subscriptionStatus.tokens_used)}
+                                                {formatTokenUsage(effectiveSubscriptionStatus.tokens_used)}
                                             </span>
                                         </div>
                                         <div className="w-full h-2 bg-[var(--ui-border)] rounded-full overflow-hidden">
                                             <div
                                                 className={`h-full rounded-full transition-all duration-300 ${
-                                                    tokenUsagePercent >= 90
+                                                    effectiveTokenUsagePercent >= 90
                                                         ? 'bg-red-500'
-                                                        : tokenUsagePercent >= 70
+                                                        : effectiveTokenUsagePercent >= 70
                                                         ? 'bg-yellow-500'
                                                         : 'bg-emerald-500'
                                                 }`}
-                                                style={{ width: `${Math.min(tokenUsagePercent, 100)}%` }}
+                                                style={{ width: `${Math.min(effectiveTokenUsagePercent, 100)}%` }}
                                             />
                                         </div>
                                         <div className="flex items-center justify-between mt-2">
                                             <span className="text-[10px] text-[var(--ui-text-muted)]">
-                                                {subscriptionStatus.tokens_remaining.toLocaleString()} tokens remaining
+                                                {effectiveSubscriptionStatus.tokens_remaining.toLocaleString()} tokens remaining
                                             </span>
                                             <span className="text-[10px] text-[var(--ui-text-muted)]">
                                                 Resets monthly
@@ -691,13 +708,13 @@ export function SettingsPanel() {
                                     </div>
 
                                     {/* Warning if near limit */}
-                                    {tokenUsagePercent >= 80 && (
+                                    {effectiveTokenUsagePercent >= 80 && (
                                         <div className={`px-3 py-2 text-xs rounded-md border ${
-                                            tokenUsagePercent >= 90
+                                            effectiveTokenUsagePercent >= 90
                                                 ? 'bg-red-500/10 border-red-500/20 text-red-400'
                                                 : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
                                         }`}>
-                                            {tokenUsagePercent >= 90
+                                            {effectiveTokenUsagePercent >= 90
                                                 ? 'You\'re almost at your monthly token limit. Consider upgrading or waiting for the monthly reset.'
                                                 : 'You\'ve used over 80% of your monthly tokens.'}
                                         </div>

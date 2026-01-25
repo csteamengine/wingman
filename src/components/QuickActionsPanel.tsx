@@ -171,7 +171,11 @@ export function QuickActionsPanel() {
         applyNumberedList,
         editorView
     } = useEditorStore();
-    const {isProFeatureEnabled} = useLicenseStore();
+    const {getEffectiveTier, devTierOverride} = useLicenseStore();
+
+    // Premium tier has access to all Pro features
+    const effectiveTier = getEffectiveTier();
+    const isPro = effectiveTier === 'pro' || effectiveTier === 'premium';
     const {
         items: clipboardItems,
         startMonitoring,
@@ -240,8 +244,7 @@ export function QuickActionsPanel() {
 
     // Get custom transformation actions
     const customTransformationActions: Action[] = useMemo(() => {
-        const hasAccess = isProFeatureEnabled('custom_transformations');
-        if (!hasAccess) return [];
+        if (!isPro) return [];
         return getEnabledTransformations().map(t => ({
             id: `custom_${t.id}`,
             label: t.name,
@@ -251,10 +254,11 @@ export function QuickActionsPanel() {
             section: 'Custom',
             proFeature: 'custom_transformations' as const,
         }));
-    }, [customTransformations, isProFeatureEnabled, getEnabledTransformations]);
+    }, [customTransformations, isPro, getEnabledTransformations]);
 
     // Get chain actions
     const chainActions: Action[] = useMemo(() => {
+        if (!isPro) return [];
         return getEnabledChains().map(chain => ({
             id: `chain_${chain.id}`,
             label: chain.name,
@@ -263,7 +267,7 @@ export function QuickActionsPanel() {
             requiresInput: true,
             section: 'Chains',
         }));
-    }, [transformationChains, getEnabledChains]);
+    }, [transformationChains, isPro, getEnabledChains]);
 
     // All actions including custom transformations and chains
     const allActions = useMemo(() => {
@@ -393,7 +397,7 @@ export function QuickActionsPanel() {
     const {startDrag, updateCursorPosition, endDrag, isDraggingClipboardItem} = useDragStore();
 
     // Check if clipboard history is enabled (PRO feature)
-    const hasClipboardHistory = isProFeatureEnabled('history');
+    const hasClipboardHistory = isPro;
 
     // Track the content being dragged for mouseup handling
     const dragContentRef = useRef<string | null>(null);
@@ -475,10 +479,10 @@ export function QuickActionsPanel() {
     const handleAction = useCallback(async (action: Action) => {
         setError(null);
 
-        // Check if action is available
-        const isPro = action.proFeature ? isProFeatureEnabled(action.proFeature) : true;
+        // Check if action is available (Pro features require Pro/Premium tier)
+        const hasAccess = action.proFeature ? isPro : true;
         const needsInput = action.requiresInput && !content.trim();
-        if (!isPro || needsInput) return;
+        if (!hasAccess || needsInput) return;
 
         try {
             switch (action.handler) {
@@ -503,7 +507,7 @@ export function QuickActionsPanel() {
 
                     // Check if diff preview is enabled (and user has PRO)
                     const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
-                    const hasDiffPreview = isProFeatureEnabled('diff_preview');
+                    const hasDiffPreview = isPro;
                     if (showDiffPreview && hasDiffPreview && text !== formatted) {
                         useDiffStore.getState().setPendingDiff({
                             originalText: text,
@@ -537,7 +541,7 @@ export function QuickActionsPanel() {
 
                     // Check if diff preview is enabled (and user has PRO)
                     const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
-                    const hasDiffPreview = isProFeatureEnabled('diff_preview');
+                    const hasDiffPreview = isPro;
                     if (showDiffPreview && hasDiffPreview && text !== encoded) {
                         useDiffStore.getState().setPendingDiff({
                             originalText: text,
@@ -595,7 +599,7 @@ export function QuickActionsPanel() {
 
                     // Check if diff preview is enabled (and user has PRO)
                     const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
-                    const hasDiffPreview = isProFeatureEnabled('diff_preview');
+                    const hasDiffPreview = isPro;
                     if (showDiffPreview && hasDiffPreview && text !== transformed) {
                         useDiffStore.getState().setPendingDiff({
                             originalText: text,
@@ -639,7 +643,7 @@ export function QuickActionsPanel() {
 
                     // Check if diff preview is enabled (and user has PRO)
                     const showDiffPreview = useSettingsStore.getState().settings?.show_diff_preview;
-                    const hasDiffPreview = isProFeatureEnabled('diff_preview');
+                    const hasDiffPreview = isPro;
                     if (showDiffPreview && hasDiffPreview && text !== transformed) {
                         useDiffStore.getState().setPendingDiff({
                             originalText: text,
@@ -666,7 +670,7 @@ export function QuickActionsPanel() {
         } catch (err) {
             setError(String(err));
         }
-    }, [content, isProFeatureEnabled, setContent, transformText, applyBulletList, applyNumberedList, getTextToProcess, applyProcessedText, executeTransformation, executeChain]);
+    }, [content, isPro, setContent, transformText, applyBulletList, applyNumberedList, getTextToProcess, applyProcessedText, executeTransformation, executeChain]);
 
     // Keyboard navigation
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -734,9 +738,9 @@ export function QuickActionsPanel() {
     const hasContent = content.trim().length > 0;
 
     const renderAction = (action: Action, index: number, showSection = false) => {
-        const isPro = action.proFeature ? isProFeatureEnabled(action.proFeature) : true;
+        const hasAccess = action.proFeature ? isPro : true;
         const needsInput = action.requiresInput && !hasContent;
-        const isDisabled = needsInput || !isPro;
+        const isDisabled = needsInput || !hasAccess;
         const isSelected = index === selectedIndex;
         const tooltip = showSection ? `${action.section}: ${action.description}` : action.description;
 
@@ -1040,13 +1044,13 @@ export function QuickActionsPanel() {
                             /* Section view */
                             (() => {
                                 let globalIndex = 0;
-                                const hasCustomAccess = isProFeatureEnabled('custom_transformations');
+                                const hasCustomAccess = isPro;
                                 const enabledCustom = customTransformationActions;
 
                                 return (
                                     <>
                                         {actionSections.map((section) => {
-                                            const isPro = section.proFeature ? isProFeatureEnabled(section.proFeature) : true;
+                                            const hasAccess = section.proFeature ? isPro : true;
                                             const sectionStartIndex = globalIndex;
 
                                             return (

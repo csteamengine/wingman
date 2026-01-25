@@ -75,13 +75,15 @@ function HistoryPanelContent() {
   const { entries, loading, searchQuery, handleSearch, handleSelect, handleDelete } = useHistory();
   const { setActivePanel } = useEditorStore();
   const { exportHistory } = useHistoryStore();
-  const { isProFeatureEnabled } = useLicenseStore();
+  const { getEffectiveTier, devTierOverride } = useLicenseStore();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [exporting, setExporting] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const canExport = isProFeatureEnabled('export_history');
+  // Premium tier has access to all Pro features
+  const effectiveTier = getEffectiveTier();
+  const canExport = effectiveTier === 'pro' || effectiveTier === 'premium';
   const selectedEntry = entries[selectedIndex] || null;
 
   const handleExport = async () => {

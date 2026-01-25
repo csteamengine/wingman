@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
 import { usePremiumStore } from '../stores/premiumStore';
-import { useLicenseStore } from '../stores/licenseStore';
+import { useLicenseStore, isDev } from '../stores/licenseStore';
 import { useEditorStore } from '../stores/editorStore';
 import { ProBadge } from './ProFeatureGate';
 import type { ObsidianConfig as ObsidianConfigType, ObsidianLocation } from '../types';
@@ -19,9 +19,11 @@ export function ObsidianConfig({ onClose }: ObsidianConfigProps) {
     validateObsidianVault,
     error: storeError,
   } = usePremiumStore();
-  const { isProFeatureEnabled } = useLicenseStore();
+  const { tier, devTierOverride } = useLicenseStore();
 
-  const hasObsidianAccess = isProFeatureEnabled('obsidian_integration');
+  // Compute effective tier to properly react to dev tier changes
+  const effectiveTier = (isDev && devTierOverride !== null) ? devTierOverride : tier;
+  const hasObsidianAccess = effectiveTier === 'pro' || effectiveTier === 'premium';
 
   const [config, setConfig] = useState<ObsidianConfigType>({
     vault_path: '',
@@ -36,9 +38,11 @@ export function ObsidianConfig({ onClose }: ObsidianConfigProps) {
   const [validatingVault, setValidatingVault] = useState(false);
   const [vaultValid, setVaultValid] = useState<boolean | null>(null);
 
+  // Load config once on mount (EditorWindow also loads it, but ensure it's loaded if user opens settings first)
   useEffect(() => {
     loadObsidianConfig();
-  }, [loadObsidianConfig]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sync local state with store when obsidianConfig loads (derived state pattern)
   const configVaultPath = obsidianConfig?.vault_path ?? '';
@@ -391,11 +395,13 @@ export function ObsidianCaptureButton({
   disabled?: boolean;
 }) {
   const { addToObsidian, obsidianConfig } = usePremiumStore();
-  const { isProFeatureEnabled } = useLicenseStore();
+  const { tier, devTierOverride } = useLicenseStore();
   const [capturing, setCapturing] = useState(false);
   const [captured, setCaptured] = useState(false);
 
-  const hasObsidianAccess = isProFeatureEnabled('obsidian_integration');
+  // Compute effective tier to properly react to dev tier changes
+  const effectiveTier = (isDev && devTierOverride !== null) ? devTierOverride : tier;
+  const hasObsidianAccess = effectiveTier === 'pro' || effectiveTier === 'premium';
   const isConfigured = obsidianConfig && obsidianConfig.vault_path;
 
   const handleCapture = async () => {

@@ -3,6 +3,7 @@ import { useEditorStore } from '../stores/editorStore';
 import { useTransformationChainsStore } from '../stores/transformationChainsStore';
 import { useCustomTransformationsStore } from '../stores/customTransformationsStore';
 import { useLicenseStore } from '../stores/licenseStore';
+import { ProFeatureGate } from './ProFeatureGate';
 import type { TransformationChain, ChainStep } from '../types';
 
 type ViewMode = 'list' | 'edit';
@@ -20,6 +21,14 @@ const BUILTIN_TRANSFORMATIONS = [
 ];
 
 export function TransformationChainsPanel() {
+  return (
+    <ProFeatureGate feature="transformation_chains">
+      <TransformationChainsPanelContent />
+    </ProFeatureGate>
+  );
+}
+
+function TransformationChainsPanelContent() {
   const { setActivePanel } = useEditorStore();
   const {
     chains,
@@ -34,7 +43,8 @@ export function TransformationChainsPanel() {
     loadTransformations: loadCustomTransformations,
     getEnabledTransformations,
   } = useCustomTransformationsStore();
-  const { isProFeatureEnabled } = useLicenseStore();
+  const { isProFeatureEnabled, devTierOverride, getEffectiveTier } = useLicenseStore();
+  const effectiveTier = getEffectiveTier();
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [editingChain, setEditingChain] = useState<TransformationChain | null>(null);
@@ -46,7 +56,8 @@ export function TransformationChainsPanel() {
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
 
-  const hasCustomTransformations = isProFeatureEnabled('custom_transformations');
+  // Check if custom transformations are available based on effective tier
+  const hasCustomTransformations = effectiveTier === 'pro' || effectiveTier === 'premium';
 
   // Load chains and custom transformations on mount
   useEffect(() => {

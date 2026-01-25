@@ -29,6 +29,7 @@ const FEATURE_NAMES: Record<ProFeature, string> = {
   sticky_mode: 'Sticky Window Mode',
   diff_preview: 'Diff Preview',
   custom_transformations: 'Custom Transformations',
+  transformation_chains: 'Transformation Chains',
 };
 
 export function ProFeatureGate({
@@ -37,8 +38,11 @@ export function ProFeatureGate({
   fallback,
   showUpgradePrompt = true,
 }: ProFeatureGateProps) {
-  const { isProFeatureEnabled } = useLicenseStore();
-  const isEnabled = isProFeatureEnabled(feature);
+  const { getEffectiveTier, devTierOverride } = useLicenseStore();
+
+  // Premium tier has access to all Pro features
+  const effectiveTier = getEffectiveTier();
+  const isEnabled = effectiveTier === 'pro' || effectiveTier === 'premium';
 
   if (isEnabled) {
     return <>{children}</>;

@@ -34,7 +34,10 @@ CREATE OR REPLACE FUNCTION check_rate_limit(
     p_max_attempts INTEGER,
     p_window_minutes INTEGER
 )
-RETURNS BOOLEAN AS $$
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 DECLARE
     v_attempts INTEGER;
     v_window_start TIMESTAMP WITH TIME ZONE;
@@ -73,7 +76,7 @@ BEGIN
 
     RETURN FALSE;  -- Allow request
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- ============================================
 -- 3. CLEANUP FUNCTION FOR OLD RATE LIMIT RECORDS

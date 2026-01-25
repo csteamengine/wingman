@@ -22,7 +22,8 @@ export function PremiumFeatureGate({
   showUpgradePrompt = true,
 }: PremiumFeatureGateProps) {
   const { isPremiumFeatureEnabled, isAtTokenLimit, subscriptionStatus } = usePremiumStore();
-  const { tier } = useLicenseStore();
+  const { tier, devTierOverride, getEffectiveTier } = useLicenseStore();
+  const effectiveTier = getEffectiveTier();
   const [showModal, setShowModal] = useState(false);
 
   const isEnabled = isPremiumFeatureEnabled(feature);
@@ -43,8 +44,8 @@ export function PremiumFeatureGate({
   }
 
   // Determine why the feature is locked
-  const isTokenLimitReached = tier === 'premium' && isAtTokenLimit;
-  const subscriptionExpired = tier === 'premium' && !subscriptionStatus?.is_active;
+  const isTokenLimitReached = effectiveTier === 'premium' && isAtTokenLimit;
+  const subscriptionExpired = effectiveTier === 'premium' && !subscriptionStatus?.is_active;
 
   const handleUpgradeClick = async () => {
     try {

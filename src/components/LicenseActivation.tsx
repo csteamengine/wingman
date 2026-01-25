@@ -152,6 +152,68 @@ export function LicenseActivation() {
                         </div>
                     )}
                 </div>
+
+                {/* Premium Upgrade - Show for Pro users only */}
+                {!isPremium && (
+                    <div className="pt-4 border-t border-[var(--ui-border)]">
+                        <div className="p-4 bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-lg border border-amber-500/20">
+                            <div className="flex items-start gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-medium text-[var(--ui-text)]">Upgrade to Premium</h4>
+                                    <p className="text-xs text-[var(--ui-text-muted)]">$9.99/month</p>
+                                </div>
+                            </div>
+
+                            <ul className="space-y-1.5 mb-4 text-xs text-[var(--ui-text-muted)]">
+                                <li className="flex items-center gap-2">
+                                    <span className="text-amber-400">✓</span>
+                                    AI-Powered Prompt Optimizer
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <span className="text-amber-400">✓</span>
+                                    Custom AI Presets
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <span className="text-amber-400">✓</span>
+                                    Obsidian Integration
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <span className="text-amber-400">✓</span>
+                                    1M AI Tokens/Month
+                                </li>
+                            </ul>
+
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const response = await fetch(`${SUPABASE_URL}/functions/v1/create-premium-checkout`, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'apikey': SUPABASE_ANON_KEY,
+                                            },
+                                        });
+                                        const data = await response.json();
+                                        console.log('Premium checkout response:', data);
+                                        if (data.url) {
+                                            await open(data.url);
+                                        }
+                                    } catch (err) {
+                                        console.error('Failed to create checkout session:', err);
+                                    }
+                                }}
+                                className="w-full px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white text-sm font-medium rounded-lg hover:from-amber-600 hover:to-orange-700 transition-colors"
+                            >
+                                Upgrade to Premium
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
@@ -274,6 +336,68 @@ export function LicenseActivation() {
                         className="w-full px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 text-white text-sm font-medium rounded-lg hover:from-blue-600 hover:to-cyan-700 transition-colors"
                     >
                         Buy Pro License
+                    </button>
+                </div>
+
+                {/* Premium Upgrade Option */}
+                <div className="p-4 bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-lg border border-amber-500/20 mt-4">
+                    <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
+                            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-medium text-[var(--ui-text)]">Get Wingman Premium</h4>
+                            <p className="text-xs text-[var(--ui-text-muted)]">$9.99/month</p>
+                        </div>
+                    </div>
+
+                    <ul className="space-y-1.5 mb-4 text-xs text-[var(--ui-text-muted)]">
+                        <li className="flex items-center gap-2">
+                            <span className="text-amber-400">✓</span>
+                            Everything in Pro
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <span className="text-amber-400">✓</span>
+                            AI-Powered Prompt Optimizer
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <span className="text-amber-400">✓</span>
+                            Custom AI Presets
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <span className="text-amber-400">✓</span>
+                            Obsidian Integration
+                        </li>
+                        <li className="flex items-center gap-2">
+                            <span className="text-amber-400">✓</span>
+                            1M AI Tokens/Month
+                        </li>
+                    </ul>
+
+                    <button
+                        onClick={async () => {
+                            try {
+                                const response = await fetch(`${SUPABASE_URL}/functions/v1/create-premium-checkout`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'apikey': SUPABASE_ANON_KEY,
+                                    },
+                                });
+                                const data = await response.json();
+                                console.log('Premium checkout response:', data);
+                                if (data.url) {
+                                    await open(data.url);
+                                }
+                            } catch (err) {
+                                console.error('Failed to create checkout session:', err);
+                            }
+                        }}
+                        className="w-full px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white text-sm font-medium rounded-lg hover:from-amber-600 hover:to-orange-700 transition-colors"
+                    >
+                        Buy Premium Subscription
                     </button>
                 </div>
             </div>

@@ -10,9 +10,11 @@ export function DiffPreviewModal() {
     confirmTransformation,
     cancelTransformation,
   } = useDiffStore();
-  const { isProFeatureEnabled } = useLicenseStore();
+  const { getEffectiveTier, devTierOverride } = useLicenseStore();
 
-  const hasDiffPreview = isProFeatureEnabled('diff_preview');
+  // Premium tier has access to all Pro features
+  const effectiveTier = getEffectiveTier();
+  const hasDiffPreview = effectiveTier === 'pro' || effectiveTier === 'premium';
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!showPreviewModal) return;
