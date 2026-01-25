@@ -60,6 +60,20 @@ export interface SnippetsData {
   snippets: Snippet[];
 }
 
+export interface CustomAIPrompt {
+  id: string;
+  name: string;
+  description: string;
+  system_prompt: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomAIPromptsData {
+  prompts: CustomAIPrompt[];
+}
+
 export interface TextStats {
   character_count: number;
   word_count: number;

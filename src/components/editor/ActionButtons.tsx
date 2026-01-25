@@ -1,6 +1,6 @@
 import {useRef, useState, useEffect} from 'react';
 import {Bot, ChevronDown, Check, Download, Loader2, Diamond} from 'lucide-react';
-import type {AIPreset, AppSettings} from '../../types';
+import type {AIPreset, CustomAIPrompt, AppSettings} from '../../types';
 
 interface ActionButtonsProps {
     // Content state
@@ -11,9 +11,12 @@ interface ActionButtonsProps {
     isPremium: boolean;
     aiLoading: boolean;
     selectedPreset: AIPreset | undefined;
+    selectedCustomPrompt: CustomAIPrompt | undefined;
     enabledPresets: AIPreset[];
+    enabledCustomPrompts: CustomAIPrompt[];
     onAiButtonClick: () => void;
     onSelectPreset: (presetId: string) => void;
+    onSelectCustomPrompt: (promptId: string) => void;
 
     // Obsidian state
     hasObsidianAccess: boolean;
@@ -36,9 +39,12 @@ export function ActionButtons({
     isPremium,
     aiLoading,
     selectedPreset,
+    selectedCustomPrompt,
     enabledPresets,
+    enabledCustomPrompts,
     onAiButtonClick,
     onSelectPreset,
+    onSelectCustomPrompt,
     hasObsidianAccess,
     hasObsidianConfigured,
     onObsidianSend,
@@ -94,7 +100,13 @@ export function ActionButtons({
                     <button
                         onClick={onAiButtonClick}
                         disabled={!isPremium || !content.trim() || aiLoading}
-                        title={selectedPreset ? `Refine with ${selectedPreset.name}` : "Refine text with AI"}
+                        title={
+                            selectedCustomPrompt
+                                ? `Refine with ${selectedCustomPrompt.name}`
+                                : selectedPreset
+                                    ? `Refine with ${selectedPreset.name}`
+                                    : "Refine text with AI"
+                        }
                         className="btn-ai flex items-center justify-center gap-1.5 pl-3 pr-2 py-2.5 rounded-l-md text-sm transition-colors disabled:opacity-40 border-r-0"
                     >
                         {aiLoading ? (
@@ -102,7 +114,7 @@ export function ActionButtons({
                         ) : (
                             <Bot className="w-4 h-4" />
                         )}
-                        <span>{selectedPreset?.name || 'AI'}</span>
+                        <span>{selectedCustomPrompt?.name || selectedPreset?.name || 'AI'}</span>
                     </button>
                     {/* Dropdown button - opens preset selector */}
                     <button
@@ -116,35 +128,78 @@ export function ActionButtons({
 
                     {/* AI Presets Popover */}
                     {showAiPopover && (
-                        <div className="absolute bottom-full mb-2 left-0 bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] rounded-lg shadow-lg z-50 min-w-[220px] py-1 animate-fade-in">
+                        <div className="absolute bottom-full mb-2 left-0 bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] rounded-lg shadow-lg z-50 min-w-[220px] max-w-[280px] py-1 animate-fade-in">
                             <div className="px-3 py-2 border-b border-[var(--ui-border)]">
-                                <p className="text-xs font-medium text-[var(--ui-text)]">Select Default Preset</p>
-                                <p className="text-[10px] text-[var(--ui-text-muted)]">Choose a preset for the AI button</p>
+                                <p className="text-xs font-medium text-[var(--ui-text)]">Select AI Prompt</p>
+                                <p className="text-[10px] text-[var(--ui-text-muted)]">Choose a prompt for the AI button</p>
                             </div>
-                            <div className="max-h-[200px] overflow-y-auto">
-                                {enabledPresets.map((preset) => (
-                                    <button
-                                        key={preset.id}
-                                        onClick={() => handleSelectPreset(preset.id)}
-                                        className={`w-full text-left px-3 py-2 hover:bg-[var(--ui-hover)] transition-colors ${
-                                            selectedPreset?.id === preset.id ? 'bg-[var(--btn-ai-bg)]' : ''
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            {selectedPreset?.id === preset.id && (
-                                                <Check className="w-3 h-3 text-emerald-400" />
-                                            )}
-                                            <div className={selectedPreset?.id === preset.id ? '' : 'ml-5'}>
-                                                <p className="text-xs font-medium text-[var(--ui-text)]">{preset.name}</p>
-                                                <p className="text-[10px] text-[var(--ui-text-muted)]">{preset.description}</p>
-                                            </div>
+                            <div className="max-h-[300px] overflow-y-auto">
+                                {/* Built-in Presets */}
+                                {enabledPresets.length > 0 && (
+                                    <>
+                                        <div className="px-3 py-1.5 bg-[var(--ui-surface)] sticky top-0">
+                                            <p className="text-[10px] font-medium text-[var(--ui-text-muted)] uppercase tracking-wide">Built-in</p>
                                         </div>
-                                    </button>
-                                ))}
+                                        {enabledPresets.map((preset) => (
+                                            <button
+                                                key={preset.id}
+                                                onClick={() => handleSelectPreset(preset.id)}
+                                                className={`w-full text-left px-3 py-2 hover:bg-[var(--ui-hover)] transition-colors ${
+                                                    selectedPreset?.id === preset.id && !selectedCustomPrompt ? 'bg-[var(--btn-ai-bg)]' : ''
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    {selectedPreset?.id === preset.id && !selectedCustomPrompt && (
+                                                        <Check className="w-3 h-3 text-emerald-400" />
+                                                    )}
+                                                    <div className={selectedPreset?.id === preset.id && !selectedCustomPrompt ? '' : 'ml-5'}>
+                                                        <p className="text-xs font-medium text-[var(--ui-text)]">{preset.name}</p>
+                                                        <p className="text-[10px] text-[var(--ui-text-muted)] line-clamp-1">{preset.description}</p>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </>
+                                )}
+
+                                {/* Custom Prompts */}
+                                {enabledCustomPrompts.length > 0 && (
+                                    <>
+                                        {enabledPresets.length > 0 && (
+                                            <div className="border-t border-[var(--ui-border)] my-1"></div>
+                                        )}
+                                        <div className="px-3 py-1.5 bg-[var(--ui-surface)] sticky top-0">
+                                            <p className="text-[10px] font-medium text-[var(--ui-text-muted)] uppercase tracking-wide">Custom</p>
+                                        </div>
+                                        {enabledCustomPrompts.map((prompt) => (
+                                            <button
+                                                key={prompt.id}
+                                                onClick={() => {
+                                                    onSelectCustomPrompt(prompt.id);
+                                                    setShowAiPopover(false);
+                                                }}
+                                                className={`w-full text-left px-3 py-2 hover:bg-[var(--ui-hover)] transition-colors ${
+                                                    selectedCustomPrompt?.id === prompt.id ? 'bg-[var(--btn-ai-bg)]' : ''
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    {selectedCustomPrompt?.id === prompt.id && (
+                                                        <Check className="w-3 h-3 text-emerald-400" />
+                                                    )}
+                                                    <div className={selectedCustomPrompt?.id === prompt.id ? '' : 'ml-5'}>
+                                                        <p className="text-xs font-medium text-[var(--ui-text)]">{prompt.name}</p>
+                                                        <p className="text-[10px] text-[var(--ui-text-muted)] line-clamp-1">{prompt.description}</p>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </>
+                                )}
+
+                                {enabledPresets.length === 0 && enabledCustomPrompts.length === 0 && (
+                                    <p className="px-3 py-2 text-xs text-[var(--ui-text-muted)]">No prompts enabled. Configure in Settings.</p>
+                                )}
                             </div>
-                            {enabledPresets.length === 0 && (
-                                <p className="px-3 py-2 text-xs text-[var(--ui-text-muted)]">No presets enabled. Configure in Settings.</p>
-                            )}
                         </div>
                     )}
                 </div>

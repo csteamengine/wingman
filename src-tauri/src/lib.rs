@@ -43,6 +43,7 @@ use storage::{
     load_settings, load_snippets, save_settings, save_snippets, AppSettings, Snippet, SnippetsData,
     load_custom_transformations, save_custom_transformations, CustomTransformationsData,
     load_transformation_chains, save_transformation_chains, TransformationChainsData,
+    load_custom_ai_prompts, save_custom_ai_prompts, CustomAIPrompt, CustomAIPromptsData,
 };
 use updater::{check_for_updates, download_and_install_update as do_update, UpdateInfo};
 
@@ -184,6 +185,75 @@ fn delete_snippet(id: String) -> Result<(), String> {
     let mut data = load_snippets().map_err(|e| e.to_string())?;
     data.snippets.retain(|s| s.id != id);
     save_snippets(&data).map_err(|e| e.to_string())
+}
+
+// Custom AI Prompts commands
+#[tauri::command]
+fn get_custom_ai_prompts() -> Result<CustomAIPromptsData, String> {
+    load_custom_ai_prompts().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_custom_ai_prompts_data(data: CustomAIPromptsData) -> Result<(), String> {
+    save_custom_ai_prompts(&data).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn add_custom_ai_prompt(
+    name: String,
+    description: String,
+    system_prompt: String,
+) -> Result<CustomAIPrompt, String> {
+    let mut data = load_custom_ai_prompts().map_err(|e| e.to_string())?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let prompt = CustomAIPrompt {
+        id: uuid_v4(),
+        name,
+        description,
+        system_prompt,
+        enabled: true,
+        created_at: now.clone(),
+        updated_at: now,
+    };
+    data.prompts.push(prompt.clone());
+    save_custom_ai_prompts(&data).map_err(|e| e.to_string())?;
+    Ok(prompt)
+}
+
+#[tauri::command]
+fn update_custom_ai_prompt(
+    id: String,
+    name: String,
+    description: String,
+    system_prompt: String,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut data = load_custom_ai_prompts().map_err(|e| e.to_string())?;
+    if let Some(prompt) = data.prompts.iter_mut().find(|p| p.id == id) {
+        prompt.name = name;
+        prompt.description = description;
+        prompt.system_prompt = system_prompt;
+        prompt.enabled = enabled;
+        prompt.updated_at = chrono::Utc::now().to_rfc3339();
+    }
+    save_custom_ai_prompts(&data).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_custom_ai_prompt(id: String) -> Result<(), String> {
+    let mut data = load_custom_ai_prompts().map_err(|e| e.to_string())?;
+    data.prompts.retain(|p| p.id != id);
+    save_custom_ai_prompts(&data).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn toggle_custom_ai_prompt_enabled(id: String) -> Result<(), String> {
+    let mut data = load_custom_ai_prompts().map_err(|e| e.to_string())?;
+    if let Some(prompt) = data.prompts.iter_mut().find(|p| p.id == id) {
+        prompt.enabled = !prompt.enabled;
+        prompt.updated_at = chrono::Utc::now().to_rfc3339();
+    }
+    save_custom_ai_prompts(&data).map_err(|e| e.to_string())
 }
 
 // Text utility commands
@@ -1455,6 +1525,13 @@ pub fn run() {
             add_snippet,
             update_snippet,
             delete_snippet,
+            // Custom AI Prompts
+            get_custom_ai_prompts,
+            save_custom_ai_prompts_data,
+            add_custom_ai_prompt,
+            update_custom_ai_prompt,
+            delete_custom_ai_prompt,
+            toggle_custom_ai_prompt_enabled,
             // Custom transformations
             get_custom_transformations,
             save_custom_transformations_cmd,

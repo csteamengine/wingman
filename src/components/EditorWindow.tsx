@@ -14,6 +14,7 @@ import {useSettingsStore} from '../stores/settingsStore';
 import {useLicenseStore, isDev} from '../stores/licenseStore';
 import {usePremiumStore} from '../stores/premiumStore';
 import {useDragStore} from '../stores/dragStore';
+import {useCustomAIPromptsStore} from '../stores/customAIPromptsStore';
 
 import {DiffPreviewModal} from './DiffPreviewModal';
 import {DiffReviewModal} from './DiffReviewModal';
@@ -22,6 +23,9 @@ import {TransformationFloatingButton} from './TransformationFloatingButton';
 import {
     languages,
     jsonLinter,
+    xmlLinter,
+    pythonLinter,
+    htmlLinter,
     yamlLinter,
     markdownPlugin,
     markdownTheme,
@@ -51,6 +55,7 @@ export function EditorWindow() {
     const [obsidianToast, setObsidianToast] = useState<ObsidianResult | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+    const [selectedCustomPromptId, setSelectedCustomPromptId] = useState<string | null>(null);
     const [parsedUrlInfo, setParsedUrlInfo] = useState<{url: string; cursorPos: number} | null>(null);
 
     // Get drag store state and functions
@@ -82,6 +87,8 @@ export function EditorWindow() {
         applyBulletList,
         applyNumberedList,
         saveToFile,
+        validationToast,
+        setValidationToast,
     } = useEditorStore();
 
     const {settings, updateSettings} = useSettingsStore();
@@ -99,6 +106,12 @@ export function EditorWindow() {
         addToObsidian,
         openObsidianNote,
     } = usePremiumStore();
+
+    const {
+        prompts: customAIPrompts,
+        loadPrompts: loadCustomAIPrompts,
+        getEnabledPrompts: getEnabledCustomPrompts,
+    } = useCustomAIPromptsStore();
 
     // Feature flags - compute effective tier to react to dev tier changes
     // Premium tier has access to all Pro features
@@ -124,6 +137,7 @@ export function EditorWindow() {
         if (isPremium) {
             loadAIConfig();
             loadAIPresets();
+            loadCustomAIPrompts();
             const licenseKey = localStorage.getItem('wingman_license_key');
             if (licenseKey) {
                 loadSubscriptionStatus(licenseKey);
@@ -152,6 +166,13 @@ export function EditorWindow() {
             return () => clearTimeout(timer);
         }
     }, [parsedUrlInfo]);
+
+    useEffect(() => {
+        if (validationToast) {
+            const timer = setTimeout(() => setValidationToast(null), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [validationToast, setValidationToast]);
 
     // Load selected preset from localStorage
     useEffect(() => {
@@ -218,13 +239,24 @@ export function EditorWindow() {
         };
     }, [isDraggingClipboardItem, hasClipboardDragDrop, draggedContent, updateCursorPosition, clearCursor, endDrag]);
 
-    // AI Presets
+    // AI Presets and Custom Prompts
     const enabledPresets = getEnabledPresets();
+    const enabledCustomPrompts = getEnabledCustomPrompts();
     const selectedPreset = enabledPresets.find(p => p.id === selectedPresetId) || enabledPresets[0] || null;
+    const selectedCustomPrompt = enabledCustomPrompts.find(p => p.id === selectedCustomPromptId) || null;
 
     const handleSelectPreset = useCallback((presetId: string) => {
         setSelectedPresetId(presetId);
+        setSelectedCustomPromptId(null); // Clear custom prompt selection
         localStorage.setItem('wingman_selected_ai_preset', presetId);
+        localStorage.removeItem('wingman_selected_custom_prompt');
+    }, []);
+
+    const handleSelectCustomPrompt = useCallback((promptId: string) => {
+        setSelectedCustomPromptId(promptId);
+        setSelectedPresetId(null); // Clear built-in preset selection
+        localStorage.setItem('wingman_selected_custom_prompt', promptId);
+        localStorage.removeItem('wingman_selected_ai_preset');
     }, []);
 
     const handleAiRefineWithPreset = useCallback(async (preset: Parameters<typeof callAIWithPreset>[2]) => {
@@ -249,9 +281,21 @@ export function EditorWindow() {
     }, [aiLoading, content, callAIWithPreset, setContent, setLanguage]);
 
     const handleAiButtonClick = useCallback(async () => {
-        if (!selectedPreset) return;
-        await handleAiRefineWithPreset(selectedPreset);
-    }, [selectedPreset, handleAiRefineWithPreset]);
+        // Use custom prompt if selected, otherwise use built-in preset
+        if (selectedCustomPrompt) {
+            // Convert custom prompt to preset format for AI call
+            const customAsPreset = {
+                id: selectedCustomPrompt.id,
+                name: selectedCustomPrompt.name,
+                description: selectedCustomPrompt.description,
+                systemPrompt: selectedCustomPrompt.system_prompt,
+                enabled: selectedCustomPrompt.enabled,
+            };
+            await handleAiRefineWithPreset(customAsPreset);
+        } else if (selectedPreset) {
+            await handleAiRefineWithPreset(selectedPreset);
+        }
+    }, [selectedPreset, selectedCustomPrompt, handleAiRefineWithPreset]);
 
     // Obsidian handlers
     const handleObsidianSend = useCallback(async () => {
@@ -446,8 +490,15 @@ export function EditorWindow() {
                 autocompletion({ activateOnTyping: true, maxRenderedOptions: 10 })
             );
 
+            // Enable linters for supported languages
             if (language === 'json') {
                 extensions.push(lintGutter(), linter(jsonLinter, { delay: 300 }));
+            } else if (language === 'xml') {
+                extensions.push(lintGutter(), linter(xmlLinter, { delay: 300 }));
+            } else if (language === 'python') {
+                extensions.push(lintGutter(), linter(pythonLinter, { delay: 300 }));
+            } else if (language === 'html') {
+                extensions.push(lintGutter(), linter(htmlLinter, { delay: 300 }));
             } else if (language === 'yaml') {
                 extensions.push(lintGutter(), linter(yamlLinter, { delay: 300 }));
             }
@@ -581,9 +632,12 @@ export function EditorWindow() {
                 isPremium={isPremium}
                 aiLoading={aiLoading}
                 selectedPreset={selectedPreset}
+                selectedCustomPrompt={selectedCustomPrompt}
                 enabledPresets={enabledPresets}
+                enabledCustomPrompts={enabledCustomPrompts}
                 onAiButtonClick={handleAiButtonClick}
                 onSelectPreset={handleSelectPreset}
+                onSelectCustomPrompt={handleSelectCustomPrompt}
                 hasObsidianAccess={hasObsidianAccess}
                 hasObsidianConfigured={!!hasObsidianConfigured}
                 onObsidianSend={handleObsidianSend}
@@ -600,6 +654,8 @@ export function EditorWindow() {
                 onDismissUrlParser={() => setParsedUrlInfo(null)}
                 obsidianToast={obsidianToast}
                 onToastClick={handleToastClick}
+                validationToast={validationToast}
+                onDismissValidation={() => setValidationToast(null)}
             />
 
             <TransformationFloatingButton />

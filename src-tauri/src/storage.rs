@@ -104,6 +104,22 @@ pub struct SnippetsData {
     pub snippets: Vec<Snippet>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomAIPrompt {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub system_prompt: String,
+    pub enabled: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CustomAIPromptsData {
+    pub prompts: Vec<CustomAIPrompt>,
+}
+
 pub fn get_app_data_dir() -> Result<PathBuf, StorageError> {
     dirs::data_dir()
         .map(|p| p.join("Wingman"))
@@ -157,6 +173,28 @@ pub fn load_snippets() -> Result<SnippetsData, StorageError> {
 pub fn save_snippets(data: &SnippetsData) -> Result<(), StorageError> {
     let dir = ensure_app_data_dir()?;
     let path = dir.join("snippets.json");
+    let content = serde_json::to_string_pretty(data)?;
+    fs::write(path, content)?;
+    Ok(())
+}
+
+pub fn load_custom_ai_prompts() -> Result<CustomAIPromptsData, StorageError> {
+    let dir = ensure_app_data_dir()?;
+    let path = dir.join("custom_ai_prompts.json");
+
+    if path.exists() {
+        let content = fs::read_to_string(&path)?;
+        Ok(serde_json::from_str(&content)?)
+    } else {
+        let data = CustomAIPromptsData::default();
+        save_custom_ai_prompts(&data)?;
+        Ok(data)
+    }
+}
+
+pub fn save_custom_ai_prompts(data: &CustomAIPromptsData) -> Result<(), StorageError> {
+    let dir = ensure_app_data_dir()?;
+    let path = dir.join("custom_ai_prompts.json");
     let content = serde_json::to_string_pretty(data)?;
     fs::write(path, content)?;
     Ok(())
