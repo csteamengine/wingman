@@ -13,9 +13,11 @@ export function DevModeTierSwitcher() {
   const { devTierOverride, setDevTierOverride, tier, isDev: isDevLicense } = useLicenseStore();
   const { settings } = useSettingsStore();
 
-  // Only show in development mode OR if user has a dev license AND the setting is enabled
+  // Hide if setting is disabled
+  if (!settings?.show_dev_tier_selector) return null;
+
+  // Only show in development mode OR if user has a dev license
   if (!isDev && !isDevLicense) return null;
-  if (!isDev && isDevLicense && !settings?.show_dev_tier_selector) return null;
 
   const activeTier = devTierOverride ?? null;
 
