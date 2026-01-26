@@ -212,14 +212,14 @@ Output the formatted meeting minutes directly.`}
                                 </button>
                                 <button
                                     onClick={() => togglePromptEnabled(prompt.id)}
-                                    className={`relative w-11 h-6 rounded-full transition-colors ${
+                                    className={`relative w-11 h-6 rounded-full transition-colors overflow-hidden ${
                                         prompt.enabled ? 'bg-[var(--ui-accent)]' : 'bg-[var(--ui-border)]'
                                     }`}
                                     title={prompt.enabled ? 'Disable' : 'Enable'}
                                 >
                                     <span
-                                        className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                                            prompt.enabled ? 'translate-x-6' : 'translate-x-1'
+                                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                                            prompt.enabled ? 'translate-x-5' : 'translate-x-0'
                                         }`}
                                     />
                                 </button>
