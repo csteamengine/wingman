@@ -946,32 +946,32 @@ body {
 
 /* Colorblind mode - orange for removals, blue for additions */
 .colorblind-mode .cm-deletedChunk {
-  background: rgba(251, 146, 60, 0.15);
+  background: rgba(251, 146, 60, 0.15) !important;
 }
 
 .colorblind-mode .cm-insertedChunk {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(59, 130, 246, 0.15) !important;
 }
 
 .colorblind-mode .cm-deletedText {
-  background: rgba(251, 146, 60, 0.3);
-  text-decoration: line-through;
-  text-decoration-color: rgba(251, 146, 60, 0.6);
+  background: rgba(251, 146, 60, 0.3) !important;
+  text-decoration: line-through !important;
+  text-decoration-color: rgba(251, 146, 60, 0.6) !important;
 }
 
 .colorblind-mode .cm-insertedText {
-  background: rgba(59, 130, 246, 0.3);
-  text-decoration: underline;
-  text-decoration-color: rgba(59, 130, 246, 0.6);
+  background: rgba(59, 130, 246, 0.3) !important;
+  text-decoration: underline !important;
+  text-decoration-color: rgba(59, 130, 246, 0.6) !important;
 }
 
 /* Changed lines: orange on left (removed parts), blue on right (added parts) */
 .colorblind-mode .cm-merge-a .cm-changedLine {
-  background: rgba(251, 146, 60, 0.1);
+  background: rgba(251, 146, 60, 0.1) !important;
 }
 
 .colorblind-mode .cm-merge-b .cm-changedLine {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(59, 130, 246, 0.1) !important;
 }
 
 .theme-light .diff-pane-left .diff-pane-title,
