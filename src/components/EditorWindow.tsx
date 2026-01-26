@@ -8,6 +8,7 @@ import {autocompletion, closeBrackets, closeBracketsKeymap} from '@codemirror/au
 import {linter, lintGutter} from '@codemirror/lint';
 import {oneDark} from '@codemirror/theme-one-dark';
 import {listen} from '@tauri-apps/api/event';
+import {invoke} from '@tauri-apps/api/core';
 
 import {useEditorStore} from '../stores/editorStore';
 import {useSettingsStore} from '../stores/settingsStore';
@@ -15,6 +16,7 @@ import {useLicenseStore, isDev} from '../stores/licenseStore';
 import {usePremiumStore} from '../stores/premiumStore';
 import {useDragStore} from '../stores/dragStore';
 import {useCustomAIPromptsStore} from '../stores/customAIPromptsStore';
+import {useDiffStore} from '../stores/diffStore';
 
 import {DiffPreviewModal} from './DiffPreviewModal';
 import {DiffReviewModal} from './DiffReviewModal';
@@ -313,6 +315,134 @@ export function EditorWindow() {
         }
     }, [obsidianToast, openObsidianNote, hideWindow]);
 
+    // Format handler
+    const handleFormat = useCallback(async () => {
+        const view = viewRef.current;
+        if (!view) return;
+
+        const selection = view.state.selection.main;
+        const cursorPos = selection.head;
+        const text = selection.empty ? view.state.doc.toString() : view.state.sliceDoc(selection.from, selection.to);
+        const from = selection.empty ? 0 : selection.from;
+        const to = selection.empty ? view.state.doc.length : selection.to;
+
+        if (!text.trim()) return;
+
+        try {
+            let detectedLang = language;
+
+            // Auto-detect language for plaintext
+            if (language === 'plaintext') {
+                detectedLang = await invoke<string>('detect_language', { text });
+                if (detectedLang === 'plaintext') {
+                    setValidationToast({ type: 'error', message: 'Cannot detect language. Please select a language mode first.' });
+                    return;
+                }
+                setLanguage(detectedLang);
+            }
+
+            const formatted = await invoke<string>('format_code', { text, language: detectedLang });
+
+            const applyCallback = () => {
+                const lengthDiff = formatted.length - (to - from);
+                const newCursorPos = cursorPos <= from ? cursorPos : cursorPos + lengthDiff;
+                view.dispatch({
+                    changes: { from, to, insert: formatted },
+                    selection: { anchor: newCursorPos },
+                });
+            };
+
+            // Check if diff preview is enabled
+            const showDiffPreview = settings?.show_diff_preview;
+            if (showDiffPreview && isPro && text !== formatted) {
+                useDiffStore.getState().setPendingDiff({
+                    originalText: text,
+                    transformedText: formatted,
+                    transformationType: 'Format',
+                    selectionRange: selection.empty ? null : { from, to },
+                    cursorPos,
+                    applyCallback,
+                });
+                useDiffStore.getState().openPreviewModal();
+            } else {
+                applyCallback();
+                if (text !== formatted && isPro) {
+                    useDiffStore.getState().addTransformationRecord({
+                        originalText: text,
+                        transformedText: formatted,
+                        transformationType: 'Format',
+                    });
+                }
+            }
+        } catch (error) {
+            setValidationToast({ type: 'error', message: String(error) });
+        }
+    }, [language, setLanguage, settings, isPro, setValidationToast]);
+
+    // Minify handler
+    const handleMinify = useCallback(async () => {
+        const view = viewRef.current;
+        if (!view) return;
+
+        const selection = view.state.selection.main;
+        const cursorPos = selection.head;
+        const text = selection.empty ? view.state.doc.toString() : view.state.sliceDoc(selection.from, selection.to);
+        const from = selection.empty ? 0 : selection.from;
+        const to = selection.empty ? view.state.doc.length : selection.to;
+
+        if (!text.trim()) return;
+
+        try {
+            let detectedLang = language;
+
+            // Auto-detect language for plaintext
+            if (language === 'plaintext') {
+                detectedLang = await invoke<string>('detect_language', { text });
+                if (detectedLang === 'plaintext') {
+                    setValidationToast({ type: 'error', message: 'Cannot detect language. Please select a language mode first.' });
+                    return;
+                }
+                setLanguage(detectedLang);
+            }
+
+            const minified = await invoke<string>('minify_code', { text, language: detectedLang });
+
+            const applyCallback = () => {
+                const lengthDiff = minified.length - (to - from);
+                const newCursorPos = cursorPos <= from ? cursorPos : cursorPos + lengthDiff;
+                view.dispatch({
+                    changes: { from, to, insert: minified },
+                    selection: { anchor: newCursorPos },
+                });
+            };
+
+            // Check if diff preview is enabled
+            const showDiffPreview = settings?.show_diff_preview;
+            if (showDiffPreview && isPro && text !== minified) {
+                useDiffStore.getState().setPendingDiff({
+                    originalText: text,
+                    transformedText: minified,
+                    transformationType: 'Minify',
+                    selectionRange: selection.empty ? null : { from, to },
+                    cursorPos,
+                    applyCallback,
+                });
+                useDiffStore.getState().openPreviewModal();
+            } else {
+                applyCallback();
+                if (text !== minified && isPro) {
+                    useDiffStore.getState().addTransformationRecord({
+                        originalText: text,
+                        transformedText: minified,
+                        transformationType: 'Minify',
+                    });
+                }
+            }
+        } catch (error) {
+            setValidationToast({ type: 'error', message: String(error) });
+        }
+    }, [language, setLanguage, settings, isPro, setValidationToast]);
+
     // URL Parser
     const handleParseUrl = useCallback(() => {
         if (!parsedUrlInfo || !viewRef.current) return;
@@ -582,6 +712,8 @@ export function EditorWindow() {
                 onTransform={transformText}
                 onBulletList={applyBulletList}
                 onNumberedList={applyNumberedList}
+                onFormat={handleFormat}
+                onMinify={handleMinify}
             />
 
             <FileDragOverlay isDragging={isDragging} />

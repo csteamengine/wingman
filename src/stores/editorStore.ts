@@ -7,7 +7,7 @@ import { useDiffStore } from './diffStore';
 import { useSettingsStore } from './settingsStore';
 import { useLicenseStore } from './licenseStore';
 
-export type SettingsTab = 'settings' | 'hotkeys' | 'license';
+export type SettingsTab = 'settings' | 'hotkeys' | 'license' | 'obsidian';
 
 export type AttachmentType = 'image' | 'text' | 'file';
 

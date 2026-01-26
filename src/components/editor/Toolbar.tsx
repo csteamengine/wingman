@@ -8,16 +8,20 @@ import {
     ListX,
     ArrowUpDown,
     List,
-    ListOrdered
+    ListOrdered,
+    FormInput,
+    ChevronsUpDown
 } from 'lucide-react';
 
 interface ToolbarProps {
     onTransform: (transform: string) => void;
     onBulletList: () => void;
     onNumberedList: () => void;
+    onFormat: () => void;
+    onMinify: () => void;
 }
 
-export function Toolbar({ onTransform, onBulletList, onNumberedList }: ToolbarProps) {
+export function Toolbar({ onTransform, onBulletList, onNumberedList, onFormat, onMinify }: ToolbarProps) {
     return (
         <div className="border-b border-[var(--ui-border)] px-2 py-2 overflow-x-auto">
             <div className="flex items-center gap-0.5 min-w-max">
@@ -57,6 +61,15 @@ export function Toolbar({ onTransform, onBulletList, onNumberedList }: ToolbarPr
                 </button>
                 <button onClick={onNumberedList} title="Numbered List" className="toolbar-btn">
                     <ListOrdered className="w-5 h-5" />
+                </button>
+                <div className="w-px h-6 bg-[var(--ui-border)] mx-1"/>
+
+                {/* Format & Minify Group */}
+                <button onClick={onFormat} title="Format Code" className="toolbar-btn">
+                    <FormInput className="w-5 h-5" />
+                </button>
+                <button onClick={onMinify} title="Minify Code" className="toolbar-btn">
+                    <ChevronsUpDown className="w-5 h-5" />
                 </button>
             </div>
         </div>

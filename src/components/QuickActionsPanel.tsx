@@ -29,26 +29,6 @@ interface Action {
 
 const actionSections: ActionSection[] = [
     {
-        title: 'Formatting',
-        proFeature: 'json_xml_formatting',
-        actions: [
-            {
-                id: 'format',
-                label: 'Format',
-                description: 'Pretty-print code for all supported languages',
-                handler: 'format',
-                requiresInput: true
-            },
-            {
-                id: 'minify',
-                label: 'Minify',
-                description: 'Compact code (JSON, XML, CSS, JavaScript, React, HTML)',
-                handler: 'format',
-                requiresInput: true
-            },
-        ],
-    },
-    {
         title: 'Encode/Decode',
         proFeature: 'encode_decode',
         actions: [

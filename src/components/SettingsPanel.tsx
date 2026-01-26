@@ -45,7 +45,7 @@ interface DownloadProgress {
     percent: number | null;
 }
 
-type TabType = 'settings' | 'hotkeys' | 'license';
+type TabType = 'settings' | 'hotkeys' | 'license' | 'obsidian';
 
 // Platform detection - opacity slider only available on Linux
 // macOS uses native vibrancy (NSVisualEffectView), Windows uses acrylic/mica
@@ -63,7 +63,6 @@ export function SettingsPanel() {
     const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
     const [updateError, setUpdateError] = useState<string | null>(null);
     const [appVersion, setAppVersion] = useState<string>('');
-    const [obsidianExpanded, setObsidianExpanded] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isInstalling, setIsInstalling] = useState(false);
     const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
@@ -291,6 +290,18 @@ export function SettingsPanel() {
                     >
                         License & Updates
                     </button>
+                    {hasObsidianAccess && (
+                        <button
+                            onClick={() => setActiveTab('obsidian')}
+                            className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+                                activeTab === 'obsidian'
+                                    ? 'text-[var(--ui-text)] bg-[var(--ui-surface)]'
+                                    : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)]'
+                            }`}
+                        >
+                            Obsidian
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -529,31 +540,6 @@ export function SettingsPanel() {
                                 </div>
                             )}
                         </div>
-
-                        {/* Obsidian Integration - Pro feature - Collapsible */}
-                        {hasObsidianAccess && (
-                            <div className="pt-3 border-t border-[var(--ui-border)]">
-                                <button
-                                    onClick={() => setObsidianExpanded(!obsidianExpanded)}
-                                    className="w-full flex items-center justify-between py-2 text-sm font-medium text-[var(--ui-text)] hover:text-[var(--ui-accent)] transition-colors"
-                                >
-                                    <span>Obsidian Integration</span>
-                                    <svg
-                                        className={`w-4 h-4 transition-transform ${obsidianExpanded ? 'rotate-180' : ''}`}
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
-                                {obsidianExpanded && (
-                                    <div className="mt-3">
-                                        <ObsidianConfig />
-                                    </div>
-                                )}
-                            </div>
-                        )}
 
                         {/* Reset Button */}
                         <div className="pt-4 border-t border-[var(--ui-border)]">
@@ -853,6 +839,13 @@ export function SettingsPanel() {
                                 )}
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* Obsidian Tab */}
+                {activeTab === 'obsidian' && hasObsidianAccess && (
+                    <div>
+                        <ObsidianConfig />
                     </div>
                 )}
             </div>
