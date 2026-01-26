@@ -59,6 +59,8 @@ pub struct AppSettings {
     pub show_dev_tier_selector: bool,
     #[serde(default)]
     pub colorblind_mode: bool,
+    #[serde(default = "default_last_quick_actions_tab")]
+    pub last_quick_actions_tab: String,
 }
 
 fn default_primary_action() -> String {
@@ -67,6 +69,10 @@ fn default_primary_action() -> String {
 
 fn default_show_dev_tier_selector() -> bool {
     true
+}
+
+fn default_last_quick_actions_tab() -> String {
+    "clipboard".to_string()
 }
 
 impl Default for AppSettings {
@@ -95,6 +101,7 @@ impl Default for AppSettings {
             primary_action: default_primary_action(),
             show_dev_tier_selector: default_show_dev_tier_selector(),
             colorblind_mode: false,
+            last_quick_actions_tab: default_last_quick_actions_tab(),
         }
     }
 }

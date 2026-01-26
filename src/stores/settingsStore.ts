@@ -31,6 +31,7 @@ const defaultSettings: AppSettings = {
   primary_action: 'clipboard',
   show_dev_tier_selector: true,
   colorblind_mode: false,
+  last_quick_actions_tab: 'clipboard',
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({

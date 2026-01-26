@@ -147,6 +147,7 @@ export function QuickActionsPanel() {
         editorView
     } = useEditorStore();
     const { getEffectiveTier } = useLicenseStore();
+    const { settings, updateSettings } = useSettingsStore();
 
     // Premium tier has access to all Pro features
     const effectiveTier = getEffectiveTier();
@@ -178,8 +179,14 @@ export function QuickActionsPanel() {
         loadTransformationChains();
     }, [loadCustomTransformations, loadTransformationChains]);
 
-    const [activeTab, setActiveTab] = useState<TabType>('clipboard');
+    const [activeTab, setActiveTab] = useState<TabType>(settings?.last_quick_actions_tab || 'clipboard');
     const [error, setError] = useState<string | null>(null);
+
+    // Handle tab change and persist to settings
+    const handleTabChange = useCallback((tab: TabType) => {
+        setActiveTab(tab);
+        updateSettings({ last_quick_actions_tab: tab });
+    }, [updateSettings]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -897,7 +904,7 @@ export function QuickActionsPanel() {
             {/* Tab buttons */}
             <div className="flex border-b border-[var(--ui-border)]">
                 <button
-                    onClick={() => setActiveTab('clipboard')}
+                    onClick={() => handleTabChange('clipboard')}
                     className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
                         activeTab === 'clipboard'
                             ? 'text-[var(--ui-accent)] border-b-2 border-[var(--ui-accent)]'
@@ -925,7 +932,7 @@ export function QuickActionsPanel() {
                     </div>
                 </button>
                 <button
-                    onClick={() => setActiveTab('actions')}
+                    onClick={() => handleTabChange('actions')}
                     className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
                         activeTab === 'actions'
                             ? 'text-[var(--ui-accent)] border-b-2 border-[var(--ui-accent)]'

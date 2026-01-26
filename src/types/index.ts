@@ -29,6 +29,7 @@ export interface AppSettings {
   primary_action: PrimaryAction;
   show_dev_tier_selector: boolean;
   colorblind_mode: boolean;
+  last_quick_actions_tab: 'clipboard' | 'actions';
 }
 
 export interface HistoryEntry {
