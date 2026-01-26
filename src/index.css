@@ -810,6 +810,17 @@ body {
   opacity: 0.8;
 }
 
+/* Modified lines (both panes) */
+.diff-line-modified {
+  background: rgba(251, 146, 60, 0.15);
+  border-left: 3px solid rgb(251, 146, 60);
+}
+
+.diff-line-modified .diff-line-number {
+  color: rgb(251, 146, 60);
+  opacity: 0.8;
+}
+
 /* Empty placeholder lines */
 .diff-line-empty {
   background: var(--ui-surface);
@@ -855,6 +866,17 @@ body {
 .theme-light .diff-line-added .diff-line-number,
 .theme-solarized-light .diff-line-added .diff-line-number {
   color: rgb(22, 163, 74);
+}
+
+.theme-light .diff-line-modified,
+.theme-solarized-light .diff-line-modified {
+  background: rgba(249, 115, 22, 0.1);
+  border-left-color: rgb(249, 115, 22);
+}
+
+.theme-light .diff-line-modified .diff-line-number,
+.theme-solarized-light .diff-line-modified .diff-line-number {
+  color: rgb(249, 115, 22);
 }
 
 .theme-light .diff-word-removed,

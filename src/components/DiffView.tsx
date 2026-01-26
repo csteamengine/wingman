@@ -8,9 +8,10 @@ interface DiffViewProps {
 }
 
 interface DiffLine {
-  type: 'unchanged' | 'removed' | 'added';
+  type: 'unchanged' | 'removed' | 'added' | 'modified';
   lineNumber: { left?: number; right?: number };
   content: string;
+  originalContent?: string; // For modified lines
   wordChanges?: Change[];
 }
 
@@ -120,8 +121,8 @@ function DiffViewComponent({ originalText, transformedText }: DiffViewProps) {
       }
     }
 
-    // Now compute word-level diffs for changed pairs
-    // Match removed lines with added lines in sequence
+    // Convert paired removed/added lines to modified lines
+    // This shows line modifications instead of separate deletions and additions
     let removedQueue: number[] = [];
     let addedQueue: number[] = [];
 
@@ -131,12 +132,17 @@ function DiffViewComponent({ originalText, transformedText }: DiffViewProps) {
       } else if (right[i].type === 'added' && right[i].content) {
         addedQueue.push(i);
       } else {
-        // Process queued pairs
+        // Process queued pairs as modified lines
         while (removedQueue.length > 0 && addedQueue.length > 0) {
           const removedIdx = removedQueue.shift()!;
           const addedIdx = addedQueue.shift()!;
           const wordDiff = diffWords(left[removedIdx].content, right[addedIdx].content);
+
+          // Mark as modified instead of removed/added
+          left[removedIdx].type = 'modified';
           left[removedIdx].wordChanges = wordDiff;
+          right[addedIdx].type = 'modified';
+          right[addedIdx].originalContent = left[removedIdx].content;
           right[addedIdx].wordChanges = wordDiff;
         }
         // Clear remaining queues
@@ -150,7 +156,12 @@ function DiffViewComponent({ originalText, transformedText }: DiffViewProps) {
       const removedIdx = removedQueue.shift()!;
       const addedIdx = addedQueue.shift()!;
       const wordDiff = diffWords(left[removedIdx].content, right[addedIdx].content);
+
+      // Mark as modified instead of removed/added
+      left[removedIdx].type = 'modified';
       left[removedIdx].wordChanges = wordDiff;
+      right[addedIdx].type = 'modified';
+      right[addedIdx].originalContent = left[removedIdx].content;
       right[addedIdx].wordChanges = wordDiff;
     }
 
@@ -200,11 +211,13 @@ function DiffViewComponent({ originalText, transformedText }: DiffViewProps) {
   const renderLine = (line: DiffLine, index: number, side: 'left' | 'right') => {
     const isRemoved = side === 'left' && line.type === 'removed' && line.content;
     const isAdded = side === 'right' && line.type === 'added' && line.content;
+    const isModified = line.type === 'modified' && line.content;
     const isEmpty = (side === 'left' && line.type === 'added') || (side === 'right' && line.type === 'removed');
 
     let lineClass = 'diff-line';
     if (isRemoved) lineClass += ' diff-line-removed';
     if (isAdded) lineClass += ' diff-line-added';
+    if (isModified) lineClass += ' diff-line-modified';
     if (isEmpty) lineClass += ' diff-line-empty';
 
     const lineNum = side === 'left' ? line.lineNumber.left : line.lineNumber.right;
@@ -214,7 +227,7 @@ function DiffViewComponent({ originalText, transformedText }: DiffViewProps) {
         key={index}
         className={lineClass}
         role="row"
-        aria-label={isRemoved ? 'Removed line' : isAdded ? 'Added line' : undefined}
+        aria-label={isRemoved ? 'Removed line' : isAdded ? 'Added line' : isModified ? 'Modified line' : undefined}
       >
         <span className="diff-line-number" role="cell">
           {lineNum || ''}
