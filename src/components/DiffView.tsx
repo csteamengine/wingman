@@ -8,9 +8,10 @@ import { oneDark } from '@codemirror/theme-one-dark';
 interface DiffViewProps {
   originalText: string;
   transformedText: string;
+  colorblindMode?: boolean;
 }
 
-function DiffViewComponent({ originalText, transformedText }: DiffViewProps) {
+function DiffViewComponent({ originalText, transformedText, colorblindMode = false }: DiffViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mergeViewRef = useRef<MergeView | null>(null);
 
@@ -65,7 +66,7 @@ function DiffViewComponent({ originalText, transformedText }: DiffViewProps) {
   }, [originalText, transformedText]);
 
   return (
-    <div className="diff-view-codemirror">
+    <div className={`diff-view-codemirror ${colorblindMode ? 'colorblind-mode' : ''}`}>
       <div className="diff-panes-header">
         <div className="diff-pane-header">
           <span className="diff-pane-title">Original</span>

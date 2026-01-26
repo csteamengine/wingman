@@ -2,6 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { DiffView } from './DiffView';
 import { useDiffStore } from '../stores/diffStore';
 import { useLicenseStore } from '../stores/licenseStore';
+import { useSettingsStore } from '../stores/settingsStore';
 
 export function DiffPreviewModal() {
   const {
@@ -11,6 +12,7 @@ export function DiffPreviewModal() {
     cancelTransformation,
   } = useDiffStore();
   const { getEffectiveTier } = useLicenseStore();
+  const { settings } = useSettingsStore();
 
   // Premium tier has access to all Pro features
   const effectiveTier = getEffectiveTier();
@@ -78,6 +80,7 @@ export function DiffPreviewModal() {
           <DiffView
             originalText={pendingDiff.originalText}
             transformedText={pendingDiff.transformedText}
+            colorblindMode={settings?.colorblind_mode}
           />
         </div>
 

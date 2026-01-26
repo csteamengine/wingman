@@ -57,6 +57,8 @@ pub struct AppSettings {
     pub primary_action: String,
     #[serde(default = "default_show_dev_tier_selector")]
     pub show_dev_tier_selector: bool,
+    #[serde(default)]
+    pub colorblind_mode: bool,
 }
 
 fn default_primary_action() -> String {
@@ -92,6 +94,7 @@ impl Default for AppSettings {
             show_diff_preview: false,
             primary_action: default_primary_action(),
             show_dev_tier_selector: default_show_dev_tier_selector(),
+            colorblind_mode: false,
         }
     }
 }

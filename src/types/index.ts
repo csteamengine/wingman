@@ -28,6 +28,7 @@ export interface AppSettings {
   show_diff_preview: boolean;
   primary_action: PrimaryAction;
   show_dev_tier_selector: boolean;
+  colorblind_mode: boolean;
 }
 
 export interface HistoryEntry {

@@ -30,6 +30,7 @@ const defaultSettings: AppSettings = {
   show_diff_preview: false,
   primary_action: 'clipboard',
   show_dev_tier_selector: true,
+  colorblind_mode: false,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
