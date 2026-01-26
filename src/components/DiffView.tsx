@@ -66,7 +66,7 @@ function DiffViewComponent({ originalText, transformedText, colorblindMode = fal
   }, [originalText, transformedText]);
 
   return (
-    <div className={`diff-view-codemirror ${colorblindMode ? 'colorblind-mode' : ''}`}>
+    <div className="diff-view-codemirror">
       <div className="diff-panes-header">
         <div className="diff-pane-header">
           <span className="diff-pane-title">Original</span>
@@ -75,7 +75,7 @@ function DiffViewComponent({ originalText, transformedText, colorblindMode = fal
           <span className="diff-pane-title">Transformed</span>
         </div>
       </div>
-      <div ref={containerRef} className="diff-container" />
+      <div ref={containerRef} className={`diff-container ${colorblindMode ? 'colorblind-mode' : ''}`} />
     </div>
   );
 }
