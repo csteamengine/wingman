@@ -516,23 +516,32 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
 
     if (!editorView) {
-      // Fallback: apply bullets to all lines
+      // Fallback: apply or remove bullets to all lines
       const lines = content.split('\n');
-      const bulleted = lines.map(line => {
+      const nonEmptyLines = lines.filter(line => line.trim() !== '');
+      const allBullets = nonEmptyLines.every(line => bulletPattern.test(line));
+
+      const result = lines.map(line => {
         if (line.trim() === '') {
           return line;
         }
-        // Already a bullet - skip
-        if (bulletPattern.test(line)) {
-          return line;
+
+        if (allBullets) {
+          // Remove bullets
+          return line.replace(bulletPattern, '$1');
+        } else {
+          // Already a bullet - skip
+          if (bulletPattern.test(line)) {
+            return line;
+          }
+          // Is a numbered list - convert to bullet
+          if (numberPattern.test(line)) {
+            return line.replace(numberPattern, '$1• ');
+          }
+          return '• ' + line;
         }
-        // Is a numbered list - convert to bullet
-        if (numberPattern.test(line)) {
-          return line.replace(numberPattern, '$1• ');
-        }
-        return '• ' + line;
       }).join('\n');
-      set({ content: bulleted });
+      set({ content: result });
       get().updateStats();
       return;
     }
@@ -545,48 +554,81 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const toLine = state.doc.lineAt(selection.to);
     const isSingleLine = fromLine.number === toLine.number;
 
+    // Check if all non-empty lines are already bullets
+    let hasNonEmptyLine = false;
+    let allBullets = true;
+    for (let lineNum = fromLine.number; lineNum <= toLine.number; lineNum++) {
+      const line = state.doc.line(lineNum);
+      const lineText = line.text;
+      if (lineText.trim() !== '') {
+        hasNonEmptyLine = true;
+        if (!bulletPattern.test(lineText)) {
+          allBullets = false;
+          break;
+        }
+      }
+    }
+
+    // If all non-empty lines are bullets, remove them; otherwise, apply them
+    const shouldRemove = hasNonEmptyLine && allBullets;
+
     // Process each line in the range
     const changes: { from: number; to: number; insert: string }[] = [];
     for (let lineNum = fromLine.number; lineNum <= toLine.number; lineNum++) {
       const line = state.doc.line(lineNum);
       const lineText = line.text;
 
-      // Skip already bulleted lines
-      if (bulletPattern.test(lineText)) {
-        continue;
-      }
+      if (shouldRemove) {
+        // Remove bullet formatting
+        const bulletMatch = lineText.match(bulletPattern);
+        if (bulletMatch) {
+          const indent = bulletMatch[1] || '';
+          const matchLength = bulletMatch[0].length;
+          changes.push({
+            from: line.from,
+            to: line.from + matchLength,
+            insert: indent,
+          });
+        }
+      } else {
+        // Apply bullet formatting
+        // Skip already bulleted lines
+        if (bulletPattern.test(lineText)) {
+          continue;
+        }
 
-      // Convert numbered list to bullet
-      const numberMatch = lineText.match(numberPattern);
-      if (numberMatch) {
-        const indent = numberMatch[1] || '';
-        const matchLength = numberMatch[0].length;
+        // Convert numbered list to bullet
+        const numberMatch = lineText.match(numberPattern);
+        if (numberMatch) {
+          const indent = numberMatch[1] || '';
+          const matchLength = numberMatch[0].length;
+          changes.push({
+            from: line.from,
+            to: line.from + matchLength,
+            insert: `${indent}• `,
+          });
+          continue;
+        }
+
+        // For single line (current line): add bullet even if empty
+        // For multi-line selection: skip empty lines (blank separators)
+        if (!isSingleLine && lineText.trim() === '') {
+          continue;
+        }
+
+        // Add bullet at the start of the line
         changes.push({
           from: line.from,
-          to: line.from + matchLength,
-          insert: `${indent}• `,
+          to: line.from,
+          insert: '• ',
         });
-        continue;
       }
-
-      // For single line (current line): add bullet even if empty
-      // For multi-line selection: skip empty lines (blank separators)
-      if (!isSingleLine && lineText.trim() === '') {
-        continue;
-      }
-
-      // Add bullet at the start of the line
-      changes.push({
-        from: line.from,
-        to: line.from,
-        insert: '• ',
-      });
     }
 
     if (changes.length > 0) {
       editorView.dispatch({ changes });
       // Move cursor to end of the line if it was empty
-      if (isSingleLine && fromLine.text.trim() === '') {
+      if (!shouldRemove && isSingleLine && fromLine.text.trim() === '') {
         editorView.dispatch({
           selection: { anchor: fromLine.from + 2 },
         });
@@ -623,24 +665,33 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
 
     if (!editorView) {
-      // Fallback: apply numbers to all lines
+      // Fallback: apply or remove numbers to all lines
       const lines = content.split('\n');
+      const nonEmptyLines = lines.filter(line => line.trim() !== '');
+      const allNumbered = nonEmptyLines.every(line => numberPattern.test(line));
+
       let num = 1;
-      const numbered = lines.map(line => {
+      const result = lines.map(line => {
         if (line.trim() === '') {
           return line;
         }
-        // Skip already numbered lines
-        if (numberPattern.test(line)) {
-          return line;
+
+        if (allNumbered) {
+          // Remove numbering
+          return line.replace(numberPattern, '$1');
+        } else {
+          // Skip already numbered lines
+          if (numberPattern.test(line)) {
+            return line;
+          }
+          // Convert bullet to number
+          if (bulletPattern.test(line)) {
+            return line.replace(bulletPattern, `$1${num++}. `);
+          }
+          return `${num++}. ${line}`;
         }
-        // Convert bullet to number
-        if (bulletPattern.test(line)) {
-          return line.replace(bulletPattern, `$1${num++}. `);
-        }
-        return `${num++}. ${line}`;
       }).join('\n');
-      set({ content: numbered });
+      set({ content: result });
       get().updateStats();
       return;
     }
@@ -653,6 +704,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const toLine = state.doc.lineAt(selection.to);
     const isSingleLine = fromLine.number === toLine.number;
 
+    // Check if all non-empty lines are already numbered
+    let hasNonEmptyLine = false;
+    let allNumbered = true;
+    for (let lineNum = fromLine.number; lineNum <= toLine.number; lineNum++) {
+      const line = state.doc.line(lineNum);
+      const lineText = line.text;
+      if (lineText.trim() !== '') {
+        hasNonEmptyLine = true;
+        if (!numberPattern.test(lineText)) {
+          allNumbered = false;
+          break;
+        }
+      }
+    }
+
+    // If all non-empty lines are numbered, remove them; otherwise, apply them
+    const shouldRemove = hasNonEmptyLine && allNumbered;
+
     // Process each line in the range
     const changes: { from: number; to: number; insert: string }[] = [];
     let num = 1;
@@ -660,43 +729,58 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const line = state.doc.line(lineNum);
       const lineText = line.text;
 
-      // Skip already numbered lines
-      if (numberPattern.test(lineText)) {
-        num++;
-        continue;
-      }
+      if (shouldRemove) {
+        // Remove numbered formatting
+        const numberMatch = lineText.match(numberPattern);
+        if (numberMatch) {
+          const indent = numberMatch[1] || '';
+          const matchLength = numberMatch[0].length;
+          changes.push({
+            from: line.from,
+            to: line.from + matchLength,
+            insert: indent,
+          });
+        }
+      } else {
+        // Apply numbered formatting
+        // Skip already numbered lines
+        if (numberPattern.test(lineText)) {
+          num++;
+          continue;
+        }
 
-      // Convert bullet list to numbered
-      const bulletMatch = lineText.match(bulletPattern);
-      if (bulletMatch) {
-        const indent = bulletMatch[1] || '';
-        const matchLength = bulletMatch[0].length;
+        // Convert bullet list to numbered
+        const bulletMatch = lineText.match(bulletPattern);
+        if (bulletMatch) {
+          const indent = bulletMatch[1] || '';
+          const matchLength = bulletMatch[0].length;
+          changes.push({
+            from: line.from,
+            to: line.from + matchLength,
+            insert: `${indent}${num++}. `,
+          });
+          continue;
+        }
+
+        // For single line (current line): add number even if empty
+        // For multi-line selection: skip empty lines (blank separators)
+        if (!isSingleLine && lineText.trim() === '') {
+          continue;
+        }
+
+        // Add number at the start of the line
         changes.push({
           from: line.from,
-          to: line.from + matchLength,
-          insert: `${indent}${num++}. `,
+          to: line.from,
+          insert: `${num++}. `,
         });
-        continue;
       }
-
-      // For single line (current line): add number even if empty
-      // For multi-line selection: skip empty lines (blank separators)
-      if (!isSingleLine && lineText.trim() === '') {
-        continue;
-      }
-
-      // Add number at the start of the line
-      changes.push({
-        from: line.from,
-        to: line.from,
-        insert: `${num++}. `,
-      });
     }
 
     if (changes.length > 0) {
       editorView.dispatch({ changes });
       // Move cursor to end of the line if it was empty
-      if (isSingleLine && fromLine.text.trim() === '') {
+      if (!shouldRemove && isSingleLine && fromLine.text.trim() === '') {
         editorView.dispatch({
           selection: { anchor: fromLine.from + 3 },
         });
