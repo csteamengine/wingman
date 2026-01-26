@@ -51,6 +51,7 @@ function TransformationChainsPanelContent() {
   const [showStepPicker, setShowStepPicker] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
+  const [dragOverStepId, setDragOverStepId] = useState<string | null>(null);
 
   // Form state for editing
   const [formName, setFormName] = useState('');
@@ -143,6 +144,40 @@ function TransformationChainsPanelContent() {
     });
   }, [editingChain]);
 
+  const handleMoveStepUp = useCallback((stepId: string) => {
+    if (!editingChain) return;
+
+    const steps = [...editingChain.steps];
+    const index = steps.findIndex((s) => s.id === stepId);
+
+    if (index <= 0) return; // Already at top
+
+    // Swap with previous item
+    [steps[index - 1], steps[index]] = [steps[index], steps[index - 1]];
+
+    setEditingChain({
+      ...editingChain,
+      steps,
+    });
+  }, [editingChain]);
+
+  const handleMoveStepDown = useCallback((stepId: string) => {
+    if (!editingChain) return;
+
+    const steps = [...editingChain.steps];
+    const index = steps.findIndex((s) => s.id === stepId);
+
+    if (index === -1 || index >= steps.length - 1) return; // Already at bottom
+
+    // Swap with next item
+    [steps[index], steps[index + 1]] = [steps[index + 1], steps[index]];
+
+    setEditingChain({
+      ...editingChain,
+      steps,
+    });
+  }, [editingChain]);
+
   const handleDeleteChain = useCallback((id: string) => {
     deleteChain(id);
     setDeleteConfirmId(null);
@@ -154,20 +189,33 @@ function TransformationChainsPanelContent() {
     e.dataTransfer.effectAllowed = 'move';
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent, stepId: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    setDragOverStepId(stepId);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverStepId(null);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent, targetStepId: string) => {
     e.preventDefault();
-    if (!editingChain || !draggedStepId || draggedStepId === targetStepId) return;
+    if (!editingChain || !draggedStepId || draggedStepId === targetStepId) {
+      setDraggedStepId(null);
+      setDragOverStepId(null);
+      return;
+    }
 
     const steps = [...editingChain.steps];
     const draggedIndex = steps.findIndex((s) => s.id === draggedStepId);
     const targetIndex = steps.findIndex((s) => s.id === targetStepId);
 
-    if (draggedIndex === -1 || targetIndex === -1) return;
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedStepId(null);
+      setDragOverStepId(null);
+      return;
+    }
 
     // Remove dragged item and insert at target position
     const [draggedStep] = steps.splice(draggedIndex, 1);
@@ -179,10 +227,12 @@ function TransformationChainsPanelContent() {
     });
 
     setDraggedStepId(null);
+    setDragOverStepId(null);
   }, [editingChain, draggedStepId]);
 
   const handleDragEnd = useCallback(() => {
     setDraggedStepId(null);
+    setDragOverStepId(null);
   }, []);
 
   // Render the list view
@@ -412,15 +462,20 @@ function TransformationChainsPanelContent() {
                     key={step.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, step.id)}
-                    onDragOver={handleDragOver}
+                    onDragOver={(e) => handleDragOver(e, step.id)}
+                    onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, step.id)}
                     onDragEnd={handleDragEnd}
-                    className={`group flex items-center gap-2 px-3 py-2 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] cursor-move ${
-                      draggedStepId === step.id ? 'opacity-50' : ''
-                    }`}
+                    className={`group flex items-center gap-2 px-3 py-2 rounded-md bg-[var(--ui-surface)] border transition-all ${
+                      draggedStepId === step.id
+                        ? 'opacity-40 border-[var(--ui-border)]'
+                        : dragOverStepId === step.id
+                        ? 'border-[var(--ui-accent)] border-2'
+                        : 'border-[var(--ui-border)]'
+                    } cursor-move`}
                   >
                     {/* Drag handle */}
-                    <div className="text-[var(--ui-text-muted)]">
+                    <div className="text-[var(--ui-text-muted)] cursor-grab active:cursor-grabbing">
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
                         <circle cx="2.5" cy="2.5" r="1" />
                         <circle cx="7.5" cy="2.5" r="1" />
@@ -442,9 +497,42 @@ function TransformationChainsPanelContent() {
                       </span>
                     </div>
 
+                    {/* Move buttons */}
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveStepUp(step.id);
+                        }}
+                        disabled={index === 0}
+                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-[var(--ui-hover)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        title="Move up"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 8V2M2 5l3-3 3 3" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveStepDown(step.id);
+                        }}
+                        disabled={index === editingChain.steps.length - 1}
+                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-[var(--ui-hover)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        title="Move down"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 2v6M2 5l3 3 3-3" />
+                        </svg>
+                      </button>
+                    </div>
+
                     {/* Remove button */}
                     <button
-                      onClick={() => handleRemoveStep(step.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveStep(step.id);
+                      }}
                       className="w-5 h-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-[var(--ui-text-muted)] hover:text-red-400 transition-all"
                       title="Remove step"
                     >
