@@ -1,4 +1,5 @@
 import { useLicenseStore, isDev } from '../stores/licenseStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import type { LicenseTier } from '../types';
 
 const tiers: { value: LicenseTier | null; label: string }[] = [
@@ -10,9 +11,11 @@ const tiers: { value: LicenseTier | null; label: string }[] = [
 
 export function DevModeTierSwitcher() {
   const { devTierOverride, setDevTierOverride, tier, isDev: isDevLicense } = useLicenseStore();
+  const { settings } = useSettingsStore();
 
-  // Only show in development mode OR if user has a dev license
+  // Only show in development mode OR if user has a dev license AND the setting is enabled
   if (!isDev && !isDevLicense) return null;
+  if (!isDev && isDevLicense && !settings?.show_dev_tier_selector) return null;
 
   const activeTier = devTierOverride ?? null;
 

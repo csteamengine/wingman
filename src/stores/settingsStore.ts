@@ -29,6 +29,7 @@ const defaultSettings: AppSettings = {
   sticky_mode: false,
   show_diff_preview: false,
   primary_action: 'clipboard',
+  show_dev_tier_selector: true,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({

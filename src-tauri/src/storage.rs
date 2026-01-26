@@ -55,10 +55,16 @@ pub struct AppSettings {
     pub show_diff_preview: bool,
     #[serde(default = "default_primary_action")]
     pub primary_action: String,
+    #[serde(default = "default_show_dev_tier_selector")]
+    pub show_dev_tier_selector: bool,
 }
 
 fn default_primary_action() -> String {
     "clipboard".to_string()
+}
+
+fn default_show_dev_tier_selector() -> bool {
+    true
 }
 
 impl Default for AppSettings {
@@ -85,6 +91,7 @@ impl Default for AppSettings {
             sticky_mode: false,
             show_diff_preview: false,
             primary_action: default_primary_action(),
+            show_dev_tier_selector: default_show_dev_tier_selector(),
         }
     }
 }

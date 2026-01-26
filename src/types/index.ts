@@ -27,6 +27,7 @@ export interface AppSettings {
   sticky_mode: boolean;
   show_diff_preview: boolean;
   primary_action: PrimaryAction;
+  show_dev_tier_selector: boolean;
 }
 
 export interface HistoryEntry {
