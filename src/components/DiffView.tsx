@@ -1,277 +1,80 @@
-import { useMemo, useRef, useEffect, memo } from 'react';
-import { diffLines, diffWords } from 'diff';
-import type { Change } from 'diff';
+import { useRef, useEffect, memo } from 'react';
+import { EditorView, lineNumbers, highlightActiveLine } from '@codemirror/view';
+import { EditorState } from '@codemirror/state';
+import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+import { MergeView } from '@codemirror/merge';
+import { oneDark } from '@codemirror/theme-one-dark';
 
 interface DiffViewProps {
   originalText: string;
   transformedText: string;
 }
 
-interface DiffLine {
-  type: 'unchanged' | 'removed' | 'added' | 'modified';
-  lineNumber: { left?: number; right?: number };
-  content: string;
-  originalContent?: string; // For modified lines
-  wordChanges?: Change[];
-}
-
 function DiffViewComponent({ originalText, transformedText }: DiffViewProps) {
-  const leftPaneRef = useRef<HTMLDivElement>(null);
-  const rightPaneRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mergeViewRef = useRef<MergeView | null>(null);
 
-  // Synchronized scrolling
   useEffect(() => {
-    const leftPane = leftPaneRef.current;
-    const rightPane = rightPaneRef.current;
-    if (!leftPane || !rightPane) return;
+    if (!containerRef.current) return;
 
-    let isScrolling = false;
+    // Clear any existing merge view
+    if (mergeViewRef.current) {
+      mergeViewRef.current.destroy();
+    }
 
-    const handleScroll = (source: HTMLDivElement, target: HTMLDivElement) => {
-      if (isScrolling) return;
-      isScrolling = true;
-      target.scrollTop = source.scrollTop;
-      requestAnimationFrame(() => {
-        isScrolling = false;
-      });
-    };
+    // Create the merge view
+    const mergeView = new MergeView({
+      a: {
+        doc: originalText,
+        extensions: [
+          lineNumbers(),
+          highlightActiveLine(),
+          syntaxHighlighting(defaultHighlightStyle),
+          oneDark,
+          EditorView.editable.of(false),
+          EditorState.readOnly.of(true),
+        ],
+      },
+      b: {
+        doc: transformedText,
+        extensions: [
+          lineNumbers(),
+          highlightActiveLine(),
+          syntaxHighlighting(defaultHighlightStyle),
+          oneDark,
+          EditorView.editable.of(false),
+          EditorState.readOnly.of(true),
+        ],
+      },
+      parent: containerRef.current,
+      orientation: 'a-b',
+      revertControls: 'b-to-a',
+      highlightChanges: true,
+      gutter: true,
+    });
 
-    const handleLeftScroll = () => handleScroll(leftPane, rightPane);
-    const handleRightScroll = () => handleScroll(rightPane, leftPane);
+    mergeViewRef.current = mergeView;
 
-    leftPane.addEventListener('scroll', handleLeftScroll);
-    rightPane.addEventListener('scroll', handleRightScroll);
-
+    // Cleanup on unmount
     return () => {
-      leftPane.removeEventListener('scroll', handleLeftScroll);
-      rightPane.removeEventListener('scroll', handleRightScroll);
+      if (mergeViewRef.current) {
+        mergeViewRef.current.destroy();
+        mergeViewRef.current = null;
+      }
     };
-  }, []);
-
-  // Calculate diff
-  const { leftLines, rightLines } = useMemo(() => {
-    const lineDiff = diffLines(originalText, transformedText);
-    const left: DiffLine[] = [];
-    const right: DiffLine[] = [];
-    let leftLineNum = 1;
-    let rightLineNum = 1;
-
-    for (let i = 0; i < lineDiff.length; i++) {
-      const change = lineDiff[i];
-      const lines = change.value.split('\n');
-      // Remove last empty element if the string ends with newline
-      if (lines[lines.length - 1] === '') {
-        lines.pop();
-      }
-
-      if (change.added) {
-        // Added lines - only appear on right side
-        for (const line of lines) {
-          // Check if there's a corresponding removed line to compute word diff
-          let wordChanges: Change[] | undefined;
-          const removedIdx = left.findIndex(
-            (l, idx) => l.type === 'removed' && !right[idx]
-          );
-          if (removedIdx !== -1 && left[removedIdx]) {
-            wordChanges = diffWords(left[removedIdx].content, line);
-          }
-
-          right.push({
-            type: 'added',
-            lineNumber: { right: rightLineNum++ },
-            content: line,
-            wordChanges,
-          });
-          // Add empty line on left to maintain alignment
-          left.push({
-            type: 'added',
-            lineNumber: {},
-            content: '',
-          });
-        }
-      } else if (change.removed) {
-        // Removed lines - only appear on left side
-        for (const line of lines) {
-          left.push({
-            type: 'removed',
-            lineNumber: { left: leftLineNum++ },
-            content: line,
-          });
-          // Add empty line on right to maintain alignment
-          right.push({
-            type: 'removed',
-            lineNumber: {},
-            content: '',
-          });
-        }
-      } else {
-        // Unchanged lines - appear on both sides
-        for (const line of lines) {
-          left.push({
-            type: 'unchanged',
-            lineNumber: { left: leftLineNum++ },
-            content: line,
-          });
-          right.push({
-            type: 'unchanged',
-            lineNumber: { right: rightLineNum++ },
-            content: line,
-          });
-        }
-      }
-    }
-
-    // Convert paired removed/added lines to modified lines
-    // This shows line modifications instead of separate deletions and additions
-    let removedQueue: number[] = [];
-    let addedQueue: number[] = [];
-
-    for (let i = 0; i < left.length; i++) {
-      if (left[i].type === 'removed' && left[i].content) {
-        removedQueue.push(i);
-      } else if (right[i].type === 'added' && right[i].content) {
-        addedQueue.push(i);
-      } else {
-        // Process queued pairs as modified lines
-        while (removedQueue.length > 0 && addedQueue.length > 0) {
-          const removedIdx = removedQueue.shift()!;
-          const addedIdx = addedQueue.shift()!;
-          const wordDiff = diffWords(left[removedIdx].content, right[addedIdx].content);
-
-          // Mark as modified instead of removed/added
-          left[removedIdx].type = 'modified';
-          left[removedIdx].wordChanges = wordDiff;
-          right[addedIdx].type = 'modified';
-          right[addedIdx].originalContent = left[removedIdx].content;
-          right[addedIdx].wordChanges = wordDiff;
-        }
-        // Clear remaining queues
-        removedQueue = [];
-        addedQueue = [];
-      }
-    }
-
-    // Process any remaining pairs
-    while (removedQueue.length > 0 && addedQueue.length > 0) {
-      const removedIdx = removedQueue.shift()!;
-      const addedIdx = addedQueue.shift()!;
-      const wordDiff = diffWords(left[removedIdx].content, right[addedIdx].content);
-
-      // Mark as modified instead of removed/added
-      left[removedIdx].type = 'modified';
-      left[removedIdx].wordChanges = wordDiff;
-      right[addedIdx].type = 'modified';
-      right[addedIdx].originalContent = left[removedIdx].content;
-      right[addedIdx].wordChanges = wordDiff;
-    }
-
-    return { leftLines: left, rightLines: right };
   }, [originalText, transformedText]);
 
-  const renderLineContent = (line: DiffLine, side: 'left' | 'right') => {
-    if (!line.wordChanges || line.type === 'unchanged') {
-      return <span>{line.content || '\u00A0'}</span>;
-    }
-
-    return (
-      <>
-        {line.wordChanges.map((change, idx) => {
-          if (change.added && side === 'left') return null;
-          if (change.removed && side === 'right') return null;
-
-          if (change.added) {
-            return (
-              <ins
-                key={idx}
-                className="diff-word-added no-underline"
-                aria-label="Added text"
-              >
-                {change.value}
-              </ins>
-            );
-          }
-          if (change.removed) {
-            return (
-              <del
-                key={idx}
-                className="diff-word-removed"
-                aria-label="Removed text"
-              >
-                {change.value}
-              </del>
-            );
-          }
-          return <span key={idx}>{change.value}</span>;
-        })}
-        {line.content === '' && '\u00A0'}
-      </>
-    );
-  };
-
-  const renderLine = (line: DiffLine, index: number, side: 'left' | 'right') => {
-    const isRemoved = side === 'left' && line.type === 'removed' && line.content;
-    const isAdded = side === 'right' && line.type === 'added' && line.content;
-    const isModified = line.type === 'modified' && line.content;
-    const isEmpty = (side === 'left' && line.type === 'added') || (side === 'right' && line.type === 'removed');
-
-    let lineClass = 'diff-line';
-    if (isRemoved) lineClass += ' diff-line-removed';
-    if (isAdded) lineClass += ' diff-line-added';
-    if (isModified) lineClass += ' diff-line-modified';
-    if (isEmpty) lineClass += ' diff-line-empty';
-
-    const lineNum = side === 'left' ? line.lineNumber.left : line.lineNumber.right;
-
-    return (
-      <div
-        key={index}
-        className={lineClass}
-        role="row"
-        aria-label={isRemoved ? 'Removed line' : isAdded ? 'Added line' : isModified ? 'Modified line' : undefined}
-      >
-        <span className="diff-line-number" role="cell">
-          {lineNum || ''}
-        </span>
-        <span className="diff-line-content" role="cell">
-          {isEmpty ? '\u00A0' : renderLineContent(line, side)}
-        </span>
-      </div>
-    );
-  };
-
   return (
-    <div className="diff-view" role="table" aria-label="Diff comparison">
-      <div className="diff-panes">
-        {/* Left pane - Original */}
-        <div className="diff-pane diff-pane-left">
-          <div className="diff-pane-header">
-            <span className="diff-pane-title">Original</span>
-          </div>
-          <div
-            ref={leftPaneRef}
-            className="diff-pane-content"
-            role="rowgroup"
-            tabIndex={0}
-          >
-            {leftLines.map((line, idx) => renderLine(line, idx, 'left'))}
-          </div>
+    <div className="diff-view-codemirror">
+      <div className="diff-panes-header">
+        <div className="diff-pane-header">
+          <span className="diff-pane-title">Original</span>
         </div>
-
-        {/* Right pane - Transformed */}
-        <div className="diff-pane diff-pane-right">
-          <div className="diff-pane-header">
-            <span className="diff-pane-title">Transformed</span>
-          </div>
-          <div
-            ref={rightPaneRef}
-            className="diff-pane-content"
-            role="rowgroup"
-            tabIndex={0}
-          >
-            {rightLines.map((line, idx) => renderLine(line, idx, 'right'))}
-          </div>
+        <div className="diff-pane-header">
+          <span className="diff-pane-title">Transformed</span>
         </div>
       </div>
+      <div ref={containerRef} className="diff-container" />
     </div>
   );
 }
