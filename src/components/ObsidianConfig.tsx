@@ -7,11 +7,7 @@ import { useEditorStore } from '../stores/editorStore';
 import { ProBadge } from './ProFeatureGate';
 import type { ObsidianConfig as ObsidianConfigType, ObsidianLocation } from '../types';
 
-interface ObsidianConfigProps {
-  onClose?: () => void;
-}
-
-export function ObsidianConfig({ onClose }: ObsidianConfigProps) {
+export function ObsidianConfig() {
   const {
     obsidianConfig,
     loadObsidianConfig,
@@ -149,37 +145,7 @@ export function ObsidianConfig({ onClose }: ObsidianConfigProps) {
   }
 
   return (
-    <div className="p-6 bg-gray-900 rounded-lg border border-gray-700">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <svg
-            className="w-6 h-6 text-purple-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-            />
-          </svg>
-          <h3 className="text-lg font-semibold text-white">Obsidian Integration</h3>
-        </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-200 rounded transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-      </div>
-
+    <div className="space-y-4">
       {/* Vault Path */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-300 mb-2">Vault Path</label>

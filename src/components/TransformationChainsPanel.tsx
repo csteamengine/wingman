@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useEditorStore } from '../stores/editorStore';
 import { useTransformationChainsStore } from '../stores/transformationChainsStore';
 import { useCustomTransformationsStore } from '../stores/customTransformationsStore';
@@ -52,6 +52,7 @@ function TransformationChainsPanelContent() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [draggedStepId, setDraggedStepId] = useState<string | null>(null);
   const [dragOverStepId, setDragOverStepId] = useState<string | null>(null);
+  const stepRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Form state for editing
   const [formName, setFormName] = useState('');
@@ -183,57 +184,66 @@ function TransformationChainsPanelContent() {
     setDeleteConfirmId(null);
   }, [deleteChain]);
 
-  // Drag and drop for step reordering
-  const handleDragStart = useCallback((e: React.DragEvent, stepId: string) => {
+  // Mouse-based drag and drop for step reordering (HTML5 drag doesn't work in Tauri)
+  const handleMouseDragStart = useCallback((e: React.MouseEvent, stepId: string) => {
+    if (e.button !== 0) return; // Only left click
+    e.preventDefault();
     setDraggedStepId(stepId);
-    e.dataTransfer.effectAllowed = 'move';
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent, stepId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverStepId(stepId);
-  }, []);
+  // Handle mouse move and mouse up globally when dragging
+  useEffect(() => {
+    if (!draggedStepId || !editingChain) return;
 
-  const handleDragLeave = useCallback(() => {
-    setDragOverStepId(null);
-  }, []);
+    const handleMouseMove = (e: MouseEvent) => {
+      // Find which step we're hovering over
+      let foundStepId: string | null = null;
+      stepRefsMap.current.forEach((el, id) => {
+        if (el && id !== draggedStepId) {
+          const rect = el.getBoundingClientRect();
+          if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            foundStepId = id;
+          }
+        }
+      });
+      setDragOverStepId(foundStepId);
+    };
 
-  const handleDrop = useCallback((e: React.DragEvent, targetStepId: string) => {
-    e.preventDefault();
-    if (!editingChain || !draggedStepId || draggedStepId === targetStepId) {
+    const handleMouseUp = () => {
+      if (draggedStepId && dragOverStepId && draggedStepId !== dragOverStepId) {
+        const steps = [...editingChain.steps];
+        const draggedIndex = steps.findIndex((s) => s.id === draggedStepId);
+        const targetIndex = steps.findIndex((s) => s.id === dragOverStepId);
+
+        if (draggedIndex !== -1 && targetIndex !== -1) {
+          const [draggedStep] = steps.splice(draggedIndex, 1);
+          steps.splice(targetIndex, 0, draggedStep);
+
+          setEditingChain({
+            ...editingChain,
+            steps,
+          });
+        }
+      }
       setDraggedStepId(null);
       setDragOverStepId(null);
-      return;
-    }
+    };
 
-    const steps = [...editingChain.steps];
-    const draggedIndex = steps.findIndex((s) => s.id === draggedStepId);
-    const targetIndex = steps.findIndex((s) => s.id === targetStepId);
+    // Add global listeners
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
 
-    if (draggedIndex === -1 || targetIndex === -1) {
-      setDraggedStepId(null);
-      setDragOverStepId(null);
-      return;
-    }
+    // Add cursor style while dragging
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
 
-    // Remove dragged item and insert at target position
-    const [draggedStep] = steps.splice(draggedIndex, 1);
-    steps.splice(targetIndex, 0, draggedStep);
-
-    setEditingChain({
-      ...editingChain,
-      steps,
-    });
-
-    setDraggedStepId(null);
-    setDragOverStepId(null);
-  }, [editingChain, draggedStepId]);
-
-  const handleDragEnd = useCallback(() => {
-    setDraggedStepId(null);
-    setDragOverStepId(null);
-  }, []);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [draggedStepId, dragOverStepId, editingChain]);
 
   // Render the list view
   const renderListView = () => (
@@ -460,22 +470,21 @@ function TransformationChainsPanelContent() {
                 {editingChain.steps.map((step, index) => (
                   <div
                     key={step.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, step.id)}
-                    onDragOver={(e) => handleDragOver(e, step.id)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, step.id)}
-                    onDragEnd={handleDragEnd}
-                    className={`group flex items-center gap-2 px-3 py-2 rounded-md bg-[var(--ui-surface)] border transition-all ${
+                    ref={(el) => {
+                      if (el) stepRefsMap.current.set(step.id, el);
+                      else stepRefsMap.current.delete(step.id);
+                    }}
+                    onMouseDown={(e) => handleMouseDragStart(e, step.id)}
+                    className={`group flex items-center gap-2 px-3 py-2 rounded-md bg-[var(--ui-surface)] border transition-all select-none ${
                       draggedStepId === step.id
                         ? 'opacity-40 border-[var(--ui-border)]'
                         : dragOverStepId === step.id
                         ? 'border-[var(--ui-accent)] border-2'
                         : 'border-[var(--ui-border)]'
-                    } cursor-move`}
+                    } cursor-grab`}
                   >
                     {/* Drag handle */}
-                    <div className="text-[var(--ui-text-muted)] cursor-grab active:cursor-grabbing">
+                    <div className="text-[var(--ui-text-muted)]">
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
                         <circle cx="2.5" cy="2.5" r="1" />
                         <circle cx="7.5" cy="2.5" r="1" />

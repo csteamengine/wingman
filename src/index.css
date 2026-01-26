@@ -922,56 +922,72 @@ body {
   border-right: 1px solid var(--ui-border);
 }
 
-.cm-deletedChunk {
-  background: rgba(239, 68, 68, 0.15);
+/* Default diff colors - red for removals, green for additions */
+.diff-container .cm-editor.cm-merge-a .cm-changedLine {
+  background: rgba(239, 68, 68, 0.1) !important;
 }
 
-.cm-insertedChunk {
-  background: rgba(34, 197, 94, 0.15);
+.diff-container .cm-editor.cm-merge-b .cm-changedLine {
+  background: rgba(34, 197, 94, 0.1) !important;
 }
 
-.cm-changedLine {
-  background: rgba(251, 146, 60, 0.1);
-}
-
-.cm-deletedText {
-  background: rgba(239, 68, 68, 0.3);
-  text-decoration: line-through;
-  text-decoration-color: rgba(239, 68, 68, 0.6);
-}
-
-.cm-insertedText {
-  background: rgba(34, 197, 94, 0.3);
-}
-
-/* Colorblind mode - orange for removals, blue for additions */
-.colorblind-mode .cm-deletedChunk {
-  background: rgba(251, 146, 60, 0.15) !important;
-}
-
-.colorblind-mode .cm-insertedChunk {
-  background: rgba(59, 130, 246, 0.15) !important;
-}
-
-.colorblind-mode .cm-deletedText {
-  background: rgba(251, 146, 60, 0.3) !important;
-  text-decoration: line-through !important;
-  text-decoration-color: rgba(251, 146, 60, 0.6) !important;
-}
-
-.colorblind-mode .cm-insertedText {
-  background: rgba(59, 130, 246, 0.3) !important;
+.diff-container .cm-editor.cm-merge-a .cm-changedText {
+  background: rgba(239, 68, 68, 0.25) !important;
   text-decoration: underline !important;
-  text-decoration-color: rgba(59, 130, 246, 0.6) !important;
+  text-decoration-color: rgb(239, 68, 68) !important;
+  text-decoration-thickness: 2px !important;
 }
 
-/* Changed lines: orange on left (removed parts), blue on right (added parts) */
-.colorblind-mode .cm-merge-a .cm-changedLine {
+.diff-container .cm-editor.cm-merge-b .cm-changedText {
+  background: rgba(34, 197, 94, 0.25) !important;
+  text-decoration: underline !important;
+  text-decoration-color: rgb(34, 197, 94) !important;
+  text-decoration-thickness: 2px !important;
+}
+
+.diff-container .cm-deletedChunk {
+  background: rgba(239, 68, 68, 0.15) !important;
+}
+
+.diff-container .cm-deletedChunk .cm-deletedText {
+  background: rgba(239, 68, 68, 0.3) !important;
+  text-decoration: underline !important;
+  text-decoration-color: rgb(239, 68, 68) !important;
+  text-decoration-thickness: 2px !important;
+}
+
+/* Colorblind mode diff colors - orange for removals, blue for additions */
+.diff-container.colorblind-mode .cm-editor.cm-merge-a .cm-changedLine {
   background: rgba(251, 146, 60, 0.1) !important;
 }
 
-.colorblind-mode .cm-merge-b .cm-changedLine {
+.diff-container.colorblind-mode .cm-editor.cm-merge-b .cm-changedLine {
   background: rgba(59, 130, 246, 0.1) !important;
+}
+
+.diff-container.colorblind-mode .cm-editor.cm-merge-a .cm-changedText {
+  background: rgba(251, 146, 60, 0.25) !important;
+  text-decoration: underline !important;
+  text-decoration-color: rgb(251, 146, 60) !important;
+  text-decoration-thickness: 2px !important;
+}
+
+.diff-container.colorblind-mode .cm-editor.cm-merge-b .cm-changedText {
+  background: rgba(59, 130, 246, 0.25) !important;
+  text-decoration: underline !important;
+  text-decoration-color: rgb(59, 130, 246) !important;
+  text-decoration-thickness: 2px !important;
+}
+
+.diff-container.colorblind-mode .cm-deletedChunk {
+  background: rgba(251, 146, 60, 0.15) !important;
+}
+
+.diff-container.colorblind-mode .cm-deletedChunk .cm-deletedText {
+  background: rgba(251, 146, 60, 0.3) !important;
+  text-decoration: underline !important;
+  text-decoration-color: rgb(251, 146, 60) !important;
+  text-decoration-thickness: 2px !important;
 }
 
 .theme-light .diff-pane-left .diff-pane-title,
