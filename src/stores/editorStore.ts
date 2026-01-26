@@ -117,6 +117,35 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   setLanguage: (language: string) => {
+    const { language: prevLanguage, editorView } = get();
+    
+    // Convert bullet characters when switching to/from markdown
+    if (prevLanguage !== language) {
+      const content = getEditorContent(get());
+      let newContent = content;
+      
+      if (language === 'markdown' && prevLanguage !== 'markdown') {
+        // Switching TO markdown: convert - to •
+        newContent = content.replace(/^(\s*)-\s/gm, '$1• ');
+      } else if (language !== 'markdown' && prevLanguage === 'markdown') {
+        // Switching FROM markdown: convert • to -
+        newContent = content.replace(/^(\s*)•\s/gm, '$1- ');
+      }
+      
+      if (newContent !== content) {
+        // Update editor view if available
+        if (editorView) {
+          const cursorPos = editorView.state.selection.main.head;
+          editorView.dispatch({
+            changes: { from: 0, to: content.length, insert: newContent },
+            selection: { anchor: Math.min(cursorPos, newContent.length) },
+          });
+        }
+        set({ language, content: newContent });
+        return;
+      }
+    }
+    
     set({ language });
   },
 
@@ -490,7 +519,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   applyBulletList: () => {
     const storeState = get();
-    const { editorView } = storeState;
+    const { editorView, language } = storeState;
+
+    // Use • for markdown, - for other languages
+    const bullet = language === 'markdown' ? '•' : '-';
 
     // Regex patterns for list detection
     const bulletPattern = /^(\s*)[•\-\*]\s/;
@@ -501,7 +533,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     // If no content, start a new bullet list
     if (!content.trim()) {
-      set({ content: '• ' });
+      set({ content: `${bullet} ` });
       get().updateStats();
       // Move cursor to end
       if (editorView) {
@@ -536,9 +568,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           }
           // Is a numbered list - convert to bullet
           if (numberPattern.test(line)) {
-            return line.replace(numberPattern, '$1• ');
+            return line.replace(numberPattern, `$1${bullet} `);
           }
-          return '• ' + line;
+          return `${bullet} ` + line;
         }
       }).join('\n');
       set({ content: result });
@@ -605,7 +637,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           changes.push({
             from: line.from,
             to: line.from + matchLength,
-            insert: `${indent}• `,
+            insert: `${indent}${bullet} `,
           });
           continue;
         }
@@ -620,7 +652,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         changes.push({
           from: line.from,
           to: line.from,
-          insert: '• ',
+          insert: `${bullet} `,
         });
       }
     }

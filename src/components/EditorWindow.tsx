@@ -603,13 +603,19 @@ export function EditorWindow() {
                     setContent(update.state.doc.toString());
                 }
             }),
-            markdownLinkPasteHandler,
-            markdownPlugin,
-            markdownTheme,
-            codeBlockTheme,
             clipboardDropHandler,
             ...getLanguageExtension(),
         ];
+
+        // Only apply markdown rendering when markdown language is selected
+        if (language === 'markdown') {
+            extensions.push(
+                markdownLinkPasteHandler,
+                markdownPlugin,
+                markdownTheme,
+                codeBlockTheme
+            );
+        }
 
         if (hasProEditorFeatures) {
             extensions.push(
