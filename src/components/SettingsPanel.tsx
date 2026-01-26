@@ -270,6 +270,18 @@ export function SettingsPanel() {
                     >
                         Settings
                     </button>
+                    {hasObsidianAccess && (
+                        <button
+                            onClick={() => setActiveTab('obsidian')}
+                            className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+                                activeTab === 'obsidian'
+                                    ? 'text-[var(--ui-text)] bg-[var(--ui-surface)]'
+                                    : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)]'
+                            }`}
+                        >
+                            Obsidian
+                        </button>
+                    )}
                     <button
                         onClick={() => setActiveTab('hotkeys')}
                         className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
@@ -290,18 +302,6 @@ export function SettingsPanel() {
                     >
                         License & Updates
                     </button>
-                    {hasObsidianAccess && (
-                        <button
-                            onClick={() => setActiveTab('obsidian')}
-                            className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
-                                activeTab === 'obsidian'
-                                    ? 'text-[var(--ui-text)] bg-[var(--ui-surface)]'
-                                    : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)]'
-                            }`}
-                        >
-                            Obsidian
-                        </button>
-                    )}
                 </div>
             </div>
 

@@ -9,7 +9,7 @@ import {
     ArrowUpDown,
     List,
     ListOrdered,
-    FormInput,
+    Form,
     ChevronsUpDown
 } from 'lucide-react';
 
@@ -66,7 +66,7 @@ export function Toolbar({ onTransform, onBulletList, onNumberedList, onFormat, o
 
                 {/* Format & Minify Group */}
                 <button onClick={onFormat} title="Format Code" className="toolbar-btn">
-                    <FormInput className="w-5 h-5" />
+                    <Form className="w-5 h-5" />
                 </button>
                 <button onClick={onMinify} title="Minify Code" className="toolbar-btn">
                     <ChevronsUpDown className="w-5 h-5" />
