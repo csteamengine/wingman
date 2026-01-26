@@ -1,7 +1,6 @@
 import { useEditorStore } from '../stores/editorStore';
 import { PremiumFeatureGate } from './PremiumFeatureGate';
 import { CustomAIPromptConfig } from './CustomAIPromptConfig';
-import { X } from 'lucide-react';
 
 export function CustomAIPromptsPanel() {
   return (
@@ -17,17 +16,17 @@ function CustomAIPromptsPanelContent() {
   return (
     <div className="flex flex-col h-full animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--ui-border)]">
-        <h2 className="text-sm font-medium text-[var(--ui-text)]">
-          Custom AI Prompts
-        </h2>
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--ui-border)]">
         <button
           onClick={() => setActivePanel('editor')}
-          className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors"
-          aria-label="Close panel"
+          className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors flex-shrink-0"
+          aria-label="Back to editor"
         >
-          <X className="w-4 h-4" />
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8.5 3L4.5 7L8.5 11" />
+          </svg>
         </button>
+        <span className="text-sm font-medium text-[var(--ui-text)]">Custom AI Prompts</span>
       </div>
 
       {/* Content */}
