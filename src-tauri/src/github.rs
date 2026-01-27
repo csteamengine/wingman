@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 // GitHub OAuth Client ID (from GitHub App registration)
 // TODO: Replace with your actual Client ID after registering the GitHub App
-const GITHUB_CLIENT_ID: &str = "YOUR_GITHUB_CLIENT_ID";
+const GITHUB_CLIENT_ID: &str = "Iv23liEWBm84xdG4FROh";
 
 // ============================================================================
 // Error Types
