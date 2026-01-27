@@ -1,5 +1,5 @@
 import {useRef, useState, useEffect} from 'react';
-import {Bot, ChevronDown, Check, Download, Loader2, Diamond, Github, ClipboardCopy, FileOutput} from 'lucide-react';
+import {Bot, ChevronDown, Check, Download, Loader2, Diamond, Github, FileOutput} from 'lucide-react';
 import type {AIPreset, CustomAIPrompt, AppSettings, ExportAction} from '../../types';
 
 interface ActionButtonsProps {
@@ -29,9 +29,8 @@ interface ActionButtonsProps {
     onSaveToFile: () => void;
     onCopyAsFile: () => void;
 
-    // Primary action
+    // Settings
     settings: AppSettings | null;
-    onPasteAndClose: () => void;
     onUpdateSettings: (settings: Partial<AppSettings>) => void;
 
     // Error state
@@ -68,7 +67,6 @@ export function ActionButtons({
     onSaveToFile,
     onCopyAsFile,
     settings,
-    onPasteAndClose,
     onUpdateSettings,
     aiError,
     githubError,
@@ -282,13 +280,13 @@ export function ActionButtons({
                 </div>
 
                 {/* Export split button */}
-                <div className="relative flex flex-1" ref={exportPopoverRef}>
+                <div className="relative flex" ref={exportPopoverRef}>
                     {/* Main button - triggers selected export action */}
                     <button
                         onClick={() => executeExportAction(exportAction)}
                         disabled={!hasContent || isExportDisabled(exportAction)}
                         title={getExportLabel(exportAction)}
-                        className="btn-primary flex-1 flex items-center justify-center gap-1.5 pl-3 pr-2 py-2.5 rounded-l-md text-sm disabled:opacity-40 transition-colors"
+                        className="btn-primary flex items-center justify-center gap-1.5 pl-3 pr-2 py-2.5 rounded-l-md text-sm disabled:opacity-40 transition-colors"
                     >
                         {getExportIcon(exportAction)}
                         <span>{getExportLabel(exportAction)}</span>
@@ -319,7 +317,6 @@ export function ActionButtons({
                                             key={option.id}
                                             onClick={() => {
                                                 onUpdateSettings({ export_action: option.id });
-                                                executeExportAction(option.id);
                                                 setShowExportPopover(false);
                                             }}
                                             disabled={disabled}
@@ -344,16 +341,6 @@ export function ActionButtons({
                     )}
                 </div>
 
-                {/* Floating clipboard button */}
-                <button
-                    onClick={onPasteAndClose}
-                    disabled={!hasContent}
-                    title="Copy to Clipboard (⌘↵)"
-                    className="flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-[var(--ui-surface)] hover:bg-[var(--ui-hover)] border border-[var(--ui-border)] text-[var(--ui-text)] disabled:opacity-40 transition-colors"
-                >
-                    <ClipboardCopy className="w-4 h-4" />
-                    <span className="text-[9px] mt-0.5 opacity-60">⌘↵</span>
-                </button>
             </div>
 
             {/* Error Messages */}
