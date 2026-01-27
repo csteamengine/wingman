@@ -15,5 +15,6 @@ export interface Detector {
     priority: number;
     detect: (text: string) => boolean;
     toastMessage: string;
+    getToastMessage?: (text: string) => string;
     actions: DetectorAction[];
 }

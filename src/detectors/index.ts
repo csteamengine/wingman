@@ -32,7 +32,7 @@ export function detectContent(text: string): DetectorResult | null {
         if (detector.detect(text)) {
             return {
                 detectorId: detector.id,
-                toastMessage: detector.toastMessage,
+                toastMessage: detector.getToastMessage ? detector.getToastMessage(text) : detector.toastMessage,
                 actions: detector.actions,
             };
         }

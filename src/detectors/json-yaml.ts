@@ -1,17 +1,40 @@
 import type {Detector} from './types';
 
-function isJson(text: string): boolean {
+function isValidJson(text: string): boolean {
     const trimmed = text.trim();
-    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-        (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-        try {
-            JSON.parse(trimmed);
-            return true;
-        } catch {
-            return false;
-        }
+    if (!looksLikeJson(trimmed)) return false;
+    try {
+        JSON.parse(trimmed);
+        return true;
+    } catch {
+        return false;
     }
-    return false;
+}
+
+function looksLikeJson(text: string): boolean {
+    const trimmed = text.trim();
+    return (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+           (trimmed.startsWith('[') && trimmed.endsWith(']'));
+}
+
+function looksLikeInvalidJson(text: string): boolean {
+    const trimmed = text.trim();
+    if (!looksLikeJson(trimmed)) return false;
+    try {
+        JSON.parse(trimmed);
+        return false; // it's valid, not invalid
+    } catch {
+        return true;
+    }
+}
+
+function getJsonError(text: string): string {
+    try {
+        JSON.parse(text.trim());
+        return 'Valid JSON';
+    } catch (e) {
+        return e instanceof SyntaxError ? e.message : String(e);
+    }
 }
 
 function isYaml(text: string): boolean {
@@ -38,20 +61,21 @@ function sortJsonKeys(obj: unknown): unknown {
 export const jsonYamlDetector: Detector = {
     id: 'json-yaml',
     priority: 2,
-    detect: (text: string) => isJson(text) || isYaml(text),
+    detect: (text: string) => isValidJson(text) || looksLikeInvalidJson(text) || isYaml(text),
     toastMessage: 'JSON/YAML detected',
+    getToastMessage: (text: string) => {
+        if (looksLikeInvalidJson(text)) return 'Invalid JSON detected';
+        if (isValidJson(text)) return 'JSON detected';
+        return 'YAML detected';
+    },
     actions: [
         {
             id: 'format-json',
             label: 'Format',
             execute: (text: string) => {
                 const trimmed = text.trim();
-                if (isJson(trimmed)) {
-                    try {
-                        return JSON.stringify(JSON.parse(trimmed), null, 2);
-                    } catch {
-                        return text;
-                    }
+                if (isValidJson(trimmed)) {
+                    return JSON.stringify(JSON.parse(trimmed), null, 2);
                 }
                 return text;
             },
@@ -61,12 +85,8 @@ export const jsonYamlDetector: Detector = {
             label: 'Minify',
             execute: (text: string) => {
                 const trimmed = text.trim();
-                if (isJson(trimmed)) {
-                    try {
-                        return JSON.stringify(JSON.parse(trimmed));
-                    } catch {
-                        return text;
-                    }
+                if (isValidJson(trimmed)) {
+                    return JSON.stringify(JSON.parse(trimmed));
                 }
                 return text;
             },
@@ -76,13 +96,24 @@ export const jsonYamlDetector: Detector = {
             label: 'Sort Keys',
             execute: (text: string) => {
                 const trimmed = text.trim();
-                if (isJson(trimmed)) {
-                    try {
-                        const parsed = JSON.parse(trimmed);
-                        return JSON.stringify(sortJsonKeys(parsed), null, 2);
-                    } catch {
-                        return text;
+                if (isValidJson(trimmed)) {
+                    const parsed = JSON.parse(trimmed);
+                    return JSON.stringify(sortJsonKeys(parsed), null, 2);
+                }
+                return text;
+            },
+        },
+        {
+            id: 'validate-json',
+            label: 'Validate',
+            execute: (text: string) => {
+                const trimmed = text.trim();
+                if (looksLikeJson(trimmed)) {
+                    const error = getJsonError(trimmed);
+                    if (error === 'Valid JSON') {
+                        return `// ✓ Valid JSON\n${text}`;
                     }
+                    return `// ✗ Invalid JSON: ${error}\n${text}`;
                 }
                 return text;
             },
