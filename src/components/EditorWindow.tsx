@@ -49,6 +49,8 @@ import {
 
 import type {ObsidianResult, GistResult, AIPreset} from '../types';
 import {maskSecrets} from '../utils/maskSecrets';
+import {detectContent} from '../detectors';
+import type {DetectorResult, DetectorAction} from '../detectors';
 
 export function EditorWindow() {
     const editorRef = useRef<HTMLDivElement>(null);
@@ -62,6 +64,7 @@ export function EditorWindow() {
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const [selectedCustomPromptId, setSelectedCustomPromptId] = useState<string | null>(null);
     const [parsedUrlInfo, setParsedUrlInfo] = useState<{url: string; cursorPos: number} | null>(null);
+    const [contextDetection, setContextDetection] = useState<DetectorResult | null>(null);
 
     // Get drag store state and functions
     const {
@@ -213,6 +216,23 @@ export function EditorWindow() {
             return () => clearTimeout(timer);
         }
     }, [validationToast, setValidationToast]);
+
+    // Content detection - debounced
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const result = detectContent(content);
+            setContextDetection(result);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [content]);
+
+    // Auto-dismiss context detection after 8 seconds
+    useEffect(() => {
+        if (contextDetection) {
+            const timer = setTimeout(() => setContextDetection(null), 8000);
+            return () => clearTimeout(timer);
+        }
+    }, [contextDetection]);
 
     // Load selected preset from localStorage
     useEffect(() => {
@@ -576,6 +596,13 @@ export function EditorWindow() {
         }
     }, [settings, isPro]);
 
+    // Context detection action handler
+    const handleContextAction = useCallback((action: DetectorAction) => {
+        const result = action.execute(content);
+        setContent(result);
+        setContextDetection(null);
+    }, [content, setContent]);
+
     // URL Parser
     const handleParseUrl = useCallback(() => {
         if (!parsedUrlInfo || !viewRef.current) return;
@@ -936,6 +963,9 @@ export function EditorWindow() {
                 onGistToastDismiss={() => setGistToast(null)}
                 validationToast={validationToast}
                 onDismissValidation={() => setValidationToast(null)}
+                contextDetection={contextDetection}
+                onContextAction={handleContextAction}
+                onDismissContext={() => setContextDetection(null)}
             />
 
             <TransformationFloatingButton />

@@ -1,4 +1,5 @@
 import type {ObsidianResult, GistResult} from '../../types';
+import type {DetectorResult, DetectorAction} from '../../detectors/types';
 
 export interface ValidationToast {
     type: 'success' | 'error';
@@ -23,6 +24,11 @@ interface FloatingNotificationsProps {
     // Validation toast state
     validationToast: ValidationToast | null;
     onDismissValidation: () => void;
+
+    // Context detection state
+    contextDetection?: DetectorResult | null;
+    onContextAction?: (action: DetectorAction) => void;
+    onDismissContext?: () => void;
 }
 
 export function FloatingNotifications({
@@ -36,7 +42,11 @@ export function FloatingNotifications({
     onGistToastDismiss: _onGistToastDismiss,
     validationToast,
     onDismissValidation,
+    contextDetection,
+    onContextAction,
+    onDismissContext,
 }: FloatingNotificationsProps) {
+    const hasOtherToast = !!(parsedUrlInfo || obsidianToast || gistToast || validationToast);
     return (
         <>
             {/* Validation Toast */}
@@ -135,6 +145,36 @@ export function FloatingNotifications({
                         <svg className="w-4 h-4 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                         </svg>
+                    </div>
+                </div>
+            )}
+            {/* Context Detection Toast */}
+            {contextDetection && !hasOtherToast && onContextAction && onDismissContext && (
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 animate-slide-up max-w-lg">
+                    <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-600/95 rounded-lg shadow-lg border border-amber-500/50">
+                        <svg className="w-4 h-4 text-white flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span className="text-sm text-white font-medium whitespace-nowrap">{contextDetection.toastMessage}</span>
+                        <div className="flex items-center gap-1.5">
+                            {contextDetection.actions.map((action) => (
+                                <button
+                                    key={action.id}
+                                    onClick={() => onContextAction(action)}
+                                    className="px-2.5 py-1 text-xs font-medium text-amber-900 bg-white/90 rounded hover:bg-white transition-colors whitespace-nowrap"
+                                >
+                                    {action.label}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            onClick={onDismissContext}
+                            className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+                        >
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
             )}
