@@ -73,7 +73,7 @@ export function Toolbar({ onTransform, onBulletList, onNumberedList, onFormat, o
                 <button onClick={onMinify} title="Minify Code" className="toolbar-btn">
                     <ChevronsDownUp className="w-5 h-5" />
                 </button>
-                <button onClick={onMaskSecrets} title="Mask Secrets — redact API keys, tokens, passwords and other sensitive values" className="toolbar-btn">
+                <button onClick={onMaskSecrets} title="Mask Secrets — redacts API keys, tokens, passwords, JWTs, connection strings, private keys, and hashes" className="toolbar-btn">
                     <EyeOff className="w-5 h-5" />
                 </button>
             </div>
