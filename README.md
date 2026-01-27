@@ -8,16 +8,17 @@ A lightweight, cross-platform developer toolkit that provides a spotlight-style 
 
 ## What is Wingman?
 
-Wingman is a desktop application that gives you instant access to developer tools through a global hotkey. Press the shortcut and get a powerful overlay with JSON/XML formatting, text scratchpads with syntax highlighting, snippet recording, and more—without ever leaving your current workspace.
+Wingman is a desktop application that gives you instant access to developer tools through a global hotkey. Press the shortcut and get a powerful overlay with a code editor, text transformations, AI refinement, and more—without ever leaving your current workspace.
 
 ### Key Use Cases
 
-- **Quick Text Transformations**: Convert case, sort lines, remove duplicates
-- **Code Scratchpad**: Scratch space for testing snippets and quick edits
-- **Developer Utilities**: UUID generator, Lorem Ipsum generator
-- **JSON/XML Formatting** *(Pro)*: Quickly validate and beautify JSON or XML
-- **Clipboard Management** *(Pro)*: Advanced clipboard history and manipulation
-- **Snippet Recording** *(Pro)*: Capture and replay frequently-used code patterns
+- **Quick Text Transformations**: Convert case, sort lines, remove duplicates, bullet/numbered lists
+- **Code Scratchpad**: Scratch space with syntax highlighting for 20+ languages
+- **Developer Utilities**: UUID generator, Lorem Ipsum generator, hash generators, encode/decode tools
+- **Code Formatting** *(Pro)*: Format and minify JSON, XML, HTML, CSS, JavaScript, Python, and more
+- **Clipboard Management** *(Pro)*: Clipboard history with search and drag-and-drop support
+- **Snippet Library** *(Pro)*: Save, organize, search, and tag reusable code snippets
+- **AI Text Refinement** *(Premium)*: Transform text with AI-powered presets for emails, commits, code review, and more
 
 ## Features
 
@@ -25,72 +26,84 @@ Wingman is a desktop application that gives you instant access to developer tool
 
 Everything you need for quick text manipulation:
 
-- **Text Scratchpad**: Simple code editor for quick text work
+- **Text Scratchpad**: CodeMirror-based code editor for quick text work
 - **Text Transformations**:
     - Case conversion (UPPERCASE, lowercase, Title Case, Sentence case)
     - Line operations (sort, deduplicate, reverse)
     - Trim whitespace and remove empty lines
+    - Bullet list and numbered list formatting
+    - Custom transformations (write your own JavaScript/TypeScript transforms)
     - Transformation chains: combine multiple transforms into a single action
 - **Generators**:
     - UUID v4 generator
-    - Lorem Ipsum generator (1, 3, or 5 paragraphs)
+    - Lorem Ipsum generator (configurable paragraphs)
+    - Hash generators (MD5, SHA-1, SHA-256, SHA-512)
+- **Export Options**:
+    - Copy to clipboard with keyboard shortcut (⌘↵)
+    - Save to file with native OS file picker
+    - Copy as file to clipboard
+    - Export split button with remembered last action
 - **Interface**:
     - Spotlight-style overlay that appears over any application
     - Global hotkey activation (configurable)
-    - Copy to clipboard with keyboard shortcut
-    - Save to file with native OS file picker
-    - Configurable primary action (clipboard or save file)
-    - Customizable font family, size, and opacity
+    - Configurable font family, size, and opacity
     - System tray integration
+    - Focus mode (fill-screen without fullscreen)
+    - Sticky mode (keep window visible across spaces)
+    - Window position remembered per monitor
 
 ### Pro Features
 
 Unlock the full power of Wingman:
 
 - **Image & File Attachments**: Drag and drop images and files to include with your text—paste them together anywhere
-- **Multi-Language Scratchpad**: Syntax highlighting for 20+ languages (JavaScript, TypeScript, Python, Rust, Go, Java, and more)
+- **Multi-Language Scratchpad**: Syntax highlighting for 20+ languages (JavaScript, TypeScript, Python, Rust, Go, Java, React/JSX, and more)
 - **Obsidian-Style Markdown Editing**:
     - Live preview with syntax hiding (bold, italic, strikethrough, inline code)
     - Headers (H1-H6), blockquotes, horizontal rules
     - Links and images with inline preview
+    - Bullet list rendering with dot widgets
     - Fenced code blocks with syntax highlighting
     - Cursor reveals syntax for editing, hides when moving away
-- **JSON/XML Formatter**: Pretty-print and minify JSON, format XML with proper indentation
+- **Code Formatting & Minification**: Format and minify JSON, XML, HTML, CSS, JavaScript, TypeScript, Python, SQL, Go, Rust, Java, PHP, Ruby, Swift, Kotlin, C#, C/C++, Bash, Markdown
+- **Diff Preview**: Review text transformations before applying, with undo support
 - **Encode/Decode Tools**:
     - Base64 encode/decode
     - URL encode/decode
     - HTML entity encode/decode
-- **Clipboard History**: Access your clipboard history with search and drag-drop support
+- **Clipboard History**: Access clipboard history with search and drag-drop reordering
 - **Export History**: Export clipboard history to JSON
 - **Snippet Library**: Save, organize, search, and tag your code snippets
 - **Stats Display**: Character, word, and line count
 - **Custom Themes**: Dark, Light, High Contrast, Solarized Dark/Light, Dracula, Nord
 - **Obsidian Integration**: Send notes directly to your Obsidian vault
+- **GitHub Gist Integration**: Create GitHub Gists directly from the editor
+- **Copy as File**: Copy editor content as a file to the system clipboard
+- **Colorblind Mode**: Accessible color scheme option
 
 ### Premium Features
 
 For power users who want AI assistance:
 
-- **AI Text Refinement**: Transform rough text into polished content
+- **AI Text Refinement**: Transform rough text into polished content with built-in presets:
+    - Ask AI (general Q&A)
+    - General refinement (copy editing)
     - Email formatting
     - Slack message optimization
-    - Git commit messages
+    - Claude Code prompt optimization
+    - Git commit messages (conventional commits)
     - Jira/ticket formatting
     - Code review comments
     - Documentation generation
     - PR descriptions
     - TL;DR summaries
+    - Stack trace parsing and explanation
 - **Code Explainer**: AI-powered code explanations with:
     - Markdown-formatted output with fenced code blocks
     - Syntax highlighting for the detected language
     - Granular breakdown of functions, loops, conditionals
     - Educational explanations for each code section
-
-### Coming Soon
-
-- **Hash Generation**: MD5, SHA-256 *(coming soon)*
-- **Regex Tester**: Live pattern testing with match highlighting *(coming soon)*
-- **Timestamp Converter**: Unix timestamp to human-readable and vice versa *(coming soon)*
+- **Custom AI Prompts**: Create your own AI presets with custom system prompts
 
 ## Installation
 
@@ -129,13 +142,13 @@ git clone https://github.com/yourusername/wingman.git
 cd wingman
 
 # Install dependencies
-npm install
+pnpm install
 
 # Run in development mode
-npm run tauri dev
+pnpm tauri dev
 
 # Build for production
-npm run tauri build
+pnpm tauri build
 ```
 
 ## Usage
@@ -144,10 +157,10 @@ npm run tauri build
 
 1. Press the global hotkey (default: `Cmd+Shift+Space` on Mac, `Ctrl+Shift+Space` on Windows/Linux)
 2. A spotlight-style overlay appears over your current workspace
-3. Start typing to search tools, or use keyboard shortcuts to jump directly to utilities
-4. Use the tool you need (format JSON, grab a snippet, check regex, etc.)
-5. Press `ESC` to close and return to your work
-6. Results are automatically copied to clipboard when appropriate
+3. Start typing or paste content into the editor
+4. Use toolbar buttons for transformations, formatting, or AI refinement
+5. Press `⌘↵` to copy to clipboard and paste to previous app, or use the export split button
+6. Press `ESC` to close and return to your work
 
 ### Keyboard Shortcuts
 
@@ -156,54 +169,19 @@ npm run tauri build
 |----------|--------|
 | `Cmd/Ctrl+Shift+Space` | Show/hide Wingman (configurable) |
 
-#### Navigation
-| Shortcut | Action |
-|----------|--------|
-| `ESC` | Close Wingman |
-| `Cmd/Ctrl+,` | Open settings |
-| `Cmd/Ctrl+K` | Command palette / tool search |
-| `Cmd/Ctrl+1-9` | Jump to tool by number |
-
-#### Tool Shortcuts
-| Shortcut | Action |
-|----------|--------|
-| `Cmd/Ctrl+J` | Open JSON formatter |
-| `Cmd/Ctrl+R` | Open regex tester |
-| `Cmd/Ctrl+P` | Open color picker |
-| `Cmd/Ctrl+S` | Open scratchpad |
-| `Cmd/Ctrl+H` | Open clipboard history |
-| `Cmd/Ctrl+B` | Open snippet library |
-
 #### Editor Actions
 | Shortcut | Action |
 |----------|--------|
-| `Cmd/Ctrl+Enter` | Format/execute (context-dependent) |
-| `Cmd/Ctrl+Shift+C` | Copy result to clipboard |
-| `Cmd/Ctrl+N` | Clear current tool |
-| `Cmd/Ctrl+Shift+F` | Auto-format code |
-
-### Quick Tool Access
-
-Type these prefixes in the command palette for instant access:
-
-- `json` - JSON formatter
-- `xml` - XML formatter
-- `regex` - Regex tester
-- `color` - Color picker
-- `hash` - Hash generator
-- `base64` - Base64 encoder/decoder
-- `uuid` - UUID generator
-- `time` - Timestamp converter
-- `lorem` - Lorem ipsum generator
+| `Cmd/Ctrl+Enter` | Copy to clipboard and paste to previous app |
+| `ESC` | Close Wingman |
+| `Cmd/Ctrl+,` | Open settings |
 
 ### Tips
 
-- **Use the command palette** (`Cmd/Ctrl+K`) to quickly search and navigate between tools
-- **Scratchpad auto-detects language** from file extensions or content
-- **Snippets sync** across all your devices (optional)
-- **JSON/XML validator** shows errors inline with line numbers
-- All tools work completely offline—no internet required
-- Window position and size are remembered between sessions
+- **Language auto-detection** works when formatting—select a language mode or let Wingman detect it
+- Window position and size are remembered per monitor between sessions
+- All tools work completely offline—no internet required (except AI features and GitHub Gist)
+- Use the export split button dropdown to switch between Save to File, Obsidian, GitHub Gist, and Copy as File
 
 ## Configuration
 
@@ -215,21 +193,20 @@ Settings are stored in:
 ### Customizable Settings
 
 - Global hotkey
-- Theme (dark/light/high contrast)
+- Theme (Dark, Light, High Contrast, Solarized Dark/Light, Dracula, Nord)
 - Font family and size
 - Window opacity and blur
-- Default tool on launch
-- Clipboard history size
-- Snippet sync (optional cloud storage)
-- Tool-specific preferences (regex flags, color format defaults, etc.)
+- Sticky mode (keep visible across spaces)
+- Diff preview for transformations
+- Default export action
+- Colorblind mode
 
 ## Privacy
 
 Wingman is privacy-first:
 - **No analytics or telemetry** - your data never leaves your machine
 - **All data stored locally** - settings, history, and snippets are stored in local files
-- **Works completely offline** - no internet connection required
-- **Optional sync** - enable cloud sync for snippets only if you want it
+- **Works completely offline** - no internet connection required (except AI and GitHub features)
 
 ## Development
 
@@ -238,35 +215,30 @@ Wingman is privacy-first:
 ```
 wingman/
 ├── src-tauri/              # Rust backend
-│   ├── src/
-│   │   ├── main.rs        # Application entry
-│   │   ├── lib.rs         # Tauri commands
-│   │   ├── hotkey.rs      # Global hotkey management
-│   │   ├── clipboard.rs   # Clipboard utilities
-│   │   ├── storage.rs     # Settings & snippets storage
-│   │   ├── history.rs     # Clipboard history (SQLite)
-│   │   ├── window.rs      # Overlay window management
-│   │   └── tools/         # Tool-specific utilities
-│   │       ├── json.rs    # JSON validation/formatting
-│   │       ├── xml.rs     # XML validation/formatting
-│   │       ├── regex.rs   # Regex testing
-│   │       ├── hash.rs    # Hash generation
-│   │       └── encoder.rs # Base64, URL encoding
-│   ├── Cargo.toml
-│   └── tauri.conf.json
+│   └── src/
+│       ├── main.rs         # Application entry
+│       ├── lib.rs          # Tauri commands
+│       ├── hotkey.rs       # Global hotkey management
+│       ├── clipboard.rs    # Clipboard & text utilities
+│       ├── native_clipboard.rs # Native clipboard (files, images)
+│       ├── formatters.rs   # Code formatting & minification
+│       ├── storage.rs      # Settings & snippets storage
+│       ├── history.rs      # Clipboard history (SQLite)
+│       ├── premium.rs      # AI, Obsidian integration
+│       ├── github.rs       # GitHub Gist integration
+│       ├── license.rs      # License management
+│       └── window.rs       # Overlay window management (macOS)
 ├── src/                    # React frontend
 │   ├── components/
-│   │   ├── CommandPalette/
-│   │   ├── Tools/         # Individual tool components
-│   │   │   ├── JSONFormatter/
-│   │   │   ├── Scratchpad/
-│   │   │   ├── SnippetLibrary/
-│   │   │   ├── RegexTester/
-│   │   │   └── ...
-│   │   └── shared/
-│   ├── hooks/             # Custom React hooks
-│   ├── stores/            # Zustand state stores
-│   └── types/             # TypeScript types
+│   │   ├── editor/         # Editor components (toolbar, action buttons, etc.)
+│   │   ├── EditorWindow.tsx
+│   │   ├── HistoryPanel.tsx
+│   │   ├── SnippetsPanel.tsx
+│   │   └── SettingsPanel.tsx
+│   ├── hooks/              # Custom React hooks
+│   ├── stores/             # Zustand state stores
+│   ├── data/               # AI presets, constants
+│   └── types/              # TypeScript types
 ├── package.json
 └── tailwind.config.js
 ```
@@ -278,20 +250,22 @@ wingman/
 - **State Management**: Zustand
 - **Backend**: Rust with Tauri 2.x
 - **Storage**: SQLite (history), JSON files (settings, snippets)
-- **Parsing**: serde_json (JSON), quick-xml (XML)
+- **Icons**: Lucide React
 
 ### Building
 
 ```bash
 # Development
-npm run tauri dev
+pnpm tauri dev
 
 # Production build
-npm run tauri build
+pnpm tauri build
 
-# Run tests
-npm test
-cargo test
+# Type check
+pnpm build
+
+# Lint
+pnpm lint
 ```
 
 ## Contributing
@@ -313,16 +287,6 @@ Contributions are welcome! Please read our contributing guidelines before submit
 - Provide steps to reproduce the issue
 - For tool-specific bugs, include sample input that triggers the issue
 
-## Potential Roadmap
-
-- [ ] Diff tool for comparing text/code
-- [ ] CSV/TSV formatter and analyzer
-- [ ] SQL formatter and query builder
-- [ ] Markdown preview
-- [ ] Image optimization tool
-- [ ] JWT decoder
-- [ ] Mock data generator
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -332,4 +296,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Tauri](https://tauri.app/) - Cross-platform desktop app framework
 - [CodeMirror](https://codemirror.net/) - Extensible code editor
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
+- [Lucide](https://lucide.dev/) - Icon library
 - Inspired by [Raycast](https://raycast.com/), [Alfred](https://www.alfredapp.com/), and developer productivity tools

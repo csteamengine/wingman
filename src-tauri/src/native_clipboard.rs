@@ -250,3 +250,154 @@ pub fn write_to_clipboard(
 ) -> Result<(), String> {
     Err("Native clipboard only supported on macOS".to_string())
 }
+
+/// Get file extension from language identifier
+fn extension_from_language(language: &str) -> &str {
+    match language {
+        "javascript" => "js",
+        "typescript" => "ts",
+        "jsx" | "react" => "jsx",
+        "tsx" => "tsx",
+        "python" => "py",
+        "rust" => "rs",
+        "go" => "go",
+        "java" => "java",
+        "kotlin" => "kt",
+        "swift" => "swift",
+        "csharp" => "cs",
+        "cpp" => "cpp",
+        "c" => "c",
+        "ruby" => "rb",
+        "php" => "php",
+        "html" => "html",
+        "css" => "css",
+        "json" => "json",
+        "xml" => "xml",
+        "yaml" => "yaml",
+        "sql" => "sql",
+        "bash" => "sh",
+        "markdown" => "md",
+        _ => "txt",
+    }
+}
+
+/// Copy content as a file to the system clipboard
+/// Creates a temp file with the appropriate extension and copies it as a file reference
+#[cfg(target_os = "macos")]
+pub fn copy_file_to_clipboard(content: &str, language: &str) -> Result<String, String> {
+    let temp_dir = get_clipboard_temp_dir()?;
+    cleanup_old_temp_files(&temp_dir);
+
+    let ext = extension_from_language(language);
+    let filename = format!("wingman_{}.{}", chrono::Utc::now().timestamp_millis(), ext);
+    let file_path = temp_dir.join(&filename);
+
+    fs::write(&file_path, content)
+        .map_err(|e| format!("Failed to write temp file: {}", e))?;
+
+    let file_path_str = file_path.to_string_lossy().to_string();
+
+    unsafe {
+        let pasteboard: id = msg_send![class!(NSPasteboard), generalPasteboard];
+        let _: i64 = msg_send![pasteboard, clearContents];
+
+        // Declare types
+        let filenames_type = NSString::alloc(nil).init_str("NSFilenamesPboardType");
+        let file_url_type = NSString::alloc(nil).init_str("public.file-url");
+        let types_array = NSArray::arrayWithObjects(nil, &[filenames_type, file_url_type]);
+        let _: id = msg_send![pasteboard, declareTypes:types_array owner:nil];
+
+        // Write file paths
+        let ns_path = NSString::alloc(nil).init_str(&file_path_str);
+        let paths_array = NSArray::arrayWithObjects(nil, &[ns_path]);
+        let filenames_type2 = NSString::alloc(nil).init_str("NSFilenamesPboardType");
+        let _: bool = msg_send![pasteboard, setPropertyList:paths_array forType:filenames_type2];
+
+        // Write file URL
+        let file_url = format!("file://{}", file_path_str);
+        let url_type2 = NSString::alloc(nil).init_str("public.file-url");
+        let ns_url = NSString::alloc(nil).init_str(&file_url);
+        let _: bool = msg_send![pasteboard, setString:ns_url forType:url_type2];
+    }
+
+    Ok(file_path_str)
+}
+
+#[cfg(target_os = "linux")]
+pub fn copy_file_to_clipboard(content: &str, language: &str) -> Result<String, String> {
+    let temp_dir = get_clipboard_temp_dir()?;
+    cleanup_old_temp_files(&temp_dir);
+
+    let ext = extension_from_language(language);
+    let filename = format!("wingman_{}.{}", chrono::Utc::now().timestamp_millis(), ext);
+    let file_path = temp_dir.join(&filename);
+
+    fs::write(&file_path, content)
+        .map_err(|e| format!("Failed to write temp file: {}", e))?;
+
+    let file_path_str = file_path.to_string_lossy().to_string();
+    let uri = format!("file://{}\n", file_path_str);
+
+    // Try xclip with text/uri-list
+    let result = std::process::Command::new("xclip")
+        .args(["-selection", "clipboard", "-t", "text/uri-list"])
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            if let Some(stdin) = child.stdin.as_mut() {
+                stdin.write_all(uri.as_bytes())?;
+            }
+            child.wait()
+        });
+
+    match result {
+        Ok(status) if status.success() => Ok(file_path_str),
+        _ => {
+            // Fallback: copy file path as text
+            let _ = std::process::Command::new("xclip")
+                .args(["-selection", "clipboard"])
+                .stdin(std::process::Stdio::piped())
+                .spawn()
+                .and_then(|mut child| {
+                    use std::io::Write;
+                    if let Some(stdin) = child.stdin.as_mut() {
+                        stdin.write_all(file_path_str.as_bytes())?;
+                    }
+                    child.wait()
+                });
+            Ok(file_path_str)
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub fn copy_file_to_clipboard(content: &str, language: &str) -> Result<String, String> {
+    let temp_dir = get_clipboard_temp_dir()?;
+    cleanup_old_temp_files(&temp_dir);
+
+    let ext = extension_from_language(language);
+    let filename = format!("wingman_{}.{}", chrono::Utc::now().timestamp_millis(), ext);
+    let file_path = temp_dir.join(&filename);
+
+    fs::write(&file_path, content)
+        .map_err(|e| format!("Failed to write temp file: {}", e))?;
+
+    let file_path_str = file_path.to_string_lossy().to_string();
+
+    // Use PowerShell to set the clipboard to a file drop list
+    let ps_script = format!(
+        r#"$files = [System.Collections.Specialized.StringCollection]::new(); $files.Add('{}'); [System.Windows.Forms.Clipboard]::SetFileDropList($files)"#,
+        file_path_str.replace("'", "''")
+    );
+
+    let result = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-Command", &format!("Add-Type -AssemblyName System.Windows.Forms; {}", ps_script)])
+        .output();
+
+    match result {
+        Ok(output) if output.status.success() => Ok(file_path_str),
+        Ok(output) => Err(format!("PowerShell error: {}", String::from_utf8_lossy(&output.stderr))),
+        Err(e) => Err(format!("Failed to run PowerShell: {}", e)),
+    }
+}

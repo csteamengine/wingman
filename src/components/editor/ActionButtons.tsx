@@ -1,6 +1,6 @@
 import {useRef, useState, useEffect} from 'react';
-import {Bot, ChevronDown, Check, Download, Loader2, Diamond, Github} from 'lucide-react';
-import type {AIPreset, CustomAIPrompt, AppSettings} from '../../types';
+import {Bot, ChevronDown, Check, Download, Loader2, Diamond, Github, ClipboardCopy, FileOutput} from 'lucide-react';
+import type {AIPreset, CustomAIPrompt, AppSettings, ExportAction} from '../../types';
 
 interface ActionButtonsProps {
     // Content state
@@ -18,27 +18,33 @@ interface ActionButtonsProps {
     onSelectPreset: (presetId: string) => void;
     onSelectCustomPrompt: (promptId: string) => void;
 
-    // Obsidian state
+    // Export handlers
     hasObsidianAccess: boolean;
     hasObsidianConfigured: boolean;
     onObsidianSend: () => void;
-
-    // GitHub state
     hasGitHubAccess: boolean;
     isGitHubAuthenticated: boolean;
     gistLoading: boolean;
     onGitHubGist: () => void;
+    onSaveToFile: () => void;
+    onCopyAsFile: () => void;
 
-    // Primary action state
+    // Primary action
     settings: AppSettings | null;
     onPasteAndClose: () => void;
-    onSaveToFile: () => void;
     onUpdateSettings: (settings: Partial<AppSettings>) => void;
 
     // Error state
     aiError: string | null;
     githubError: string | null;
 }
+
+const EXPORT_OPTIONS: { id: ExportAction; label: string; description: string }[] = [
+    { id: 'save_file', label: 'Save to File', description: 'Save with native file picker' },
+    { id: 'obsidian', label: 'Obsidian', description: 'Send to Obsidian vault' },
+    { id: 'gist', label: 'GitHub Gist', description: 'Create a GitHub Gist' },
+    { id: 'copy_as_file', label: 'Copy as File', description: 'Copy content as a file to clipboard' },
+];
 
 export function ActionButtons({
     content,
@@ -59,17 +65,20 @@ export function ActionButtons({
     isGitHubAuthenticated,
     gistLoading,
     onGitHubGist,
+    onSaveToFile,
+    onCopyAsFile,
     settings,
     onPasteAndClose,
-    onSaveToFile,
     onUpdateSettings,
     aiError,
     githubError,
 }: ActionButtonsProps) {
     const [showAiPopover, setShowAiPopover] = useState(false);
-    const [showPrimaryActionPopover, setShowPrimaryActionPopover] = useState(false);
+    const [showExportPopover, setShowExportPopover] = useState(false);
     const aiPopoverRef = useRef<HTMLDivElement>(null);
-    const primaryActionRef = useRef<HTMLDivElement>(null);
+    const exportPopoverRef = useRef<HTMLDivElement>(null);
+
+    const exportAction: ExportAction = settings?.export_action || 'save_file';
 
     // Close AI popover when clicking outside or pressing Escape
     useEffect(() => {
@@ -94,17 +103,17 @@ export function ActionButtons({
         };
     }, [showAiPopover]);
 
-    // Close primary action popover when clicking outside
+    // Close export popover when clicking outside
     useEffect(() => {
-        if (!showPrimaryActionPopover) return;
+        if (!showExportPopover) return;
         const handleClickOutside = (e: MouseEvent) => {
-            if (primaryActionRef.current && !primaryActionRef.current.contains(e.target as Node)) {
-                setShowPrimaryActionPopover(false);
+            if (exportPopoverRef.current && !exportPopoverRef.current.contains(e.target as Node)) {
+                setShowExportPopover(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [showPrimaryActionPopover]);
+    }, [showExportPopover]);
 
     const handleSelectPreset = (presetId: string) => {
         onSelectPreset(presetId);
@@ -113,10 +122,55 @@ export function ActionButtons({
 
     const hasContent = content.trim() || hasImages;
 
+    const executeExportAction = (action: ExportAction) => {
+        switch (action) {
+            case 'save_file':
+                onSaveToFile();
+                break;
+            case 'obsidian':
+                onObsidianSend();
+                break;
+            case 'gist':
+                onGitHubGist();
+                break;
+            case 'copy_as_file':
+                onCopyAsFile();
+                break;
+        }
+    };
+
+    const isExportDisabled = (action: ExportAction): boolean => {
+        switch (action) {
+            case 'obsidian':
+                return !hasObsidianAccess || !hasObsidianConfigured;
+            case 'gist':
+                return !hasGitHubAccess || !isGitHubAuthenticated || gistLoading;
+            default:
+                return false;
+        }
+    };
+
+    const getExportIcon = (action: ExportAction) => {
+        switch (action) {
+            case 'save_file':
+                return <Download className="w-4 h-4" />;
+            case 'obsidian':
+                return <Diamond className="w-4 h-4" />;
+            case 'gist':
+                return gistLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Github className="w-4 h-4" />;
+            case 'copy_as_file':
+                return <FileOutput className="w-4 h-4" />;
+        }
+    };
+
+    const getExportLabel = (action: ExportAction): string => {
+        return EXPORT_OPTIONS.find(o => o.id === action)?.label || 'Export';
+    };
+
     return (
         <div className="rounded-b-[10px]">
             {/* Action button row */}
-            <div className="px-3 py-3 flex gap-2">
+            <div className="px-3 py-3 flex gap-2 items-center">
                 {/* AI Refine split button - green */}
                 <div className="relative flex" ref={aiPopoverRef}>
                     {/* Main button - triggers refinement with selected preset */}
@@ -227,125 +281,81 @@ export function ActionButtons({
                     )}
                 </div>
 
-                {/* Obsidian button - purple/violet (Obsidian brand color) - Pro feature */}
-                <button
-                    onClick={onObsidianSend}
-                    disabled={!hasObsidianAccess || !hasObsidianConfigured || !content.trim()}
-                    title={!hasObsidianAccess ? "Pro feature - Send to Obsidian" : (!hasObsidianConfigured ? "Configure Obsidian vault in Settings first" : "Send to Obsidian")}
-                    className="btn-obsidian flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm transition-colors disabled:opacity-40"
-                >
-                    <Diamond className="w-4 h-4" />
-                    <span>Obsidian</span>
-                </button>
-
-                {/* GitHub Gist button - GitHub gray/black - Pro feature */}
-                <button
-                    onClick={onGitHubGist}
-                    disabled={!hasGitHubAccess || !isGitHubAuthenticated || !content.trim() || gistLoading}
-                    title={
-                        !hasGitHubAccess
-                            ? "Pro feature - Create GitHub Gist"
-                            : !isGitHubAuthenticated
-                                ? "Authenticate with GitHub in Settings first"
-                                : "Create GitHub Gist"
-                    }
-                    className="btn-github flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm transition-colors disabled:opacity-40"
-                >
-                    {gistLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                        <Github className="w-4 h-4" />
-                    )}
-                    <span>Gist</span>
-                </button>
-
-                {/* Primary Action split button */}
-                <div className="relative flex flex-1" ref={primaryActionRef}>
-                    {/* Main button - triggers primary action */}
+                {/* Export split button */}
+                <div className="relative flex flex-1" ref={exportPopoverRef}>
+                    {/* Main button - triggers selected export action */}
                     <button
-                        onClick={() => {
-                            if (settings?.primary_action === 'save_file') {
-                                onSaveToFile();
-                            } else {
-                                onPasteAndClose();
-                            }
-                        }}
-                        disabled={!hasContent}
-                        className="btn-primary flex-1 flex items-center justify-center gap-2 pl-3 pr-2 py-2.5 rounded-l-md text-sm disabled:opacity-40 transition-colors"
+                        onClick={() => executeExportAction(exportAction)}
+                        disabled={!hasContent || isExportDisabled(exportAction)}
+                        title={getExportLabel(exportAction)}
+                        className="btn-primary flex-1 flex items-center justify-center gap-1.5 pl-3 pr-2 py-2.5 rounded-l-md text-sm disabled:opacity-40 transition-colors"
                     >
-                        {settings?.primary_action === 'save_file' ? (
-                            <>
-                                <Download className="w-3.5 h-3.5" />
-                                <span>Save to File</span>
-                            </>
-                        ) : (
-                            <span>Copy to Clipboard</span>
-                        )}
-                        <span className="kbd">⌘↵</span>
+                        {getExportIcon(exportAction)}
+                        <span>{getExportLabel(exportAction)}</span>
                     </button>
-                    {/* Dropdown button - opens action selector */}
+                    {/* Dropdown button - opens export selector */}
                     <button
-                        onClick={() => setShowPrimaryActionPopover(!showPrimaryActionPopover)}
+                        onClick={() => setShowExportPopover(!showExportPopover)}
                         disabled={!hasContent}
-                        title="Select primary action"
+                        title="Select export action"
                         className="btn-primary flex items-center justify-center px-1.5 py-2.5 rounded-r-md text-sm disabled:opacity-40 transition-colors border-l border-white/20"
                     >
                         <ChevronDown className="w-3 h-3 opacity-60" />
                     </button>
 
-                    {/* Primary Action Popover */}
-                    {showPrimaryActionPopover && (
-                        <div className="absolute bottom-full mb-2 right-0 bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] rounded-lg shadow-lg z-50 min-w-[200px] py-1 animate-fade-in">
+                    {/* Export Action Popover */}
+                    {showExportPopover && (
+                        <div className="absolute bottom-full mb-2 right-0 bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] rounded-lg shadow-lg z-50 min-w-[220px] py-1 animate-fade-in">
                             <div className="px-3 py-2 border-b border-[var(--ui-border)]">
-                                <p className="text-xs font-medium text-[var(--ui-text)]">Primary Action</p>
-                                <p className="text-[10px] text-[var(--ui-text-muted)]">Choose what ⌘↵ does</p>
+                                <p className="text-xs font-medium text-[var(--ui-text)]">Export Action</p>
+                                <p className="text-[10px] text-[var(--ui-text-muted)]">Choose default export method</p>
                             </div>
                             <div className="py-1">
-                                <button
-                                    onClick={() => {
-                                        onUpdateSettings({ primary_action: 'clipboard' });
-                                        setShowPrimaryActionPopover(false);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 hover:bg-[var(--ui-hover)] transition-colors ${
-                                        settings?.primary_action !== 'save_file' ? 'bg-[var(--ui-accent)]/10' : ''
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        {settings?.primary_action !== 'save_file' && (
-                                            <Check className="w-3 h-3 text-[var(--ui-accent)]" />
-                                        )}
-                                        <div className={settings?.primary_action !== 'save_file' ? '' : 'ml-5'}>
-                                            <p className="text-xs font-medium text-[var(--ui-text)]">Copy to Clipboard</p>
-                                            <p className="text-[10px] text-[var(--ui-text-muted)]">Copy and paste to previous app</p>
-                                        </div>
-                                    </div>
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        onUpdateSettings({ primary_action: 'save_file' });
-                                        setShowPrimaryActionPopover(false);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 hover:bg-[var(--ui-hover)] transition-colors ${
-                                        settings?.primary_action === 'save_file' ? 'bg-[var(--ui-accent)]/10' : ''
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        {settings?.primary_action === 'save_file' && (
-                                            <Check className="w-3 h-3 text-[var(--ui-accent)]" />
-                                        )}
-                                        <div className={settings?.primary_action === 'save_file' ? '' : 'ml-5'}>
-                                            <p className="text-xs font-medium text-[var(--ui-text)]">Save to File</p>
-                                            <p className="text-[10px] text-[var(--ui-text-muted)]">Save with native file picker</p>
-                                        </div>
-                                    </div>
-                                </button>
+                                {EXPORT_OPTIONS.map((option) => {
+                                    const disabled = isExportDisabled(option.id);
+                                    const isSelected = exportAction === option.id;
+                                    return (
+                                        <button
+                                            key={option.id}
+                                            onClick={() => {
+                                                onUpdateSettings({ export_action: option.id });
+                                                executeExportAction(option.id);
+                                                setShowExportPopover(false);
+                                            }}
+                                            disabled={disabled}
+                                            className={`w-full text-left px-3 py-2 hover:bg-[var(--ui-hover)] transition-colors disabled:opacity-40 ${
+                                                isSelected ? 'bg-[var(--ui-accent)]/10' : ''
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                {isSelected && (
+                                                    <Check className="w-3 h-3 text-[var(--ui-accent)]" />
+                                                )}
+                                                <div className={isSelected ? '' : 'ml-5'}>
+                                                    <p className="text-xs font-medium text-[var(--ui-text)]">{option.label}</p>
+                                                    <p className="text-[10px] text-[var(--ui-text-muted)]">{option.description}</p>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
                 </div>
+
+                {/* Floating clipboard button */}
+                <button
+                    onClick={onPasteAndClose}
+                    disabled={!hasContent}
+                    title="Copy to Clipboard (⌘↵)"
+                    className="flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-[var(--ui-surface)] hover:bg-[var(--ui-hover)] border border-[var(--ui-border)] text-[var(--ui-text)] disabled:opacity-40 transition-colors"
+                >
+                    <ClipboardCopy className="w-4 h-4" />
+                    <span className="text-[9px] mt-0.5 opacity-60">⌘↵</span>
+                </button>
             </div>
 
-            {/* AI Error message */}
             {/* Error Messages */}
             {aiError && (
                 <div className="mx-3 mb-3 px-3 py-2 text-xs bg-red-500/10 border border-red-500/20 rounded-md text-red-400">

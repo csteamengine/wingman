@@ -19,6 +19,24 @@ const mdH3 = Decoration.line({ class: 'cm-md-h3' });
 const mdH4 = Decoration.line({ class: 'cm-md-h4' });
 const mdBlockquote = Decoration.line({ class: 'cm-md-blockquote' });
 const mdHr = Decoration.line({ class: 'cm-md-hr' });
+const mdListItem = Decoration.line({ class: 'cm-md-list-item' });
+
+// Bullet widget that replaces `- ` or `* ` with a bullet dot
+class BulletWidget extends WidgetType {
+    indent: number;
+    constructor(indent: number) {
+        super();
+        this.indent = indent;
+    }
+    eq(other: BulletWidget) { return other.indent === this.indent; }
+    toDOM() {
+        const span = document.createElement('span');
+        span.className = 'cm-md-bullet';
+        span.textContent = '•';
+        return span;
+    }
+    ignoreEvent() { return false; }
+}
 // Code block line decorations - separate for first, middle, last to create unified block
 const mdCodeBlockFirst = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-first' });
 const mdCodeBlockMiddle = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-middle' });
@@ -223,6 +241,28 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
                 decorations.push({ from: lineFrom, to: line.to, decoration: mdHidden });
             }
             continue;
+        }
+
+        // Unordered list items: - item or * item (with optional indentation)
+        const listMatch = lineText.match(/^(\s*)([-*])\s/);
+        if (listMatch) {
+            const cursorInLine = isCursorInRange(selections, lineFrom, line.to);
+            const indentLen = listMatch[1].length;
+            decorations.push({ from: lineFrom, to: lineFrom, decoration: mdListItem });
+
+            if (!cursorInLine) {
+                // Hide the `- ` or `* ` marker and replace with bullet widget
+                const markerStart = lineFrom + indentLen;
+                const markerEnd = markerStart + 2; // `- ` or `* `
+                decorations.push({ from: markerStart, to: markerEnd, decoration: mdHidden });
+                widgets.push({
+                    pos: markerStart,
+                    widget: Decoration.widget({
+                        widget: new BulletWidget(indentLen),
+                        side: 1,
+                    })
+                });
+            }
         }
 
         // === INLINE ELEMENTS ===
@@ -453,6 +493,15 @@ export const markdownTheme = EditorView.baseTheme({
         textDecoration: 'underline',
         textDecorationColor: '#3b82f680',
         cursor: 'pointer',
+    },
+    // List items
+    '.cm-md-list-item': {
+        paddingLeft: '4px',
+    },
+    '.cm-md-bullet': {
+        color: 'currentColor',
+        opacity: '0.7',
+        marginRight: '4px',
     },
     // Image preview
     '.cm-md-image-preview': {

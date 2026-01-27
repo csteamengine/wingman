@@ -55,6 +55,8 @@ pub struct AppSettings {
     pub show_diff_preview: bool,
     #[serde(default = "default_primary_action")]
     pub primary_action: String,
+    #[serde(default = "default_export_action")]
+    pub export_action: String,
     #[serde(default = "default_show_dev_tier_selector")]
     pub show_dev_tier_selector: bool,
     #[serde(default)]
@@ -65,6 +67,10 @@ pub struct AppSettings {
 
 fn default_primary_action() -> String {
     "clipboard".to_string()
+}
+
+fn default_export_action() -> String {
+    "save_file".to_string()
 }
 
 fn default_show_dev_tier_selector() -> bool {
@@ -99,6 +105,7 @@ impl Default for AppSettings {
             sticky_mode: false,
             show_diff_preview: false,
             primary_action: default_primary_action(),
+            export_action: default_export_action(),
             show_dev_tier_selector: default_show_dev_tier_selector(),
             colorblind_mode: false,
             last_quick_actions_tab: default_last_quick_actions_tab(),

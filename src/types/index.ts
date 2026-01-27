@@ -27,6 +27,7 @@ export interface AppSettings {
   sticky_mode: boolean;
   show_diff_preview: boolean;
   primary_action: PrimaryAction;
+  export_action: ExportAction;
   show_dev_tier_selector: boolean;
   colorblind_mode: boolean;
   last_quick_actions_tab: 'clipboard' | 'actions';
@@ -218,7 +219,10 @@ export type AIPresetId =
   | 'documentation'
   | 'pr_description'
   | 'tldr'
-  | 'code_explainer';
+  | 'code_explainer'
+  | 'stack_trace';
+
+export type ExportAction = 'save_file' | 'obsidian' | 'gist' | 'copy_as_file';
 
 export interface AIPreset {
   id: AIPresetId;

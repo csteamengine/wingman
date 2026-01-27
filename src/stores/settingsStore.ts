@@ -29,6 +29,7 @@ const defaultSettings: AppSettings = {
   sticky_mode: false,
   show_diff_preview: false,
   primary_action: 'clipboard',
+  export_action: 'save_file',
   show_dev_tier_selector: true,
   colorblind_mode: false,
   last_quick_actions_tab: 'clipboard',

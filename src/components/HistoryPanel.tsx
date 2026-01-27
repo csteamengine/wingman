@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { FileText, Code, Image, File } from 'lucide-react';
 import { useHistory } from '../hooks/useHistory';
 import { useEditorStore, type EditorAttachment } from '../stores/editorStore';
 import { useHistoryStore } from '../stores/historyStore';
@@ -31,45 +32,6 @@ export function HistoryPanel() {
   );
 }
 
-// Document icon for text entries
-function DocumentIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25">
-      <rect x="3" y="1.5" width="10" height="13" rx="1.5" />
-      <path d="M5.5 5h5M5.5 7.5h5M5.5 10h3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-// Code icon for code entries
-function CodeIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25">
-      <path d="M5.5 4L2 8l3.5 4M10.5 4L14 8l-3.5 4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-// Image icon for entries with images
-function ImageIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25">
-      <rect x="2" y="2" width="12" height="12" rx="1.5" />
-      <circle cx="5.5" cy="5.5" r="1" />
-      <path d="M2 11l3-3 2 2 4-4 3 3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-// File icon for entries with file attachments
-function FileIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25">
-      <path d="M4 14h8a1 1 0 001-1V5.414a1 1 0 00-.293-.707l-2.414-2.414A1 1 0 009.586 2H4a1 1 0 00-1 1v10a1 1 0 001 1z" />
-      <path d="M9 2v3a1 1 0 001 1h3" />
-    </svg>
-  );
-}
 
 function HistoryPanelContent() {
   const { entries, loading, searchQuery, handleSearch, handleSelect, handleDelete } = useHistory();
@@ -394,7 +356,7 @@ function HistoryItem({ entry, index, isSelected, onPreview, onLoadToEditor, onDe
     >
       {/* Icon */}
       <div className={`flex-shrink-0 ${isSelected ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)]'}`}>
-        {hasImageAttachments ? <ImageIcon /> : hasAttachments ? <FileIcon /> : isCode ? <CodeIcon /> : <DocumentIcon />}
+        {hasImageAttachments ? <Image size={16} /> : hasAttachments ? <File size={16} /> : isCode ? <Code size={16} /> : <FileText size={16} />}
       </div>
 
       {/* Content */}

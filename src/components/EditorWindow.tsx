@@ -378,6 +378,20 @@ export function EditorWindow() {
         }
     }, [content, language, createGist, isGitHubAuthenticated, setValidationToast]);
 
+    // Copy as File handler
+    const handleCopyAsFile = useCallback(async () => {
+        if (!content.trim()) return;
+        try {
+            await invoke<string>('copy_file_to_clipboard', {
+                content,
+                language: language || 'plaintext',
+            });
+            setValidationToast({ type: 'success', message: 'File copied to clipboard' });
+        } catch (error) {
+            setValidationToast({ type: 'error', message: `Failed to copy as file: ${error}` });
+        }
+    }, [content, language, setValidationToast]);
+
     const handleGistToastOpen = useCallback(async () => {
         if (gistToast) {
             await invoke('open_url', { url: gistToast.html_url });
@@ -853,9 +867,10 @@ export function EditorWindow() {
                 isGitHubAuthenticated={isGitHubAuthenticated}
                 gistLoading={gistLoading}
                 onGitHubGist={handleGitHubGist}
+                onSaveToFile={saveToFile}
+                onCopyAsFile={handleCopyAsFile}
                 settings={settings}
                 onPasteAndClose={pasteAndClose}
-                onSaveToFile={saveToFile}
                 onUpdateSettings={updateSettings}
                 aiError={aiError}
                 githubError={githubError}

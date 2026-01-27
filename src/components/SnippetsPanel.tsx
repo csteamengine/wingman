@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { AlignLeft } from 'lucide-react';
 import { useSnippets } from '../hooks/useSnippets';
 import { useEditorStore } from '../stores/editorStore';
 import { ProFeatureGate } from './ProFeatureGate';
@@ -12,14 +13,6 @@ export function SnippetsPanel() {
   );
 }
 
-// Snippet icon
-function SnippetIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25">
-      <path d="M4 4h8M4 7h6M4 10h8M4 13h4" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 function SnippetsPanelContent() {
   const {
@@ -386,7 +379,7 @@ function SnippetItem({ snippet, index, isSelected, onPreview, onInsert }: Snippe
     >
       {/* Icon */}
       <div className={`flex-shrink-0 ${isSelected ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)]'}`}>
-        <SnippetIcon />
+        <AlignLeft size={16} />
       </div>
 
       {/* Content */}

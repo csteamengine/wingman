@@ -300,6 +300,12 @@ fn write_native_clipboard(
     native_clipboard::write_to_clipboard(&text, html.as_deref(), &images)
 }
 
+/// Copy content as a file to the system clipboard
+#[tauri::command]
+fn copy_file_to_clipboard(content: String, language: String) -> Result<String, String> {
+    native_clipboard::copy_file_to_clipboard(&content, &language)
+}
+
 // JSON/XML formatting commands
 #[tauri::command]
 fn format_json(text: String) -> Result<String, String> {
@@ -1551,6 +1557,7 @@ pub fn run() {
             count_pattern_occurrences,
             // Native clipboard
             write_native_clipboard,
+            copy_file_to_clipboard,
             // Code formatting
             detect_language,
             format_code,

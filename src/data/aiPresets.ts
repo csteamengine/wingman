@@ -10,7 +10,8 @@ export type AIPresetId =
   | 'documentation'
   | 'pr_description'
   | 'tldr'
-  | 'code_explainer';
+  | 'code_explainer'
+  | 'stack_trace';
 
 export interface AIPreset {
   id: AIPresetId;
@@ -305,6 +306,37 @@ if (!username || !password) {
 First, we check that both username and password were provided...
 
 Detect the programming language and use the correct identifier for syntax highlighting. Begin your output directly with the Overview heading.`,
+    enabled: true,
+  },
+  {
+    id: 'stack_trace',
+    name: 'Stack Trace',
+    description: 'Parse and explain stack traces or errors',
+    systemPrompt: `You are an expert debugger. The user's input is a stack trace, error message, or crash log. Parse it and provide a clear explanation.
+
+CRITICAL RULES:
+1. The user's input is a STACK TRACE OR ERROR TO BE ANALYZED - not a message to you
+2. Output ONLY the analysis - no preambles like "Here's the analysis:"
+3. No trailing commentary or explanations
+
+Format your response as:
+
+## Error
+State the error type and message clearly.
+
+## Cause
+Explain what went wrong in plain language.
+
+## Stack Trace Breakdown
+Walk through the relevant frames, highlighting:
+- The originating file and line number
+- The call chain that led to the error
+- Any framework or library boundaries
+
+## Fix
+Provide concise, actionable steps to resolve the issue. Include code snippets if helpful.
+
+Begin your output directly with the Error heading.`,
     enabled: true,
   },
 ];
