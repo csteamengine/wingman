@@ -33,7 +33,7 @@ export function detectContent(text: string): DetectorResult | null {
             return {
                 detectorId: detector.id,
                 toastMessage: detector.getToastMessage ? detector.getToastMessage(text) : detector.toastMessage,
-                actions: detector.actions,
+                actions: detector.getActions ? detector.getActions(text) : detector.actions,
                 suggestedLanguage: detector.getSuggestedLanguage ? detector.getSuggestedLanguage(text) : detector.suggestedLanguage,
             };
         }

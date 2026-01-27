@@ -84,6 +84,8 @@ export function EditorWindow() {
     const [selectedCustomPromptId, setSelectedCustomPromptId] = useState<string | null>(null);
     const [parsedUrlInfo, setParsedUrlInfo] = useState<{url: string; cursorPos: number} | null>(null);
     const [contextDetection, setContextDetection] = useState<DetectorResult | null>(null);
+    const contextDismissedRef = useRef<string | null>(null); // tracks dismissed detector id
+    const pasteOrDropRef = useRef(false); // tracks if content change came from paste/drag
 
     // Get drag store state and functions
     const {
@@ -236,15 +238,20 @@ export function EditorWindow() {
         }
     }, [validationToast, setValidationToast]);
 
-    // Content detection - debounced
+    // Content detection - debounced, only show toast on paste/drag events
     useEffect(() => {
         const timer = setTimeout(() => {
             const result = detectContent(content);
-            setContextDetection(result);
 
             // Auto-switch language if setting enabled and language is plaintext
             if (result?.suggestedLanguage && settings?.auto_detect_language && language === 'plaintext') {
                 setLanguage(result.suggestedLanguage);
+            }
+
+            // Only show toast on paste/drag, and not if user already dismissed this detector
+            if (pasteOrDropRef.current && result && contextDismissedRef.current !== result.detectorId) {
+                setContextDetection(result);
+                pasteOrDropRef.current = false;
             }
         }, 500);
         return () => clearTimeout(timer);
@@ -309,6 +316,8 @@ export function EditorWindow() {
                         selection: { anchor: insertPos + draggedContent.length },
                     });
                     view.focus();
+                    pasteOrDropRef.current = true;
+                    contextDismissedRef.current = null;
                     endDrag();
                 }
             }
@@ -712,6 +721,9 @@ export function EditorWindow() {
         const items = e.clipboardData?.items;
         if (!items) return;
 
+        pasteOrDropRef.current = true;
+        contextDismissedRef.current = null;
+
         const pastedText = e.clipboardData?.getData('text/plain');
         if (pastedText && isUrl(pastedText) && viewRef.current) {
             const selection = viewRef.current.state.selection.main;
@@ -949,6 +961,7 @@ export function EditorWindow() {
                 onFormat={handleFormat}
                 onMinify={handleMinify}
                 onMaskSecrets={handleMaskSecrets}
+                language={language}
             />
 
             <FileDragOverlay isDragging={isDragging} />
@@ -1033,7 +1046,10 @@ export function EditorWindow() {
                 onDismissValidation={() => setValidationToast(null)}
                 contextDetection={contextDetection}
                 onContextAction={handleContextAction}
-                onDismissContext={() => setContextDetection(null)}
+                onDismissContext={() => {
+                    contextDismissedRef.current = contextDetection?.detectorId ?? null;
+                    setContextDetection(null);
+                }}
             />
 
             <TransformationFloatingButton />

@@ -26,6 +26,7 @@ export interface Detector {
     toastMessage: string;
     getToastMessage?: (text: string) => string;
     actions: DetectorAction[];
+    getActions?: (text: string) => DetectorAction[];
     suggestedLanguage?: string;
     getSuggestedLanguage?: (text: string) => string | undefined;
 }
