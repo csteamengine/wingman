@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
 import { useGitHubStore } from '../stores/githubStore';
@@ -21,27 +21,33 @@ export function GitHubDeviceFlowModal({
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timeoutSeconds, setTimeoutSeconds] = useState(flowStart.expires_in);
+  const pollingRef = useRef(false);
 
   // Countdown timer
   useEffect(() => {
-    if (success || timeoutSeconds <= 0) return;
+    if (success) return;
 
     const timer = setInterval(() => {
-      setTimeoutSeconds((prev) => Math.max(0, prev - 1));
+      setTimeoutSeconds((prev) => {
+        const next = Math.max(0, prev - 1);
+        return next;
+      });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [success, timeoutSeconds]);
+  }, [success]);
 
   // Auto-poll for authorization
   useEffect(() => {
-    if (success || timeoutSeconds <= 0) return;
+    if (success) return;
 
     const pollInterval = flowStart.interval * 1000; // Convert to milliseconds
 
     const poll = async () => {
-      if (polling) return; // Prevent concurrent polls
+      // Prevent concurrent polls using ref
+      if (pollingRef.current) return;
 
+      pollingRef.current = true;
       setPolling(true);
       setError(null);
 
@@ -50,8 +56,9 @@ export function GitHubDeviceFlowModal({
 
         if (result) {
           // Authentication successful!
-          setSuccess(true);
+          pollingRef.current = false;
           setPolling(false);
+          setSuccess(true);
 
           // Wait a moment for user to see success message, then close
           setTimeout(() => {
@@ -63,10 +70,12 @@ export function GitHubDeviceFlowModal({
         }
 
         // Still pending, continue polling
+        pollingRef.current = false;
         setPolling(false);
       } catch (err) {
         console.error('Poll error:', err);
         setError(String(err));
+        pollingRef.current = false;
         setPolling(false);
       }
     };
@@ -77,8 +86,11 @@ export function GitHubDeviceFlowModal({
     // Then poll at intervals
     const intervalId = setInterval(poll, pollInterval);
 
-    return () => clearInterval(intervalId);
-  }, [flowStart, pollDeviceFlow, onSuccess, onClose, success, timeoutSeconds, polling]);
+    return () => {
+      clearInterval(intervalId);
+      pollingRef.current = false;
+    };
+  }, [flowStart.device_code, flowStart.interval, pollDeviceFlow, onSuccess, onClose, success]);
 
   // Handle timeout
   useEffect(() => {
