@@ -52,6 +52,30 @@ import {maskSecrets} from '../utils/maskSecrets';
 import {detectContent} from '../detectors';
 import type {DetectorResult, DetectorAction, DetectorActionResult} from '../detectors';
 
+// Parse error line/column from formatter error messages
+function parseErrorPosition(errorMsg: string): { line: number; column: number } | null {
+    // Prettier format: "message (line:column)"
+    const prettierMatch = errorMsg.match(/\((\d+):(\d+)\)/);
+    if (prettierMatch) return { line: parseInt(prettierMatch[1], 10), column: parseInt(prettierMatch[2], 10) };
+
+    // "line N, column N" or "line N column N"
+    const lineColMatch = errorMsg.match(/line\s+(\d+)[,\s]+column\s+(\d+)/i);
+    if (lineColMatch) return { line: parseInt(lineColMatch[1], 10), column: parseInt(lineColMatch[2], 10) };
+
+    // "at position N" (JSON.parse style)
+    const posMatch = errorMsg.match(/at position (\d+)/);
+    if (posMatch) {
+        // Can't convert position to line without source text, return null
+        return null;
+    }
+
+    // "Line N:" at start
+    const lineOnlyMatch = errorMsg.match(/^Line\s+(\d+):/i);
+    if (lineOnlyMatch) return { line: parseInt(lineOnlyMatch[1], 10), column: 1 };
+
+    return null;
+}
+
 // Error line highlight for JSON validation
 const setErrorHighlight = StateEffect.define<{ from: number; to: number } | null>();
 
@@ -514,7 +538,32 @@ export function EditorWindow() {
                 }
             }
         } catch (error) {
-            setValidationToast({ type: 'error', message: String(error) });
+            const errorMsg = String(error);
+            setValidationToast({ type: 'error', message: errorMsg });
+
+            // Highlight the error line in the editor
+            const errorPos = parseErrorPosition(errorMsg);
+            if (errorPos && view) {
+                const lineNum = Math.min(errorPos.line, view.state.doc.lines);
+                const line = view.state.doc.line(lineNum);
+                const col = Math.min(errorPos.column - 1, line.length);
+                const pos = line.from + col;
+
+                view.dispatch({
+                    selection: { anchor: pos },
+                    effects: [
+                        EditorView.scrollIntoView(pos, { y: 'center' }),
+                        setErrorHighlight.of({ from: line.from, to: line.to }),
+                    ],
+                });
+                view.focus();
+
+                setTimeout(() => {
+                    if (viewRef.current) {
+                        viewRef.current.dispatch({ effects: setErrorHighlight.of(null) });
+                    }
+                }, 5000);
+            }
         }
     }, [language, setLanguage, settings, isPro, setValidationToast]);
 
@@ -578,7 +627,31 @@ export function EditorWindow() {
                 }
             }
         } catch (error) {
-            setValidationToast({ type: 'error', message: String(error) });
+            const errorMsg = String(error);
+            setValidationToast({ type: 'error', message: errorMsg });
+
+            const errorPos = parseErrorPosition(errorMsg);
+            if (errorPos && view) {
+                const lineNum = Math.min(errorPos.line, view.state.doc.lines);
+                const line = view.state.doc.line(lineNum);
+                const col = Math.min(errorPos.column - 1, line.length);
+                const pos = line.from + col;
+
+                view.dispatch({
+                    selection: { anchor: pos },
+                    effects: [
+                        EditorView.scrollIntoView(pos, { y: 'center' }),
+                        setErrorHighlight.of({ from: line.from, to: line.to }),
+                    ],
+                });
+                view.focus();
+
+                setTimeout(() => {
+                    if (viewRef.current) {
+                        viewRef.current.dispatch({ effects: setErrorHighlight.of(null) });
+                    }
+                }, 5000);
+            }
         }
     }, [language, setLanguage, settings, isPro, setValidationToast]);
 

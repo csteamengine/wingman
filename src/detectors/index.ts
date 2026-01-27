@@ -10,10 +10,12 @@ import {base64Detector} from './base64';
 import {timestampDetector} from './timestamp';
 import {codeSnippetDetector} from './code-snippet';
 import {filePathDetector} from './file-path';
+import {cssDetector} from './css';
 
 const detectors: Detector[] = [
     secretsDetector,
     jsonYamlDetector,
+    cssDetector,
     stackTraceDetector,
     envFileDetector,
     sqlDetector,
