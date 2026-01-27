@@ -9,7 +9,6 @@ import {linter, lintGutter} from '@codemirror/lint';
 import {oneDark} from '@codemirror/theme-one-dark';
 import {listen} from '@tauri-apps/api/event';
 import {invoke} from '@tauri-apps/api/core';
-import {ClipboardCopy} from 'lucide-react';
 
 import {useEditorStore} from '../stores/editorStore';
 import {useSettingsStore} from '../stores/settingsStore';
@@ -821,29 +820,17 @@ export function EditorWindow() {
 
             <AILoadingOverlay isLoading={aiLoading} />
 
-            <div className="flex-1 overflow-hidden relative">
-                <div
-                    ref={(el) => {
-                        editorRef.current = el;
-                        editorContainerRef.current = el;
-                    }}
-                    className="h-full overflow-hidden editor-pane"
-                    style={{
-                        fontFamily: settings?.font_family || 'monospace',
-                        fontSize: `${settings?.font_size || 14}px`,
-                    }}
-                />
-                {/* Floating clipboard button */}
-                <button
-                    onClick={pasteAndClose}
-                    disabled={!content.trim() && images.length === 0}
-                    title="Copy to Clipboard (⌘↵)"
-                    className="absolute bottom-3 right-3 flex flex-col items-center justify-center w-11 h-11 rounded-lg bg-[var(--ui-surface)]/80 hover:bg-[var(--ui-hover)] border border-[var(--ui-border)] text-[var(--ui-text)] disabled:opacity-30 transition-colors backdrop-blur-sm z-10"
-                >
-                    <ClipboardCopy className="w-4 h-4" />
-                    <span className="text-[9px] mt-0.5 opacity-60">⌘↵</span>
-                </button>
-            </div>
+            <div
+                ref={(el) => {
+                    editorRef.current = el;
+                    editorContainerRef.current = el;
+                }}
+                className="flex-1 overflow-hidden editor-pane"
+                style={{
+                    fontFamily: settings?.font_family || 'monospace',
+                    fontSize: `${settings?.font_size || 14}px`,
+                }}
+            />
 
             <AttachmentsBar
                 images={images}
@@ -883,6 +870,7 @@ export function EditorWindow() {
                 onSaveToFile={saveToFile}
                 onCopyAsFile={handleCopyAsFile}
                 settings={settings}
+                onPasteAndClose={pasteAndClose}
                 onUpdateSettings={updateSettings}
                 aiError={aiError}
                 githubError={githubError}

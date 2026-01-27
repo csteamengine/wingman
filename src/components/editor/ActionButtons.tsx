@@ -1,5 +1,5 @@
 import {useRef, useState, useEffect} from 'react';
-import {Bot, ChevronDown, Check, Download, Loader2, Diamond, Github, FileOutput} from 'lucide-react';
+import {Bot, ChevronDown, Check, Download, Loader2, Diamond, Github, FileOutput, ClipboardCopy} from 'lucide-react';
 import type {AIPreset, CustomAIPrompt, AppSettings, ExportAction} from '../../types';
 
 interface ActionButtonsProps {
@@ -29,8 +29,9 @@ interface ActionButtonsProps {
     onSaveToFile: () => void;
     onCopyAsFile: () => void;
 
-    // Settings
+    // Primary action
     settings: AppSettings | null;
+    onPasteAndClose: () => void;
     onUpdateSettings: (settings: Partial<AppSettings>) => void;
 
     // Error state
@@ -67,6 +68,7 @@ export function ActionButtons({
     onSaveToFile,
     onCopyAsFile,
     settings,
+    onPasteAndClose,
     onUpdateSettings,
     aiError,
     githubError,
@@ -169,6 +171,21 @@ export function ActionButtons({
         <div className="rounded-b-[10px]">
             {/* Action button row */}
             <div className="px-3 py-3 flex gap-2 items-center">
+                {/* Clipboard button - floats left */}
+                <button
+                    onClick={onPasteAndClose}
+                    disabled={!hasContent}
+                    title="Copy to Clipboard (⌘↵)"
+                    className="btn-primary flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm disabled:opacity-40 transition-colors"
+                >
+                    <ClipboardCopy className="w-4 h-4" />
+                    <span>Copy to Clipboard</span>
+                    <kbd className="ml-1 text-[10px] opacity-60 font-sans">⌘↵</kbd>
+                </button>
+
+                {/* Spacer pushes remaining buttons right */}
+                <div className="flex-1" />
+
                 {/* AI Refine split button - green */}
                 <div className="relative flex" ref={aiPopoverRef}>
                     {/* Main button - triggers refinement with selected preset */}
