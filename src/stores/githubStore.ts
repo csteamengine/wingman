@@ -158,8 +158,11 @@ export const useGitHubStore = create<GitHubState>((set, get) => ({
         deviceCode,
       });
 
+      console.log('[GitHub] Poll result:', result);
+
       if (result) {
         // Authentication successful
+        console.log('[GitHub] Authentication successful!', result);
         set({
           isAuthenticated: result.is_authenticated,
           username: result.username,
@@ -170,6 +173,7 @@ export const useGitHubStore = create<GitHubState>((set, get) => ({
       }
 
       // Still pending
+      console.log('[GitHub] Still pending authorization...');
       return false;
     } catch (error) {
       console.error('Failed to poll GitHub device flow:', error);

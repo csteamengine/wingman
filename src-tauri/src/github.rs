@@ -335,17 +335,22 @@ async fn poll_device_flow_internal(device_code: &str) -> Result<Option<GitHubAut
 
     // Check for access token
     if let Some(access_token) = token_response.access_token {
+        println!("[GitHub] Received access token, saving...");
+
         // Save token
         save_token(&access_token)?;
+        println!("[GitHub] Token saved, fetching username...");
 
         // Get username
         let username = get_username_from_token(&access_token).await?;
+        println!("[GitHub] Username retrieved: {}", username);
 
         // Update config
         let mut config = load_config()?;
         config.is_authenticated = true;
         config.username = Some(username.clone());
         save_config(&config)?;
+        println!("[GitHub] Config saved, authentication complete!");
 
         Ok(Some(GitHubAuthStatus {
             is_authenticated: true,

@@ -56,12 +56,14 @@ export function GitHubDeviceFlowModal({
 
         if (result) {
           // Authentication successful!
+          console.log('[Modal] Authentication detected, showing success');
           pollingRef.current = false;
           setPolling(false);
           setSuccess(true);
 
           // Wait a moment for user to see success message, then close
           setTimeout(() => {
+            console.log('[Modal] Closing modal and calling onSuccess');
             onSuccess();
             onClose();
           }, 1500);
@@ -73,10 +75,11 @@ export function GitHubDeviceFlowModal({
         pollingRef.current = false;
         setPolling(false);
       } catch (err) {
-        console.error('Poll error:', err);
+        console.error('[Modal] Poll error:', err);
         setError(String(err));
         pollingRef.current = false;
         setPolling(false);
+        // Don't return - let polling continue on next interval
       }
     };
 
