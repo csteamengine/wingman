@@ -384,10 +384,11 @@ async fn get_username_from_token(token: &str) -> Result<String, GitHubError> {
         if response.status() == reqwest::StatusCode::UNAUTHORIZED {
             return Err(GitHubError::TokenRevoked);
         }
+        let status_code = response.status().as_u16();
         let text = response.text().await.unwrap_or_default();
         return Err(GitHubError::ApiError(format!(
             "Failed to get user info ({}): {}",
-            response.status().as_u16(),
+            status_code,
             text
         )));
     }
