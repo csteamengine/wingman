@@ -76,7 +76,32 @@ export function maskSecrets(input: string): string {
         });
     }
 
-    // 6. High-entropy strings (quoted strings ≥ 24 chars)
+    // 6. Generic env var secrets — sensitive key names followed by values
+    // Matches KEY=value or KEY: value patterns where KEY contains secret-related words
+    result = result.replace(
+        /((?:^|[\s,;])(?:[A-Z_]*(?:SECRET|PASSWORD|PASSWD|PWD|TOKEN|CREDENTIAL|AUTH_[A-Z_]+|[A-Z_]+_AUTH|PRIVATE[_.]?KEY|ACCESS[_.]?KEY|API[_.]?KEY|APP[_.]?KEY|MASTER[_.]?KEY|ENCRYPTION[_.]?KEY|SIGNING[_.]?KEY|CLIENT[_.]?SECRET|SESSION[_.]?SECRET|JWT[_.]?SECRET|DB[_.]?PASS|DATABASE[_.]?PASSWORD)[A-Z_]*)\s*[=:]\s*)([^\s"',;]{4,})/gim,
+        (_match, prefix: string, value: string) => {
+            // Skip if already masked or if value is a known keyword (e.g. "Bearer")
+            if (/\*{3,}/.test(value) || /^(?:Bearer|Basic|true|false|null|none)$/i.test(value)) return _match;
+            return `${prefix}${mask(value, 4, 3)}`;
+        }
+    );
+
+    // 7. Hex strings that look like hashes/keys (32+ hex chars, common hash lengths)
+    result = result.replace(
+        /\b([a-f0-9]{32,128})\b/gi,
+        (match: string) => {
+            // Only mask if it's a known hash length (32=MD5, 40=SHA1, 64=SHA256, 128=SHA512)
+            // or long enough to likely be a key
+            const len = match.length;
+            if (len === 32 || len === 40 || len === 64 || len === 128 || len >= 48) {
+                return mask(match, 6, 4);
+            }
+            return match;
+        }
+    );
+
+    // 8. High-entropy strings (quoted strings ≥ 24 chars)
     result = result.replace(
         /(?<=["'`])([A-Za-z0-9!@#$%^&*()_+\-=\[\]{};:,.<>?\/\\|~]{24,})(?=["'`])/g,
         (match: string) => {

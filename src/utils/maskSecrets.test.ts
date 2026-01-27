@@ -119,6 +119,43 @@ API_KEY=sk_live_abcdefghijklmnop`;
         expect(output).not.toContain('abcdefghijklmnop');
     });
 
+    it('masks generic PASSWORD env vars', () => {
+        const input = 'PASSWORD=mysecretvalue123';
+        const output = maskSecrets(input);
+        expect(output).toContain('PASSWORD=');
+        expect(output).not.toContain('mysecretvalue123');
+        expect(output).toContain('myse');
+    });
+
+    it('masks SECRET, TOKEN, and CREDENTIAL env vars', () => {
+        const input = `APP_SECRET=abcdef123456
+MY_TOKEN=xyz789qwerty456
+DB_PASSWORD=hunter2isnotgood`;
+        const output = maskSecrets(input);
+        expect(output).not.toContain('abcdef123456');
+        expect(output).not.toContain('xyz789qwerty456');
+        expect(output).not.toContain('hunter2isnotgood');
+    });
+
+    it('masks MD5 hashes (32 hex chars)', () => {
+        const input = 'hash: 5d41402abc4b2a76b9719d911017c592';
+        const output = maskSecrets(input);
+        expect(output).not.toContain('5d41402abc4b2a76b9719d911017c592');
+        expect(output).toContain('5d4140');
+    });
+
+    it('masks SHA-256 hashes (64 hex chars)', () => {
+        const input = '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824';
+        const output = maskSecrets(input);
+        expect(output).not.toContain('2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');
+    });
+
+    it('masks colon-separated secret values', () => {
+        const input = 'JWT_SECRET: myverysecretjwtkey99';
+        const output = maskSecrets(input);
+        expect(output).not.toContain('myverysecretjwtkey99');
+    });
+
     it('returns unchanged text with no secrets', () => {
         const input = 'Hello world\nThis is normal text.';
         expect(maskSecrets(input)).toBe(input);
