@@ -91,13 +91,26 @@ export function GitHubDeviceFlowModal({
         scheduleNextPoll(currentIntervalMs.current);
       } catch (err) {
         const errorStr = String(err);
-        console.error('[Modal] Poll error:', errorStr);
+        console.error('[Modal] Poll error caught:', errorStr);
 
-        // Check if it's a slow_down error - if so, increase interval
-        if (errorStr.includes('slow_down') || errorStr.includes('Too many requests')) {
-          // Increase interval by 5 seconds
-          currentIntervalMs.current = Math.min(currentIntervalMs.current + 5000, 30000);
+        // Check if it's a slow_down error - if so, use the interval from GitHub
+        if (errorStr.includes('slow_down')) {
+          // Parse interval from error message (format: "slow_down:N")
+          const match = errorStr.match(/slow_down:(\d+)/);
+          console.log('[Modal] slow_down detected, regex match:', match);
+          if (match) {
+            const newInterval = (parseInt(match[1], 10) + 1) * 1000;
+            console.log('[Modal] Setting new interval from GitHub:', newInterval / 1000, 's');
+            currentIntervalMs.current = newInterval;
+          } else {
+            // Fallback: increase interval by 5 seconds
+            const newInterval = Math.min(currentIntervalMs.current + 5000, 30000);
+            console.log('[Modal] Fallback: increasing interval to:', newInterval / 1000, 's');
+            currentIntervalMs.current = newInterval;
+          }
           console.log('[Modal] Slowing down, new interval:', currentIntervalMs.current / 1000, 's');
+        } else {
+          console.log('[Modal] Non-slow_down error, keeping interval:', currentIntervalMs.current / 1000, 's');
         }
 
         pollingRef.current = false;

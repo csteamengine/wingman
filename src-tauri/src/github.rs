@@ -344,7 +344,12 @@ async fn poll_device_flow_internal(device_code: &str) -> Result<Option<GitHubAut
         println!("[GitHub Poll] Error response: {} - {:?}", error, token_response.error_description);
         return match error.as_str() {
             "authorization_pending" => Err(GitHubError::AuthPending),
-            "slow_down" => Err(GitHubError::AuthPending),
+            "slow_down" => {
+                // Return the interval so the frontend can slow down appropriately
+                let interval = token_response.interval.unwrap_or(10);
+                println!("[GitHub Poll] Slow down requested, new interval: {}s", interval);
+                Err(GitHubError::ApiError(format!("slow_down:{}", interval)))
+            }
             "expired_token" => Err(GitHubError::AuthTimeout),
             _ => Err(GitHubError::ApiError(format!("Device flow error: {}", error))),
         };

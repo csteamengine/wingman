@@ -170,14 +170,14 @@ export function GitHubSettings() {
                   className="sr-only"
                 />
                 <div
-                  className={`w-11 h-6 rounded-full transition-colors ${
-                    config.default_public ? 'bg-gray-600' : 'bg-gray-700'
+                  className={`w-11 h-6 rounded-full transition-colors flex items-center px-0.5 ${
+                    config.default_public ? 'bg-[var(--ui-accent)]' : 'bg-[var(--ui-border)]'
                   }`}
                 >
                   <div
                     className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
-                      config.default_public ? 'translate-x-6' : 'translate-x-0.5'
-                    } mt-0.5`}
+                      config.default_public ? 'translate-x-5' : 'translate-x-0'
+                    }`}
                   />
                 </div>
               </div>
@@ -200,14 +200,14 @@ export function GitHubSettings() {
                   className="sr-only"
                 />
                 <div
-                  className={`w-11 h-6 rounded-full transition-colors ${
-                    config.auto_copy_url ? 'bg-gray-600' : 'bg-gray-700'
+                  className={`w-11 h-6 rounded-full transition-colors flex items-center px-0.5 ${
+                    config.auto_copy_url ? 'bg-[var(--ui-accent)]' : 'bg-[var(--ui-border)]'
                   }`}
                 >
                   <div
                     className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
-                      config.auto_copy_url ? 'translate-x-6' : 'translate-x-0.5'
-                    } mt-0.5`}
+                      config.auto_copy_url ? 'translate-x-5' : 'translate-x-0'
+                    }`}
                   />
                 </div>
               </div>

@@ -155,7 +155,7 @@ export function ObsidianConfig() {
             value={config.vault_path}
             onChange={(e) => setConfig((prev) => ({ ...prev, vault_path: e.target.value }))}
             placeholder="/Users/you/Documents/Obsidian Vault"
-            className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
+            className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[var(--ui-accent)]"
           />
           <button
             onClick={handleBrowseVault}
@@ -187,7 +187,7 @@ export function ObsidianConfig() {
               name="location"
               checked={config.default_location === 'daily_note'}
               onChange={() => handleLocationChange('daily_note')}
-              className="w-4 h-4 text-purple-500 bg-gray-700 border-gray-600"
+              className="w-4 h-4 accent-[var(--ui-accent)] bg-gray-700 border-gray-600"
             />
             <div>
               <p className="text-white font-medium">Daily Note</p>
@@ -201,7 +201,7 @@ export function ObsidianConfig() {
               name="location"
               checked={config.default_location === 'specific_note'}
               onChange={() => handleLocationChange('specific_note')}
-              className="w-4 h-4 text-purple-500 bg-gray-700 border-gray-600"
+              className="w-4 h-4 accent-[var(--ui-accent)] bg-gray-700 border-gray-600"
             />
             <div>
               <p className="text-white font-medium">Specific Note</p>
@@ -215,7 +215,7 @@ export function ObsidianConfig() {
               name="location"
               checked={config.default_location === 'new_note'}
               onChange={() => handleLocationChange('new_note')}
-              className="w-4 h-4 text-purple-500 bg-gray-700 border-gray-600"
+              className="w-4 h-4 accent-[var(--ui-accent)] bg-gray-700 border-gray-600"
             />
             <div>
               <p className="text-white font-medium">New Note</p>
@@ -244,7 +244,7 @@ export function ObsidianConfig() {
                 setConfig((prev) => ({ ...prev, specific_note_path: e.target.value || null }))
               }
               placeholder="folder/Inbox.md"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[var(--ui-accent)]"
             />
             <p className="mt-1 text-xs text-gray-500">Relative path from vault root</p>
           </motion.div>
@@ -270,7 +270,7 @@ export function ObsidianConfig() {
                 setConfig((prev) => ({ ...prev, new_note_folder: e.target.value || null }))
               }
               placeholder="Captures"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[var(--ui-accent)]"
             />
             <p className="mt-1 text-xs text-gray-500">Leave empty to create notes in vault root</p>
           </motion.div>
@@ -288,7 +288,7 @@ export function ObsidianConfig() {
             setConfig((prev) => ({ ...prev, template: e.target.value || null }))
           }
           placeholder="## {{timestamp}}&#10;&#10;{{content}}&#10;&#10;---"
-          className="w-full h-24 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 resize-none focus:outline-none focus:border-purple-500/50 font-mono text-sm"
+          className="w-full h-24 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 resize-none focus:outline-none focus:border-[var(--ui-accent)] font-mono text-sm"
         />
         <p className="mt-1 text-xs text-gray-500">
           Available variables: {'{{content}}'}, {'{{timestamp}}'}, {'{{date}}'}
@@ -323,7 +323,7 @@ export function ObsidianConfig() {
       <button
         onClick={handleSave}
         disabled={saving || !config.vault_path}
-        className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full px-4 py-2 bg-[var(--ui-accent)] hover:brightness-110 text-white font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {saving ? (
           <>

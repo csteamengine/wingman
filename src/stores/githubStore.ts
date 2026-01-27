@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import type {
   GitHubConfig,
   GitHubAuthStatus,
@@ -178,6 +179,14 @@ export const useGitHubStore = create<GitHubState>((set, get) => ({
     } catch (error) {
       console.error('[GitHub Store] Poll caught error:', error);
       const errorMessage = String(error);
+      console.log('[GitHub Store] Error message string:', errorMessage);
+      console.log('[GitHub Store] Contains slow_down?', errorMessage.includes('slow_down'));
+
+      // Re-throw slow_down errors so the modal can adjust its polling interval
+      if (errorMessage.includes('slow_down')) {
+        console.log('[GitHub Store] Re-throwing slow_down error');
+        throw error;
+      }
 
       let friendlyError = errorMessage;
       if (errorMessage.includes('timeout') || errorMessage.includes('expired')) {
@@ -241,6 +250,9 @@ export const useGitHubStore = create<GitHubState>((set, get) => ({
       const gistDescription = description || `Wingman gist created on ${new Date().toLocaleString()}`;
       const isPublic = config?.default_public ?? false;
 
+      console.log('[GitHub] Creating gist with config:', config);
+      console.log('[GitHub] isPublic value:', isPublic);
+
       const result = await invoke<GistResult>('create_github_gist', {
         content,
         filename,
@@ -257,7 +269,7 @@ export const useGitHubStore = create<GitHubState>((set, get) => ({
       // Auto-copy URL to clipboard if enabled
       if (config?.auto_copy_url && result.html_url) {
         try {
-          await navigator.clipboard.writeText(result.html_url);
+          await writeText(result.html_url);
         } catch (err) {
           console.warn('Failed to copy gist URL to clipboard:', err);
           // Don't fail the whole operation if clipboard fails
@@ -335,6 +347,7 @@ export const useGitHubStore = create<GitHubState>((set, get) => ({
         ...partialConfig,
       };
 
+      console.log('[GitHub] Saving config:', updatedConfig);
       await invoke('save_github_config', { config: updatedConfig });
 
       set({

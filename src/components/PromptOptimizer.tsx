@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePremiumStore, formatTokenUsage } from '../stores/premiumStore';
 import { useLicenseStore } from '../stores/licenseStore';
@@ -60,7 +61,7 @@ export function PromptOptimizer({ initialText = '', onOptimized, onClose }: Prom
   const handleCopyOutput = async () => {
     if (outputText) {
       try {
-        await navigator.clipboard.writeText(outputText);
+        await writeText(outputText);
       } catch (err) {
         console.error('Failed to copy:', err);
       }
