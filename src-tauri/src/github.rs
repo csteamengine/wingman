@@ -242,14 +242,17 @@ async fn start_device_flow_internal() -> Result<DeviceFlowStart, GitHubError> {
         .timeout(std::time::Duration::from_secs(30))
         .build()?;
 
+    // GitHub expects form data, not JSON
+    let params = [
+        ("client_id", GITHUB_CLIENT_ID),
+        ("scope", "gist"),
+    ];
+
     let response = client
         .post("https://github.com/login/device/code")
         .header("Accept", "application/json")
         .header("User-Agent", "Wingman-Desktop")
-        .json(&serde_json::json!({
-            "client_id": GITHUB_CLIENT_ID,
-            "scope": "gist"
-        }))
+        .form(&params)
         .send()
         .await
         .map_err(|e| {
@@ -290,15 +293,18 @@ async fn poll_device_flow_internal(device_code: &str) -> Result<Option<GitHubAut
         .timeout(std::time::Duration::from_secs(30))
         .build()?;
 
+    // GitHub expects form data, not JSON for the token endpoint
+    let params = [
+        ("client_id", GITHUB_CLIENT_ID),
+        ("device_code", device_code),
+        ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
+    ];
+
     let response = client
         .post("https://github.com/login/oauth/access_token")
         .header("Accept", "application/json")
         .header("User-Agent", "Wingman-Desktop")
-        .json(&serde_json::json!({
-            "client_id": GITHUB_CLIENT_ID,
-            "device_code": device_code,
-            "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
-        }))
+        .form(&params)
         .send()
         .await
         .map_err(|e| {
