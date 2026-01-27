@@ -48,6 +48,7 @@ import {
 } from './editor';
 
 import type {ObsidianResult, GistResult, AIPreset} from '../types';
+import {maskSecrets} from '../utils/maskSecrets';
 
 export function EditorWindow() {
     const editorRef = useRef<HTMLDivElement>(null);
@@ -528,6 +529,53 @@ export function EditorWindow() {
         }
     }, [language, setLanguage, settings, isPro, setValidationToast]);
 
+    // Mask Secrets handler
+    const handleMaskSecrets = useCallback(() => {
+        const view = viewRef.current;
+        if (!view) return;
+
+        const selection = view.state.selection.main;
+        const cursorPos = selection.head;
+        const text = selection.empty ? view.state.doc.toString() : view.state.sliceDoc(selection.from, selection.to);
+        const from = selection.empty ? 0 : selection.from;
+        const to = selection.empty ? view.state.doc.length : selection.to;
+
+        if (!text.trim()) return;
+
+        const masked = maskSecrets(text);
+
+        const applyCallback = () => {
+            const lengthDiff = masked.length - (to - from);
+            const newCursorPos = cursorPos <= from ? cursorPos : cursorPos + lengthDiff;
+            view.dispatch({
+                changes: { from, to, insert: masked },
+                selection: { anchor: newCursorPos },
+            });
+        };
+
+        const showDiffPreview = settings?.show_diff_preview;
+        if (showDiffPreview && isPro && text !== masked) {
+            useDiffStore.getState().setPendingDiff({
+                originalText: text,
+                transformedText: masked,
+                transformationType: 'Mask Secrets',
+                selectionRange: selection.empty ? null : { from, to },
+                cursorPos,
+                applyCallback,
+            });
+            useDiffStore.getState().openPreviewModal();
+        } else {
+            applyCallback();
+            if (text !== masked && isPro) {
+                useDiffStore.getState().addTransformationRecord({
+                    originalText: text,
+                    transformedText: masked,
+                    transformationType: 'Mask Secrets',
+                });
+            }
+        }
+    }, [settings, isPro]);
+
     // URL Parser
     const handleParseUrl = useCallback(() => {
         if (!parsedUrlInfo || !viewRef.current) return;
@@ -805,6 +853,7 @@ export function EditorWindow() {
                 onNumberedList={applyNumberedList}
                 onFormat={handleFormat}
                 onMinify={handleMinify}
+                onMaskSecrets={handleMaskSecrets}
             />
 
             <FileDragOverlay isDragging={isDragging} />

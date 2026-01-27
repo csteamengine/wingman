@@ -10,7 +10,8 @@ import {
     List,
     ListOrdered,
     Form,
-    ChevronsDownUp
+    ChevronsDownUp,
+    EyeOff
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -19,9 +20,10 @@ interface ToolbarProps {
     onNumberedList: () => void;
     onFormat: () => void;
     onMinify: () => void;
+    onMaskSecrets: () => void;
 }
 
-export function Toolbar({ onTransform, onBulletList, onNumberedList, onFormat, onMinify }: ToolbarProps) {
+export function Toolbar({ onTransform, onBulletList, onNumberedList, onFormat, onMinify, onMaskSecrets }: ToolbarProps) {
     return (
         <div className="border-b border-[var(--ui-border)] px-2 py-2 overflow-x-auto">
             <div className="flex items-center gap-0.5 min-w-max">
@@ -70,6 +72,9 @@ export function Toolbar({ onTransform, onBulletList, onNumberedList, onFormat, o
                 </button>
                 <button onClick={onMinify} title="Minify Code" className="toolbar-btn">
                     <ChevronsDownUp className="w-5 h-5" />
+                </button>
+                <button onClick={onMaskSecrets} title="Mask Secrets — redact API keys, tokens, passwords and other sensitive values" className="toolbar-btn">
+                    <EyeOff className="w-5 h-5" />
                 </button>
             </div>
         </div>
