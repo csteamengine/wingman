@@ -22,7 +22,7 @@ export function GitHubDeviceFlowModal({
   const [error, setError] = useState<string | null>(null);
   const [timeoutSeconds, setTimeoutSeconds] = useState(flowStart.expires_in);
   const pollingRef = useRef(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // GitHub requires minimum 5 seconds, we use 8 to be safe and avoid rate limits
   const currentIntervalMs = useRef(Math.max(flowStart.interval, 8) * 1000);
 

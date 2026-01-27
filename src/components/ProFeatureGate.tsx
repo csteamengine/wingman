@@ -24,6 +24,7 @@ const FEATURE_NAMES: Record<ProFeature, string> = {
   encode_decode: 'Encode/Decode',
   image_attachments: 'Image Attachments',
   obsidian_integration: 'Obsidian Integration',
+  github_integration: 'GitHub Integration',
   font_customization: 'Font Customization',
   opacity_control: 'Opacity Control',
   sticky_mode: 'Sticky Window Mode',

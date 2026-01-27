@@ -33,7 +33,7 @@ export function FloatingNotifications({
     onToastClick,
     gistToast,
     onGistToastOpen,
-    onGistToastDismiss,
+    onGistToastDismiss: _onGistToastDismiss,
     validationToast,
     onDismissValidation,
 }: FloatingNotificationsProps) {

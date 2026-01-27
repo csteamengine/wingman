@@ -46,7 +46,7 @@ interface DownloadProgress {
     percent: number | null;
 }
 
-type TabType = 'settings' | 'hotkeys' | 'license' | 'obsidian';
+type TabType = 'settings' | 'hotkeys' | 'license' | 'obsidian' | 'github';
 
 // Platform detection - opacity slider only available on Linux
 // macOS uses native vibrancy (NSVisualEffectView), Windows uses acrylic/mica
