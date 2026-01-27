@@ -1032,18 +1032,18 @@ body {
   color: rgb(22, 163, 74);
 }
 
-/* JSON validation error line highlight */
-.cm-error-line {
-  background: rgba(239, 68, 68, 0.15) !important;
-  border-left: 3px solid rgb(239, 68, 68) !important;
-  text-decoration: wavy underline rgb(239, 68, 68) !important;
+/* Lint diagnostic styling - colorblind mode */
+.colorblind-editor .cm-lintRange-error {
+  background-image: none !important;
+  text-decoration: wavy underline rgb(251, 146, 60) !important;
   text-decoration-skip-ink: none !important;
 }
 
-/* Colorblind mode: use orange instead of red */
-.colorblind-editor .cm-error-line {
-  background: rgba(251, 146, 60, 0.15) !important;
-  border-left: 3px solid rgb(251, 146, 60) !important;
-  text-decoration: wavy underline rgb(251, 146, 60) !important;
-  text-decoration-skip-ink: none !important;
+.colorblind-editor .cm-lint-marker-error {
+  content: '' !important;
+  background: rgb(251, 146, 60) !important;
+}
+
+.colorblind-editor .cm-panel-lint .cm-diagnostic-error {
+  border-left-color: rgb(251, 146, 60) !important;
 }

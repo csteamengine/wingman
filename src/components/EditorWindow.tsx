@@ -1,11 +1,12 @@
 import {useEffect, useRef, useCallback, useState} from 'react';
-import {EditorView, placeholder, drawSelection, dropCursor, keymap, Decoration, type DecorationSet} from '@codemirror/view';
-import {EditorState, StateEffect, StateField} from '@codemirror/state';
+import {EditorView, placeholder, drawSelection, dropCursor, keymap} from '@codemirror/view';
+import {EditorState} from '@codemirror/state';
 import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/commands';
 import {search, searchKeymap} from '@codemirror/search';
 import {bracketMatching} from '@codemirror/language';
 import {autocompletion, closeBrackets, closeBracketsKeymap} from '@codemirror/autocomplete';
-import {linter, lintGutter} from '@codemirror/lint';
+import {linter, lintGutter, setDiagnostics} from '@codemirror/lint';
+import type {Diagnostic} from '@codemirror/lint';
 import {oneDark} from '@codemirror/theme-one-dark';
 import {listen} from '@tauri-apps/api/event';
 import {invoke} from '@tauri-apps/api/core';
@@ -76,24 +77,37 @@ function parseErrorPosition(errorMsg: string): { line: number; column: number } 
     return null;
 }
 
-// Error line highlight for JSON validation
-const setErrorHighlight = StateEffect.define<{ from: number; to: number } | null>();
+// Show an error diagnostic at a specific position in the editor, auto-clears after timeout
+function showErrorDiagnostic(
+    view: EditorView,
+    viewRef: React.RefObject<EditorView | null>,
+    from: number,
+    to: number,
+    message: string,
+    source?: string,
+    timeoutMs = 5000,
+) {
+    const diagnostic: Diagnostic = {
+        from,
+        to,
+        severity: 'error',
+        message,
+        source: source ?? 'Format',
+    };
 
-const errorHighlightField = StateField.define<DecorationSet>({
-    create() { return Decoration.none; },
-    update(decorations, tr) {
-        for (const e of tr.effects) {
-            if (e.is(setErrorHighlight)) {
-                if (e.value === null) return Decoration.none;
-                return Decoration.set([
-                    Decoration.line({ class: 'cm-error-line' }).range(e.value.from),
-                ]);
-            }
+    view.dispatch(
+        setDiagnostics(view.state, [diagnostic]),
+        { selection: { anchor: from } },
+        { effects: EditorView.scrollIntoView(from, { y: 'center' }) },
+    );
+    view.focus();
+
+    setTimeout(() => {
+        if (viewRef.current) {
+            viewRef.current.dispatch(setDiagnostics(viewRef.current.state, []));
         }
-        return decorations.map(tr.changes);
-    },
-    provide: f => EditorView.decorations.from(f),
-});
+    }, timeoutMs);
+}
 
 export function EditorWindow() {
     const editorRef = useRef<HTMLDivElement>(null);
@@ -541,28 +555,15 @@ export function EditorWindow() {
             const errorMsg = String(error);
             setValidationToast({ type: 'error', message: errorMsg });
 
-            // Highlight the error line in the editor
+            // Highlight the error position using CodeMirror diagnostics
             const errorPos = parseErrorPosition(errorMsg);
             if (errorPos && view) {
                 const lineNum = Math.min(errorPos.line, view.state.doc.lines);
                 const line = view.state.doc.line(lineNum);
                 const col = Math.min(errorPos.column - 1, line.length);
-                const pos = line.from + col;
-
-                view.dispatch({
-                    selection: { anchor: pos },
-                    effects: [
-                        EditorView.scrollIntoView(pos, { y: 'center' }),
-                        setErrorHighlight.of({ from: line.from, to: line.to }),
-                    ],
-                });
-                view.focus();
-
-                setTimeout(() => {
-                    if (viewRef.current) {
-                        viewRef.current.dispatch({ effects: setErrorHighlight.of(null) });
-                    }
-                }, 5000);
+                const from = line.from + col;
+                const to = Math.min(from + 1, line.to);
+                showErrorDiagnostic(view, viewRef, from, to, errorMsg);
             }
         }
     }, [language, setLanguage, settings, isPro, setValidationToast]);
@@ -635,22 +636,9 @@ export function EditorWindow() {
                 const lineNum = Math.min(errorPos.line, view.state.doc.lines);
                 const line = view.state.doc.line(lineNum);
                 const col = Math.min(errorPos.column - 1, line.length);
-                const pos = line.from + col;
-
-                view.dispatch({
-                    selection: { anchor: pos },
-                    effects: [
-                        EditorView.scrollIntoView(pos, { y: 'center' }),
-                        setErrorHighlight.of({ from: line.from, to: line.to }),
-                    ],
-                });
-                view.focus();
-
-                setTimeout(() => {
-                    if (viewRef.current) {
-                        viewRef.current.dispatch({ effects: setErrorHighlight.of(null) });
-                    }
-                }, 5000);
+                const from = line.from + col;
+                const to = Math.min(from + 1, line.to);
+                showErrorDiagnostic(view, viewRef, from, to, errorMsg);
             }
         }
     }, [language, setLanguage, settings, isPro, setValidationToast]);
@@ -723,30 +711,14 @@ export function EditorWindow() {
             } else if (actionResult.validationType === 'error') {
                 setValidationToast({ type: 'error', message: actionResult.validationMessage });
 
-                // Highlight the error line and move cursor to error position
+                // Highlight the error position using CodeMirror diagnostics
                 if (actionResult.errorLine && viewRef.current) {
                     const view = viewRef.current;
                     const line = view.state.doc.line(Math.min(actionResult.errorLine, view.state.doc.lines));
                     const errorCol = actionResult.errorColumn ? Math.min(actionResult.errorColumn - 1, line.length) : 0;
-                    const errorPos = line.from + errorCol;
-
-                    view.dispatch({
-                        selection: { anchor: errorPos },
-                        effects: [
-                            EditorView.scrollIntoView(errorPos, { y: 'center' }),
-                            setErrorHighlight.of({ from: line.from, to: line.to }),
-                        ],
-                    });
-                    view.focus();
-
-                    // Clear highlight after 5 seconds
-                    setTimeout(() => {
-                        if (viewRef.current) {
-                            viewRef.current.dispatch({
-                                effects: setErrorHighlight.of(null),
-                            });
-                        }
-                    }, 5000);
+                    const from = line.from + errorCol;
+                    const to = Math.min(from + 1, line.to);
+                    showErrorDiagnostic(view, viewRef, from, to, actionResult.validationMessage ?? 'Error', 'Validate');
                 }
             }
         }
@@ -901,7 +873,7 @@ export function EditorWindow() {
         if (!editorRef.current) return;
 
         const extensions = [
-            errorHighlightField,
+            lintGutter(),
             history(),
             EditorState.allowMultipleSelections.of(true),
             drawSelection(),
@@ -940,15 +912,15 @@ export function EditorWindow() {
 
             // Enable linters for supported languages
             if (language === 'json') {
-                extensions.push(lintGutter(), linter(jsonLinter, { delay: 300 }));
+                extensions.push(linter(jsonLinter, { delay: 300 }));
             } else if (language === 'xml') {
-                extensions.push(lintGutter(), linter(xmlLinter, { delay: 300 }));
+                extensions.push(linter(xmlLinter, { delay: 300 }));
             } else if (language === 'python') {
-                extensions.push(lintGutter(), linter(pythonLinter, { delay: 300 }));
+                extensions.push(linter(pythonLinter, { delay: 300 }));
             } else if (language === 'html') {
-                extensions.push(lintGutter(), linter(htmlLinter, { delay: 300 }));
+                extensions.push(linter(htmlLinter, { delay: 300 }));
             } else if (language === 'yaml') {
-                extensions.push(lintGutter(), linter(yamlLinter, { delay: 300 }));
+                extensions.push(linter(yamlLinter, { delay: 300 }));
             }
         }
 
