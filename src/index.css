@@ -25,6 +25,10 @@
   --btn-obsidian-border: rgba(168, 85, 247, 0.4);
   --btn-obsidian-text: #c4b5fd;
   --btn-obsidian-hover: rgba(168, 85, 247, 0.25);
+  --btn-github-bg: rgba(128, 128, 128, 0.15);
+  --btn-github-border: rgba(128, 128, 128, 0.4);
+  --btn-github-text: #d1d5db;
+  --btn-github-hover: rgba(128, 128, 128, 0.25);
   --btn-primary-bg: rgba(255, 255, 255, 0.1);
   --btn-primary-border: rgba(255, 255, 255, 0.2);
   --btn-primary-text: #EBEBEB;
@@ -67,6 +71,9 @@
   --btn-obsidian-text: #bd93f9;
   --btn-obsidian-border: rgba(189, 147, 249, 0.4);
   --btn-obsidian-bg: rgba(189, 147, 249, 0.15);
+  --btn-github-text: #f8f8f2;
+  --btn-github-border: rgba(248, 248, 242, 0.3);
+  --btn-github-bg: rgba(68, 71, 90, 0.4);
 }
 
 /* Nord theme */
@@ -81,6 +88,9 @@
   --btn-obsidian-text: #b48ead;
   --btn-obsidian-border: rgba(180, 142, 173, 0.4);
   --btn-obsidian-bg: rgba(180, 142, 173, 0.15);
+  --btn-github-text: #d8dee9;
+  --btn-github-border: rgba(216, 222, 233, 0.3);
+  --btn-github-bg: rgba(76, 86, 106, 0.3);
 }
 
 /* Solarized dark */
@@ -95,6 +105,9 @@
   --btn-obsidian-text: #6c71c4;
   --btn-obsidian-border: rgba(108, 113, 196, 0.4);
   --btn-obsidian-bg: rgba(108, 113, 196, 0.15);
+  --btn-github-text: #93a1a1;
+  --btn-github-border: rgba(147, 161, 161, 0.4);
+  --btn-github-bg: rgba(88, 110, 117, 0.2);
 }
 
 /* ===== LIGHT THEMES ===== */
@@ -119,6 +132,10 @@
   --btn-obsidian-border: #7c3aed;
   --btn-obsidian-text: #6d28d9;
   --btn-obsidian-hover: #ddd6fe;
+  --btn-github-bg: #e5e7eb;
+  --btn-github-border: #4b5563;
+  --btn-github-text: #1f2937;
+  --btn-github-hover: #d1d5db;
   --btn-primary-bg: #e5e7eb;
   --btn-primary-border: #6b7280;
   --btn-primary-text: #111827;
@@ -148,6 +165,10 @@
   --btn-obsidian-border: #6c71c4;
   --btn-obsidian-text: #5a5ea8;
   --btn-obsidian-hover: #d0cee8;
+  --btn-github-bg: #d8dcd4;
+  --btn-github-border: #586e75;
+  --btn-github-text: #073642;
+  --btn-github-hover: #c8ccc4;
   --btn-primary-bg: #e8e4d4;
   --btn-primary-border: #586e75;
   --btn-primary-text: #073642;
@@ -574,6 +595,17 @@ body {
 
 .btn-obsidian:hover:not(:disabled) {
   background: var(--btn-obsidian-hover);
+}
+
+/* GitHub button (gray/black) */
+.btn-github {
+  background: var(--btn-github-bg);
+  border: 1px solid var(--btn-github-border);
+  color: var(--btn-github-text);
+}
+
+.btn-github:hover:not(:disabled) {
+  background: var(--btn-github-hover);
 }
 
 /* Primary button (Copy to Clipboard) */

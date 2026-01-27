@@ -1,5 +1,6 @@
 mod clipboard;
 mod formatters;
+mod github;
 mod history;
 mod hotkey;
 mod license;
@@ -23,6 +24,10 @@ use tauri_nspanel::ManagerExt;
 use window::{start_workspace_monitor, set_window_blur, update_vibrancy_material, get_window_monitor_name, WebviewWindowExt, MAIN_WINDOW_LABEL};
 
 use clipboard::{calculate_text_stats, transform_text, TextStats, TextTransform};
+use github::{
+    check_github_auth_status, create_github_gist, get_github_config, logout_github,
+    poll_github_device_flow, save_github_config, start_github_device_flow,
+};
 use history::{
     add_entry, cleanup_old_entries, clear_history, delete_entry, export_history, get_entries,
     get_stats, init_database, search_entries, HistoryEntry, HistoryStats,
@@ -1586,6 +1591,14 @@ pub fn run() {
             validate_obsidian_vault_cmd,
             add_to_obsidian,
             open_url,
+            // GitHub
+            start_github_device_flow,
+            poll_github_device_flow,
+            check_github_auth_status,
+            create_github_gist,
+            logout_github,
+            get_github_config,
+            save_github_config,
             // AI
             get_ai_config,
             configure_ai,

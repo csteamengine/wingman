@@ -14,6 +14,7 @@ import {useEditorStore} from '../stores/editorStore';
 import {useSettingsStore} from '../stores/settingsStore';
 import {useLicenseStore, isDev} from '../stores/licenseStore';
 import {usePremiumStore} from '../stores/premiumStore';
+import {useGitHubStore} from '../stores/githubStore';
 import {useDragStore} from '../stores/dragStore';
 import {useCustomAIPromptsStore} from '../stores/customAIPromptsStore';
 import {useDiffStore} from '../stores/diffStore';
@@ -46,7 +47,7 @@ import {
     AILoadingOverlay,
 } from './editor';
 
-import type {ObsidianResult, AIPreset} from '../types';
+import type {ObsidianResult, GistResult, AIPreset} from '../types';
 
 export function EditorWindow() {
     const editorRef = useRef<HTMLDivElement>(null);
@@ -55,6 +56,7 @@ export function EditorWindow() {
 
     const [isDragging, setIsDragging] = useState(false);
     const [obsidianToast, setObsidianToast] = useState<ObsidianResult | null>(null);
+    const [gistToast, setGistToast] = useState<GistResult | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const [selectedCustomPromptId, setSelectedCustomPromptId] = useState<string | null>(null);
@@ -114,6 +116,15 @@ export function EditorWindow() {
         getEnabledPrompts: getEnabledCustomPrompts,
     } = useCustomAIPromptsStore();
 
+    const {
+        isAuthenticated: isGitHubAuthenticated,
+        gistLoading,
+        error: githubError,
+        loadAuthStatus: loadGitHubAuthStatus,
+        loadConfig: loadGitHubConfig,
+        createGist,
+    } = useGitHubStore();
+
     // Feature flags - compute effective tier to react to dev tier changes
     // Premium tier has access to all Pro features
     const effectiveTier = (isDev && devTierOverride !== null) ? devTierOverride : tier;
@@ -121,6 +132,7 @@ export function EditorWindow() {
     const isPro = effectiveTier === 'pro' || effectiveTier === 'premium';
     const hasObsidianAccess = isPro;
     const hasObsidianConfigured = obsidianConfig && obsidianConfig.vault_path;
+    const hasGitHubAccess = isPro;
     const hasImageSupport = isPro;
     const hasClipboardDragDrop = isPro;
     const hasStatsDisplay = isPro;
@@ -132,6 +144,14 @@ export function EditorWindow() {
             loadObsidianConfig();
         }
     }, [hasObsidianAccess, loadObsidianConfig]);
+
+    // Load GitHub config and auth status when user has Pro/Premium access
+    useEffect(() => {
+        if (hasGitHubAccess) {
+            loadGitHubConfig();
+            loadGitHubAuthStatus();
+        }
+    }, [hasGitHubAccess, loadGitHubConfig, loadGitHubAuthStatus]);
 
     // Load Premium features when user has Premium tier
     useEffect(() => {
@@ -155,11 +175,29 @@ export function EditorWindow() {
     }, [obsidianToast]);
 
     useEffect(() => {
+        if (gistToast) {
+            const timer = setTimeout(() => setGistToast(null), 10000);
+            return () => clearTimeout(timer);
+        }
+    }, [gistToast]);
+
+    useEffect(() => {
         if (aiError) {
             const timer = setTimeout(() => setAiError(null), 3000);
             return () => clearTimeout(timer);
         }
     }, [aiError]);
+
+    // Clear GitHub error after showing it
+    useEffect(() => {
+        if (githubError) {
+            const timer = setTimeout(() => {
+                // Clear the error from the store
+                useGitHubStore.setState({ error: null });
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [githubError]);
 
     useEffect(() => {
         if (parsedUrlInfo) {
@@ -314,6 +352,39 @@ export function EditorWindow() {
             await hideWindow();
         }
     }, [obsidianToast, openObsidianNote, hideWindow]);
+
+    // GitHub Gist handlers
+    const handleGitHubGist = useCallback(async () => {
+        // Pre-flight validation
+        if (!content.trim()) {
+            setValidationToast({
+                type: 'error',
+                message: 'Cannot create gist: content is empty',
+            });
+            return;
+        }
+
+        if (!isGitHubAuthenticated) {
+            setValidationToast({
+                type: 'error',
+                message: 'Not authenticated with GitHub. Please authorize in Settings.',
+            });
+            return;
+        }
+
+        const result = await createGist(content, language || 'plaintext');
+        if (result) {
+            setGistToast(result);
+        }
+    }, [content, language, createGist, isGitHubAuthenticated, setValidationToast]);
+
+    const handleGistToastOpen = useCallback(async () => {
+        if (gistToast) {
+            await invoke('open_url', { url: gistToast.html_url });
+            setGistToast(null);
+            await hideWindow();
+        }
+    }, [gistToast, hideWindow]);
 
     // Format handler
     const handleFormat = useCallback(async () => {
@@ -778,11 +849,16 @@ export function EditorWindow() {
                 hasObsidianAccess={hasObsidianAccess}
                 hasObsidianConfigured={!!hasObsidianConfigured}
                 onObsidianSend={handleObsidianSend}
+                hasGitHubAccess={hasGitHubAccess}
+                isGitHubAuthenticated={isGitHubAuthenticated}
+                gistLoading={gistLoading}
+                onGitHubGist={handleGitHubGist}
                 settings={settings}
                 onPasteAndClose={pasteAndClose}
                 onSaveToFile={saveToFile}
                 onUpdateSettings={updateSettings}
                 aiError={aiError}
+                githubError={githubError}
             />
 
             <FloatingNotifications
@@ -791,6 +867,9 @@ export function EditorWindow() {
                 onDismissUrlParser={() => setParsedUrlInfo(null)}
                 obsidianToast={obsidianToast}
                 onToastClick={handleToastClick}
+                gistToast={gistToast}
+                onGistToastOpen={handleGistToastOpen}
+                onGistToastDismiss={() => setGistToast(null)}
                 validationToast={validationToast}
                 onDismissValidation={() => setValidationToast(null)}
             />

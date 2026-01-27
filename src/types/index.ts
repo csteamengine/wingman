@@ -112,6 +112,7 @@ export type ProFeature =
   | 'encode_decode'
   | 'image_attachments'
   | 'obsidian_integration'
+  | 'github_integration'
   | 'font_customization'
   | 'opacity_control'
   | 'sticky_mode'
@@ -170,6 +171,34 @@ export interface ObsidianResult {
   note_name: string;
   vault_name: string;
   open_uri: string;
+}
+
+// GitHub Gist types
+export interface GitHubConfig {
+  is_authenticated: boolean;
+  username: string | null;
+  default_public: boolean;
+  auto_copy_url: boolean;
+}
+
+export interface GitHubAuthStatus {
+  is_authenticated: boolean;
+  username: string | null;
+  scopes: string[];
+}
+
+export interface DeviceFlowStart {
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  expires_in: number;
+  interval: number;
+}
+
+export interface GistResult {
+  gist_id: string;
+  url: string;
+  html_url: string;
 }
 
 export interface AIConfig {

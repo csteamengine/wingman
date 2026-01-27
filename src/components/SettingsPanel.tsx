@@ -8,6 +8,7 @@ import {useLicenseStore} from '../stores/licenseStore';
 import {usePremiumStore, formatTokenUsage} from '../stores/premiumStore';
 import {LicenseActivation} from './LicenseActivation';
 import {ObsidianConfig} from './ObsidianConfig';
+import {GitHubSettings} from './GitHubSettings';
 import {ProBadge} from './ProFeatureGate';
 import type {ThemeType} from '../types';
 
@@ -78,6 +79,7 @@ export function SettingsPanel() {
     const hasStickyMode = isPro;
     const hasStatsDisplay = isPro;
     const hasObsidianAccess = isPro;
+    const hasGitHubAccess = isPro;
     const hasDiffPreview = isPro;
 
     // Mock subscription status for dev mode
@@ -280,6 +282,18 @@ export function SettingsPanel() {
                             }`}
                         >
                             Obsidian
+                        </button>
+                    )}
+                    {hasGitHubAccess && (
+                        <button
+                            onClick={() => setActiveTab('github')}
+                            className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+                                activeTab === 'github'
+                                    ? 'text-[var(--ui-text)] bg-[var(--ui-surface)]'
+                                    : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)]'
+                            }`}
+                        >
+                            GitHub
                         </button>
                     )}
                     <button
@@ -870,6 +884,13 @@ export function SettingsPanel() {
                 {activeTab === 'obsidian' && hasObsidianAccess && (
                     <div>
                         <ObsidianConfig />
+                    </div>
+                )}
+
+                {/* GitHub Tab */}
+                {activeTab === 'github' && hasGitHubAccess && (
+                    <div>
+                        <GitHubSettings />
                     </div>
                 )}
             </div>

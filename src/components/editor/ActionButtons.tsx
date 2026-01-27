@@ -1,5 +1,5 @@
 import {useRef, useState, useEffect} from 'react';
-import {Bot, ChevronDown, Check, Download, Loader2, Diamond} from 'lucide-react';
+import {Bot, ChevronDown, Check, Download, Loader2, Diamond, Github} from 'lucide-react';
 import type {AIPreset, CustomAIPrompt, AppSettings} from '../../types';
 
 interface ActionButtonsProps {
@@ -23,6 +23,12 @@ interface ActionButtonsProps {
     hasObsidianConfigured: boolean;
     onObsidianSend: () => void;
 
+    // GitHub state
+    hasGitHubAccess: boolean;
+    isGitHubAuthenticated: boolean;
+    gistLoading: boolean;
+    onGitHubGist: () => void;
+
     // Primary action state
     settings: AppSettings | null;
     onPasteAndClose: () => void;
@@ -31,6 +37,7 @@ interface ActionButtonsProps {
 
     // Error state
     aiError: string | null;
+    githubError: string | null;
 }
 
 export function ActionButtons({
@@ -48,11 +55,16 @@ export function ActionButtons({
     hasObsidianAccess,
     hasObsidianConfigured,
     onObsidianSend,
+    hasGitHubAccess,
+    isGitHubAuthenticated,
+    gistLoading,
+    onGitHubGist,
     settings,
     onPasteAndClose,
     onSaveToFile,
     onUpdateSettings,
     aiError,
+    githubError,
 }: ActionButtonsProps) {
     const [showAiPopover, setShowAiPopover] = useState(false);
     const [showPrimaryActionPopover, setShowPrimaryActionPopover] = useState(false);
@@ -226,6 +238,27 @@ export function ActionButtons({
                     <span>Obsidian</span>
                 </button>
 
+                {/* GitHub Gist button - GitHub gray/black - Pro feature */}
+                <button
+                    onClick={onGitHubGist}
+                    disabled={!hasGitHubAccess || !isGitHubAuthenticated || !content.trim() || gistLoading}
+                    title={
+                        !hasGitHubAccess
+                            ? "Pro feature - Create GitHub Gist"
+                            : !isGitHubAuthenticated
+                                ? "Authenticate with GitHub in Settings first"
+                                : "Create GitHub Gist"
+                    }
+                    className="btn-github flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-md text-sm transition-colors disabled:opacity-40"
+                >
+                    {gistLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                        <Github className="w-4 h-4" />
+                    )}
+                    <span>Gist</span>
+                </button>
+
                 {/* Primary Action split button */}
                 <div className="relative flex flex-1" ref={primaryActionRef}>
                     {/* Main button - triggers primary action */}
@@ -313,9 +346,15 @@ export function ActionButtons({
             </div>
 
             {/* AI Error message */}
+            {/* Error Messages */}
             {aiError && (
                 <div className="mx-3 mb-3 px-3 py-2 text-xs bg-red-500/10 border border-red-500/20 rounded-md text-red-400">
                     {aiError}
+                </div>
+            )}
+            {githubError && (
+                <div className="mx-3 mb-3 px-3 py-2 text-xs bg-red-500/10 border border-red-500/20 rounded-md text-red-400">
+                    <span className="font-medium">GitHub: </span>{githubError}
                 </div>
             )}
         </div>
