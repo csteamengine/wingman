@@ -22,6 +22,9 @@ export function GitHubDeviceFlowModal({
   const [error, setError] = useState<string | null>(null);
   const [timeoutSeconds, setTimeoutSeconds] = useState(flowStart.expires_in);
   const pollingRef = useRef(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  // GitHub requires minimum 5 seconds, we use 8 to be safe and avoid rate limits
+  const currentIntervalMs = useRef(Math.max(flowStart.interval, 8) * 1000);
 
   // Countdown timer
   useEffect(() => {
@@ -41,7 +44,14 @@ export function GitHubDeviceFlowModal({
   useEffect(() => {
     if (success) return;
 
-    const pollInterval = flowStart.interval * 1000; // Convert to milliseconds
+    const scheduleNextPoll = (delayMs: number) => {
+      // Clear any existing interval
+      if (intervalRef.current) {
+        clearTimeout(intervalRef.current);
+      }
+
+      intervalRef.current = setTimeout(poll, delayMs);
+    };
 
     const poll = async () => {
       // Prevent concurrent polls using ref
@@ -50,7 +60,7 @@ export function GitHubDeviceFlowModal({
         return;
       }
 
-      console.log('[Modal] Starting poll...');
+      console.log('[Modal] Starting poll, interval:', currentIntervalMs.current / 1000, 's');
       pollingRef.current = true;
       setPolling(true);
       setError(null);
@@ -75,29 +85,44 @@ export function GitHubDeviceFlowModal({
           return;
         }
 
-        // Still pending, continue polling
+        // Still pending, schedule next poll
         pollingRef.current = false;
         setPolling(false);
+        scheduleNextPoll(currentIntervalMs.current);
       } catch (err) {
-        console.error('[Modal] Poll error:', err);
-        setError(String(err));
+        const errorStr = String(err);
+        console.error('[Modal] Poll error:', errorStr);
+
+        // Check if it's a slow_down error - if so, increase interval
+        if (errorStr.includes('slow_down') || errorStr.includes('Too many requests')) {
+          // Increase interval by 5 seconds
+          currentIntervalMs.current = Math.min(currentIntervalMs.current + 5000, 30000);
+          console.log('[Modal] Slowing down, new interval:', currentIntervalMs.current / 1000, 's');
+        }
+
         pollingRef.current = false;
         setPolling(false);
-        // Don't return - let polling continue on next interval
+
+        // Schedule next poll even on error (except for fatal errors)
+        if (!errorStr.includes('expired') && !errorStr.includes('timeout')) {
+          scheduleNextPoll(currentIntervalMs.current);
+        } else {
+          setError(errorStr);
+        }
       }
     };
 
-    // Start polling immediately
-    poll();
-
-    // Then poll at intervals
-    const intervalId = setInterval(poll, pollInterval);
+    // Start first poll after a short delay (not immediately)
+    const initialDelay = 1000; // 1 second initial delay
+    scheduleNextPoll(initialDelay);
 
     return () => {
-      clearInterval(intervalId);
+      if (intervalRef.current) {
+        clearTimeout(intervalRef.current);
+      }
       pollingRef.current = false;
     };
-  }, [flowStart.device_code, flowStart.interval, pollDeviceFlow, onSuccess, onClose, success]);
+  }, [flowStart.device_code, pollDeviceFlow, onSuccess, onClose, success]);
 
   // Handle timeout
   useEffect(() => {
