@@ -176,7 +176,7 @@ export const useGitHubStore = create<GitHubState>((set, get) => ({
       console.log('[GitHub] Still pending authorization...');
       return false;
     } catch (error) {
-      console.error('Failed to poll GitHub device flow:', error);
+      console.error('[GitHub Store] Poll caught error:', error);
       const errorMessage = String(error);
 
       let friendlyError = errorMessage;

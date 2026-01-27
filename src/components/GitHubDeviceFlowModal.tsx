@@ -45,8 +45,12 @@ export function GitHubDeviceFlowModal({
 
     const poll = async () => {
       // Prevent concurrent polls using ref
-      if (pollingRef.current) return;
+      if (pollingRef.current) {
+        console.log('[Modal] Skipping poll - already polling');
+        return;
+      }
 
+      console.log('[Modal] Starting poll...');
       pollingRef.current = true;
       setPolling(true);
       setError(null);

@@ -211,7 +211,12 @@ struct DeviceFlowResponse {
 #[derive(Debug, Deserialize)]
 struct TokenResponse {
     access_token: Option<String>,
+    token_type: Option<String>,
+    scope: Option<String>,
     error: Option<String>,
+    error_description: Option<String>,
+    error_uri: Option<String>,
+    interval: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -289,6 +294,8 @@ async fn start_device_flow_internal() -> Result<DeviceFlowStart, GitHubError> {
 }
 
 async fn poll_device_flow_internal(device_code: &str) -> Result<Option<GitHubAuthStatus>, GitHubError> {
+    println!("[GitHub Poll] Polling with device_code: {}...", &device_code[..8.min(device_code.len())]);
+
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()?;
@@ -315,22 +322,26 @@ async fn poll_device_flow_internal(device_code: &str) -> Result<Option<GitHubAut
             }
         })?;
 
-    if !response.status().is_success() {
-        let status = response.status();
-        let text = response.text().await.unwrap_or_default();
+    let status = response.status();
+    let response_text = response.text().await.unwrap_or_default();
+
+    println!("[GitHub Poll] Status: {}, Response: {}", status, response_text);
+
+    if !status.is_success() {
         return Err(GitHubError::ApiError(format!(
             "Failed to poll device flow ({}): {}",
             status.as_u16(),
-            text
+            response_text
         )));
     }
 
-    let token_response: TokenResponse = response.json().await.map_err(|e| {
-        GitHubError::ApiError(format!("Failed to parse GitHub response: {}", e))
+    let token_response: TokenResponse = serde_json::from_str(&response_text).map_err(|e| {
+        GitHubError::ApiError(format!("Failed to parse GitHub response: {} - Raw: {}", e, response_text))
     })?;
 
     // Check for errors
-    if let Some(error) = token_response.error {
+    if let Some(error) = &token_response.error {
+        println!("[GitHub Poll] Error response: {} - {:?}", error, token_response.error_description);
         return match error.as_str() {
             "authorization_pending" => Err(GitHubError::AuthPending),
             "slow_down" => Err(GitHubError::AuthPending),
