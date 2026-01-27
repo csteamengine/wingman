@@ -30,6 +30,7 @@ export interface AppSettings {
   export_action: ExportAction;
   show_dev_tier_selector: boolean;
   colorblind_mode: boolean;
+  auto_detect_language: boolean;
   last_quick_actions_tab: 'clipboard' | 'actions';
 }
 

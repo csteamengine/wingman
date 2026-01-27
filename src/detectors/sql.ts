@@ -36,6 +36,7 @@ export const sqlDetector: Detector = {
     priority: 5,
     detect: (text: string) => SQL_RE.test(text),
     toastMessage: 'SQL query detected',
+    suggestedLanguage: 'sql',
     actions: [
         {
             id: 'format-sql',

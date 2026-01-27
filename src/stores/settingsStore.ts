@@ -32,6 +32,7 @@ const defaultSettings: AppSettings = {
   export_action: 'save_file',
   show_dev_tier_selector: true,
   colorblind_mode: false,
+  auto_detect_language: true,
   last_quick_actions_tab: 'clipboard',
 };
 

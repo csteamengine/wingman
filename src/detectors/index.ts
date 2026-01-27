@@ -34,10 +34,11 @@ export function detectContent(text: string): DetectorResult | null {
                 detectorId: detector.id,
                 toastMessage: detector.getToastMessage ? detector.getToastMessage(text) : detector.toastMessage,
                 actions: detector.actions,
+                suggestedLanguage: detector.getSuggestedLanguage ? detector.getSuggestedLanguage(text) : detector.suggestedLanguage,
             };
         }
     }
     return null;
 }
 
-export type {DetectorResult, DetectorAction} from './types';
+export type {DetectorResult, DetectorAction, DetectorActionResult} from './types';

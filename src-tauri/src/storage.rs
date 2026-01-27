@@ -61,6 +61,8 @@ pub struct AppSettings {
     pub show_dev_tier_selector: bool,
     #[serde(default)]
     pub colorblind_mode: bool,
+    #[serde(default = "default_auto_detect_language")]
+    pub auto_detect_language: bool,
     #[serde(default = "default_last_quick_actions_tab")]
     pub last_quick_actions_tab: String,
 }
@@ -71,6 +73,10 @@ fn default_primary_action() -> String {
 
 fn default_export_action() -> String {
     "save_file".to_string()
+}
+
+fn default_auto_detect_language() -> bool {
+    true
 }
 
 fn default_show_dev_tier_selector() -> bool {
@@ -108,6 +114,7 @@ impl Default for AppSettings {
             export_action: default_export_action(),
             show_dev_tier_selector: default_show_dev_tier_selector(),
             colorblind_mode: false,
+            auto_detect_language: default_auto_detect_language(),
             last_quick_actions_tab: default_last_quick_actions_tab(),
         }
     }

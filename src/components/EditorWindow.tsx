@@ -1,6 +1,6 @@
 import {useEffect, useRef, useCallback, useState} from 'react';
-import {EditorView, placeholder, drawSelection, dropCursor, keymap} from '@codemirror/view';
-import {EditorState} from '@codemirror/state';
+import {EditorView, placeholder, drawSelection, dropCursor, keymap, Decoration, type DecorationSet} from '@codemirror/view';
+import {EditorState, StateEffect, StateField} from '@codemirror/state';
 import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/commands';
 import {search, searchKeymap} from '@codemirror/search';
 import {bracketMatching} from '@codemirror/language';
@@ -50,7 +50,26 @@ import {
 import type {ObsidianResult, GistResult, AIPreset} from '../types';
 import {maskSecrets} from '../utils/maskSecrets';
 import {detectContent} from '../detectors';
-import type {DetectorResult, DetectorAction} from '../detectors';
+import type {DetectorResult, DetectorAction, DetectorActionResult} from '../detectors';
+
+// Error line highlight for JSON validation
+const setErrorHighlight = StateEffect.define<{ from: number; to: number } | null>();
+
+const errorHighlightField = StateField.define<DecorationSet>({
+    create() { return Decoration.none; },
+    update(decorations, tr) {
+        for (const e of tr.effects) {
+            if (e.is(setErrorHighlight)) {
+                if (e.value === null) return Decoration.none;
+                return Decoration.set([
+                    Decoration.line({ class: 'cm-error-line' }).range(e.value.from),
+                ]);
+            }
+        }
+        return decorations.map(tr.changes);
+    },
+    provide: f => EditorView.decorations.from(f),
+});
 
 export function EditorWindow() {
     const editorRef = useRef<HTMLDivElement>(null);
@@ -222,9 +241,14 @@ export function EditorWindow() {
         const timer = setTimeout(() => {
             const result = detectContent(content);
             setContextDetection(result);
+
+            // Auto-switch language if setting enabled and language is plaintext
+            if (result?.suggestedLanguage && settings?.auto_detect_language && language === 'plaintext') {
+                setLanguage(result.suggestedLanguage);
+            }
         }, 500);
         return () => clearTimeout(timer);
-    }, [content]);
+    }, [content, settings?.auto_detect_language, language, setLanguage]);
 
     // Auto-dismiss context detection after 8 seconds
     useEffect(() => {
@@ -599,9 +623,52 @@ export function EditorWindow() {
     // Context detection action handler
     const handleContextAction = useCallback((action: DetectorAction) => {
         const result = action.execute(content);
-        setContent(result);
         setContextDetection(null);
-    }, [content, setContent]);
+
+        if (typeof result === 'string') {
+            setContent(result);
+            return;
+        }
+
+        const actionResult = result as DetectorActionResult;
+        if (actionResult.text !== content) {
+            setContent(actionResult.text);
+        }
+
+        if (actionResult.validationMessage) {
+            if (actionResult.validationType === 'success') {
+                setValidationToast({ type: 'success', message: actionResult.validationMessage });
+            } else if (actionResult.validationType === 'error') {
+                setValidationToast({ type: 'error', message: actionResult.validationMessage });
+
+                // Highlight the error line and move cursor to error position
+                if (actionResult.errorLine && viewRef.current) {
+                    const view = viewRef.current;
+                    const line = view.state.doc.line(Math.min(actionResult.errorLine, view.state.doc.lines));
+                    const errorCol = actionResult.errorColumn ? Math.min(actionResult.errorColumn - 1, line.length) : 0;
+                    const errorPos = line.from + errorCol;
+
+                    view.dispatch({
+                        selection: { anchor: errorPos },
+                        effects: [
+                            EditorView.scrollIntoView(errorPos, { y: 'center' }),
+                            setErrorHighlight.of({ from: line.from, to: line.to }),
+                        ],
+                    });
+                    view.focus();
+
+                    // Clear highlight after 5 seconds
+                    setTimeout(() => {
+                        if (viewRef.current) {
+                            viewRef.current.dispatch({
+                                effects: setErrorHighlight.of(null),
+                            });
+                        }
+                    }, 5000);
+                }
+            }
+        }
+    }, [content, setContent, setValidationToast]);
 
     // URL Parser
     const handleParseUrl = useCallback(() => {
@@ -749,6 +816,7 @@ export function EditorWindow() {
         if (!editorRef.current) return;
 
         const extensions = [
+            errorHighlightField,
             history(),
             EditorState.allowMultipleSelections.of(true),
             drawSelection(),
@@ -901,7 +969,7 @@ export function EditorWindow() {
                     editorRef.current = el;
                     editorContainerRef.current = el;
                 }}
-                className="flex-1 overflow-hidden editor-pane"
+                className={`flex-1 overflow-hidden editor-pane${settings?.colorblind_mode ? ' colorblind-editor' : ''}`}
                 style={{
                     fontFamily: settings?.font_family || 'monospace',
                     fontSize: `${settings?.font_size || 14}px`,

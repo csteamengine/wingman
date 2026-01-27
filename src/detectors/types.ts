@@ -1,13 +1,22 @@
+export interface DetectorActionResult {
+    text: string;
+    validationMessage?: string;
+    validationType?: 'success' | 'error';
+    errorLine?: number;
+    errorColumn?: number;
+}
+
 export interface DetectorAction {
     id: string;
     label: string;
-    execute: (text: string) => string;
+    execute: (text: string) => string | DetectorActionResult;
 }
 
 export interface DetectorResult {
     detectorId: string;
     toastMessage: string;
     actions: DetectorAction[];
+    suggestedLanguage?: string;
 }
 
 export interface Detector {
@@ -17,4 +26,6 @@ export interface Detector {
     toastMessage: string;
     getToastMessage?: (text: string) => string;
     actions: DetectorAction[];
+    suggestedLanguage?: string;
+    getSuggestedLanguage?: (text: string) => string | undefined;
 }

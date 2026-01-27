@@ -527,6 +527,30 @@ export function SettingsPanel() {
                                 </button>
                             </div>
 
+                            {/* Auto-Detect Language */}
+                            <div className="flex items-center justify-between py-2">
+                                <div className="flex-1">
+                                    <label className="text-sm font-medium text-[var(--ui-text)]">
+                                        Auto-Detect Language
+                                    </label>
+                                    <p className="text-xs text-[var(--ui-text-muted)] mt-0.5">
+                                        Automatically switch language mode when content type is detected
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => handleUpdate({auto_detect_language: !settings.auto_detect_language})}
+                                    className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 overflow-hidden ${
+                                        settings.auto_detect_language ? 'bg-[var(--ui-accent)]' : 'bg-[var(--ui-border)]'
+                                    }`}
+                                >
+                                    <span
+                                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                                            settings.auto_detect_language ? 'translate-x-5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+
                             {/* Colorblind Mode */}
                             <div className="flex items-center justify-between py-2">
                                 <div className="flex-1">

@@ -1,4 +1,4 @@
-import type {Detector} from './types';
+import type {Detector, DetectorActionResult} from './types';
 
 function isValidJson(text: string): boolean {
     const trimmed = text.trim();
@@ -28,12 +28,27 @@ function looksLikeInvalidJson(text: string): boolean {
     }
 }
 
-function getJsonError(text: string): string {
+function getJsonError(text: string): { message: string; line?: number; column?: number } {
     try {
         JSON.parse(text.trim());
-        return 'Valid JSON';
+        return { message: 'Valid JSON' };
     } catch (e) {
-        return e instanceof SyntaxError ? e.message : String(e);
+        const msg = e instanceof SyntaxError ? e.message : String(e);
+        // Try to extract position from "at position N"
+        const posMatch = msg.match(/at position (\d+)/);
+        if (posMatch) {
+            const pos = parseInt(posMatch[1], 10);
+            const lines = text.trim().substring(0, pos).split('\n');
+            const line = lines.length;
+            const column = (lines[lines.length - 1]?.length ?? 0) + 1;
+            return { message: msg, line, column };
+        }
+        // Try "at line N column N"
+        const lineMatch = msg.match(/line (\d+) column (\d+)/);
+        if (lineMatch) {
+            return { message: msg, line: parseInt(lineMatch[1], 10), column: parseInt(lineMatch[2], 10) };
+        }
+        return { message: msg };
     }
 }
 
@@ -67,6 +82,11 @@ export const jsonYamlDetector: Detector = {
         if (looksLikeInvalidJson(text)) return 'Invalid JSON detected';
         if (isValidJson(text)) return 'JSON detected';
         return 'YAML detected';
+    },
+    getSuggestedLanguage: (text: string) => {
+        if (isValidJson(text) || looksLikeInvalidJson(text)) return 'json';
+        if (isYaml(text)) return 'yaml';
+        return undefined;
     },
     actions: [
         {
@@ -106,14 +126,24 @@ export const jsonYamlDetector: Detector = {
         {
             id: 'validate-json',
             label: 'Validate',
-            execute: (text: string) => {
+            execute: (text: string): string | DetectorActionResult => {
                 const trimmed = text.trim();
                 if (looksLikeJson(trimmed)) {
                     const error = getJsonError(trimmed);
-                    if (error === 'Valid JSON') {
-                        return `// ✓ Valid JSON\n${text}`;
+                    if (error.message === 'Valid JSON') {
+                        return {
+                            text,
+                            validationMessage: 'Valid JSON',
+                            validationType: 'success',
+                        };
                     }
-                    return `// ✗ Invalid JSON: ${error}\n${text}`;
+                    return {
+                        text,
+                        validationMessage: error.message,
+                        validationType: 'error',
+                        errorLine: error.line,
+                        errorColumn: error.column,
+                    };
                 }
                 return text;
             },
