@@ -921,7 +921,7 @@ body {
   font-family: 'JetBrains Mono', monospace;
 }
 
-.paste-demo {
+.copy-demo {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -929,7 +929,7 @@ body {
   color: var(--green);
 }
 
-.paste-demo kbd {
+.copy-demo kbd {
   padding: 0.5rem 0.75rem;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
@@ -1013,6 +1013,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  color: white;
 }
 
 .premium-badge-small {
