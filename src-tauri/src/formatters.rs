@@ -217,7 +217,7 @@ fn remove_js_comments(text: &str) -> String {
     let mut i = 0;
     let mut in_string = false;
     let mut string_char = ' ';
-    let mut in_regex = false;
+    let in_regex = false;
 
     while i < chars.len() {
         let ch = chars[i];
@@ -316,7 +316,7 @@ pub fn minify_react_code(text: String) -> Result<String, String> {
             let mut last_was_space = false;
 
             for ch in formatted.chars() {
-                if (ch == '"' || ch == '\'' || ch == '`') {
+                if ch == '"' || ch == '\'' || ch == '`' {
                     if !in_string {
                         in_string = true;
                         string_char = ch;
@@ -365,7 +365,7 @@ pub fn minify_javascript_code(text: String) -> Result<String, String> {
             let mut last_was_space = false;
 
             for ch in formatted.chars() {
-                if (ch == '"' || ch == '\'' || ch == '`') {
+                if ch == '"' || ch == '\'' || ch == '`' {
                     if !in_string {
                         in_string = true;
                         string_char = ch;
@@ -593,7 +593,7 @@ pub fn format_php_code(text: String) -> Result<String, String> {
 // Ruby formatting
 pub fn format_ruby_code(text: String) -> Result<String, String> {
     // Try rubocop with auto-correct
-    let mut child = Command::new("rubocop")
+    let child = Command::new("rubocop")
         .args(&["--auto-correct", "--stdin", "temp.rb", "--format", "quiet"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -628,7 +628,7 @@ pub fn format_ruby_code(text: String) -> Result<String, String> {
 
 // Swift formatting
 pub fn format_swift_code(text: String) -> Result<String, String> {
-    let mut child = Command::new("swift-format")
+    let child = Command::new("swift-format")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -658,7 +658,7 @@ pub fn format_swift_code(text: String) -> Result<String, String> {
 // Kotlin formatting
 pub fn format_kotlin_code(text: String) -> Result<String, String> {
     // Try ktlint
-    let mut child = Command::new("ktlint")
+    let child = Command::new("ktlint")
         .args(&["--format", "--stdin"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -689,7 +689,6 @@ pub fn format_kotlin_code(text: String) -> Result<String, String> {
 pub fn format_csharp_code(text: String) -> Result<String, String> {
     // Try dotnet format (requires a temp file)
     use std::fs;
-    use std::path::PathBuf;
 
     let temp_dir = std::env::temp_dir();
     let temp_file = temp_dir.join("wingman_temp.cs");

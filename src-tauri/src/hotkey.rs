@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct HotkeyConfig {
     pub key: String,
     pub modifiers: Vec<String>,
 }
 
+#[allow(dead_code)]
 impl HotkeyConfig {
     pub fn from_shortcut_string(shortcut: &str) -> Self {
         let parts: Vec<&str> = shortcut.split('+').collect();

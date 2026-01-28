@@ -2,8 +2,10 @@
 // This allows writing multiple types (text + images) to the clipboard simultaneously
 
 #[cfg(target_os = "macos")]
+#[allow(deprecated)]
 use cocoa::base::{id, nil};
 #[cfg(target_os = "macos")]
+#[allow(deprecated)]
 use cocoa::foundation::{NSArray, NSString};
 #[cfg(target_os = "macos")]
 use objc::{class, msg_send, sel, sel_impl};
@@ -78,6 +80,7 @@ fn extension_from_mime(mime_type: &str) -> &str {
 /// - public.html: HTML with embedded images for rich text apps
 /// - public.png/public.tiff: Raw image data for image-aware apps
 #[cfg(target_os = "macos")]
+#[allow(deprecated)]
 pub fn write_to_clipboard(
     text: &str,
     html: Option<&str>,
@@ -284,6 +287,7 @@ fn extension_from_language(language: &str) -> &str {
 /// Copy content as a file to the system clipboard
 /// Creates a temp file with the appropriate extension and copies it as a file reference
 #[cfg(target_os = "macos")]
+#[allow(deprecated)]
 pub fn copy_file_to_clipboard(content: &str, language: &str) -> Result<String, String> {
     let temp_dir = get_clipboard_temp_dir()?;
     cleanup_old_temp_files(&temp_dir);

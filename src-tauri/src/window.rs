@@ -159,6 +159,7 @@ pub enum Error {
 
 pub trait WebviewWindowExt<R: Runtime> {
     fn to_wingman_panel(&self) -> tauri::Result<PanelHandle<R>>;
+    #[allow(dead_code)]
     fn center_at_cursor_monitor(&self) -> tauri::Result<()>;
     fn move_to_cursor_monitor(&self) -> tauri::Result<()>;
     fn move_to_monitor_animated(&self, monitor_name: &str) -> tauri::Result<()>;
@@ -339,6 +340,7 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
 
     /// Move window to a specific monitor with animation, restoring saved position
     /// Note: This is called when cursor has already moved to the target monitor
+    #[allow(deprecated)]
     fn move_to_monitor_animated(&self, monitor_name: &str) -> tauri::Result<()> {
         use cocoa::base::id;
         use objc::{class, msg_send, sel, sel_impl};
@@ -462,6 +464,7 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
 }
 
 /// Get the name of the monitor where the cursor is located
+#[allow(dead_code)]
 pub fn get_cursor_monitor_name() -> Option<String> {
     monitor::get_monitor_with_cursor()
         .and_then(|m| m.name().map(|s| s.to_string()))
@@ -470,8 +473,9 @@ pub fn get_cursor_monitor_name() -> Option<String> {
 /// Get the name of the monitor that contains a given point
 /// Uses macOS NSScreen APIs to find which screen contains the point
 #[cfg(target_os = "macos")]
+#[allow(deprecated)]
 pub fn get_monitor_name_for_point(x: f64, y: f64) -> Option<String> {
-    use cocoa::base::{id, nil};
+    use cocoa::base::id;
     use cocoa::foundation::{NSPoint, NSRect};
     use objc::{class, msg_send, sel, sel_impl};
 
@@ -541,6 +545,7 @@ pub fn get_window_monitor_name<R: Runtime>(window: &WebviewWindow<R>) -> Option<
 /// Works during screen recording and is more stable than CSS backdrop-filter
 /// NOTE: This must be called from the main thread!
 #[cfg(target_os = "macos")]
+#[allow(deprecated)]
 pub fn set_window_blur(window: &WebviewWindow<impl Runtime>, enabled: bool) -> Result<(), String> {
     use cocoa::appkit::{NSColor, NSWindow as NSWindowTrait};
     use cocoa::base::{id, nil, NO, YES};
@@ -668,9 +673,10 @@ pub fn set_window_blur(_window: &WebviewWindow<impl Runtime>, _enabled: bool) ->
 /// Update the vibrancy material for light/dark theme switching
 /// This finds the existing NSVisualEffectView and updates its material
 #[cfg(target_os = "macos")]
+#[allow(deprecated)]
 pub fn update_vibrancy_material(window: &WebviewWindow<impl Runtime>, is_dark: bool) -> Result<(), String> {
     use cocoa::appkit::NSWindow as NSWindowTrait;
-    use cocoa::base::{id, nil};
+    use cocoa::base::id;
     use objc::{class, msg_send, sel, sel_impl};
 
     let ns_window = match window.ns_window() {

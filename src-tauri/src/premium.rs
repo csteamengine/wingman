@@ -144,12 +144,14 @@ impl Default for AIPresetsConfig {
 /// Premium feature types for AI calls
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[allow(dead_code)]
 pub enum PremiumFeature {
     PromptOptimizer,
     QuickNote,
     ObsidianIntegration,
 }
 
+#[allow(dead_code)]
 impl PremiumFeature {
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -173,6 +175,7 @@ struct PremiumAccessResponse {
 
 /// Response from Claude proxy edge function
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct ClaudeProxyResponse {
     result: Option<String>,
     input_tokens: Option<i64>,
@@ -323,6 +326,7 @@ pub fn validate_obsidian_vault(vault_path: &str) -> Result<bool, PremiumError> {
 }
 
 /// Get the daily note path for today
+#[allow(dead_code)]
 fn get_daily_note_path(vault_path: &str) -> PathBuf {
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
     PathBuf::from(vault_path).join(format!("{}.md", today))
@@ -603,6 +607,7 @@ pub async fn call_ai_feature(
 
 /// Response from create-portal-session edge function
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct PortalSessionResponse {
     success: Option<bool>,
     url: Option<String>,

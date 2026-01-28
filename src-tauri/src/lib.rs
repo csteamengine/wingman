@@ -931,6 +931,7 @@ static FOCUS_MODE_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::Ato
 /// This works with NSPanel on macOS where setFullscreen crashes
 #[cfg(target_os = "macos")]
 #[tauri::command]
+#[allow(deprecated)]
 async fn toggle_focus_mode(window: tauri::WebviewWindow) -> Result<bool, String> {
     use cocoa::base::id;
     use cocoa::foundation::{NSPoint, NSRect, NSSize};

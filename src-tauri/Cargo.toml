@@ -58,3 +58,7 @@ monitor = { git = "https://github.com/ahkohd/tauri-toolkit.git", branch = "v2" }
 cocoa = "0.26"
 objc = "0.2"
 window-vibrancy = "0.5"
+
+[lints.rust]
+# Suppress warnings from objc crate's msg_send! macro cfg checks
+unexpected_cfgs = { level = "allow", check-cfg = ["cfg(feature, values(\"cargo-clippy\"))"] }
