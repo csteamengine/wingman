@@ -1,5 +1,6 @@
 import {useState, useMemo, useRef, useEffect, useCallback} from 'react';
 import {invoke} from '@tauri-apps/api/core';
+import {formatCode, minifyCode} from '../lib/formatters';
 import {useEditorStore} from '../stores/editorStore';
 import {useLicenseStore} from '../stores/licenseStore';
 import {useClipboardStore} from '../stores/clipboardStore';
@@ -505,9 +506,9 @@ export function QuickActionsPanel() {
 
                     let formatted: string;
                     if (action.id === 'format') {
-                        formatted = await invoke<string>('format_code', { text, language: detectedLang });
+                        formatted = await formatCode(text, detectedLang);
                     } else if (action.id === 'minify') {
-                        formatted = await invoke<string>('minify_code', { text, language: detectedLang });
+                        formatted = await minifyCode(text, detectedLang);
                     } else {
                         setError('Unknown format action');
                         return;

@@ -10,6 +10,7 @@ import type {Diagnostic} from '@codemirror/lint';
 import {oneDark} from '@codemirror/theme-one-dark';
 import {listen} from '@tauri-apps/api/event';
 import {invoke} from '@tauri-apps/api/core';
+import {formatCode} from '../lib/formatters';
 
 import {useEditorStore} from '../stores/editorStore';
 import {useSettingsStore} from '../stores/settingsStore';
@@ -524,7 +525,7 @@ export function EditorWindow() {
                 setLanguage(detectedLang);
             }
 
-            const formatted = await invoke<string>('format_code', { text, language: detectedLang });
+            const formatted = await formatCode(text, detectedLang);
 
             const applyCallback = () => {
                 const lengthDiff = formatted.length - (to - from);
