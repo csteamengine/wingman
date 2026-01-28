@@ -873,7 +873,6 @@ export function EditorWindow() {
         if (!editorRef.current) return;
 
         const extensions = [
-            lintGutter(),
             history(),
             EditorState.allowMultipleSelections.of(true),
             drawSelection(),
@@ -912,15 +911,15 @@ export function EditorWindow() {
 
             // Enable linters for supported languages
             if (language === 'json') {
-                extensions.push(linter(jsonLinter, { delay: 300 }));
+                extensions.push(lintGutter(), linter(jsonLinter, { delay: 300 }));
             } else if (language === 'xml') {
-                extensions.push(linter(xmlLinter, { delay: 300 }));
+                extensions.push(lintGutter(), linter(xmlLinter, { delay: 300 }));
             } else if (language === 'python') {
-                extensions.push(linter(pythonLinter, { delay: 300 }));
+                extensions.push(lintGutter(), linter(pythonLinter, { delay: 300 }));
             } else if (language === 'html') {
-                extensions.push(linter(htmlLinter, { delay: 300 }));
+                extensions.push(lintGutter(), linter(htmlLinter, { delay: 300 }));
             } else if (language === 'yaml') {
-                extensions.push(linter(yamlLinter, { delay: 300 }));
+                extensions.push(lintGutter(), linter(yamlLinter, { delay: 300 }));
             }
         }
 
