@@ -34,6 +34,73 @@ interface HtmlValidationResult {
     error_position?: number;
 }
 
+// Find the character position where JSON parsing fails.
+// Works on all JS engines (V8, JSC, SpiderMonkey) by trying to extract
+// position from the error message, then falling back to a binary search.
+function findJsonErrorPosition(doc: string, errorMessage: string): number {
+    // V8: "at position N"
+    const posMatch = errorMessage.match(/at position (\d+)/);
+    if (posMatch) return Math.min(parseInt(posMatch[1], 10), doc.length);
+
+    // SpiderMonkey: "at line L column C"
+    const lineColMatch = errorMessage.match(/at line (\d+) column (\d+)/);
+    if (lineColMatch) {
+        const targetLine = parseInt(lineColMatch[1], 10);
+        const targetCol = parseInt(lineColMatch[2], 10);
+        let line = 1;
+        for (let i = 0; i < doc.length; i++) {
+            if (line === targetLine) return Math.min(i + targetCol - 1, doc.length);
+            if (doc[i] === '\n') line++;
+        }
+    }
+
+    // JSC/WebKit gives no position info — binary search by line to find the
+    // first line whose prefix causes a different parse error or still fails.
+    const lines = doc.split('\n');
+    let lo = 0;
+    let hi = lines.length - 1;
+
+    // Check if a prefix up to (and including) line index `idx` parses without error
+    const parsesOk = (idx: number): boolean => {
+        // Build a prefix and try to close any open structures to see if
+        // the error is before or after this point.
+        const prefix = lines.slice(0, idx + 1).join('\n');
+        // Try parsing the prefix — if it fails with "end of input" style error,
+        // the actual syntax error hasn't been reached yet
+        try {
+            JSON.parse(prefix);
+            return true;
+        } catch (e) {
+            if (e instanceof SyntaxError) {
+                const msg = e.message.toLowerCase();
+                // These indicate truncation, not a real syntax error in the prefix
+                if (msg.includes('end of') || msg.includes('unexpected end') ||
+                    msg.includes('unterminated') || msg.includes('eof')) {
+                    return true; // error is past this point
+                }
+            }
+            return false;
+        }
+    };
+
+    // Binary search for the first line that has a real error
+    while (lo < hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        if (parsesOk(mid)) {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+
+    // `lo` is the line index with the error — return start of that line
+    let offset = 0;
+    for (let i = 0; i < lo && i < lines.length; i++) {
+        offset += lines[i].length + 1; // +1 for \n
+    }
+    return Math.min(offset, doc.length);
+}
+
 // JSON Linter - validates JSON syntax and reports errors using Rust backend
 export async function jsonLinter(view: EditorView): Promise<Diagnostic[]> {
     const doc = view.state.doc.toString();
@@ -66,12 +133,7 @@ export async function jsonLinter(view: EditorView): Promise<Diagnostic[]> {
             return [];
         } catch (parseError) {
             if (parseError instanceof SyntaxError) {
-                const match = parseError.message.match(/at position (\d+)/);
-                let pos = 0;
-                if (match) {
-                    pos = parseInt(match[1], 10);
-                }
-                pos = Math.min(pos, doc.length);
+                const pos = findJsonErrorPosition(doc, parseError.message);
 
                 return [{
                     from: pos,
