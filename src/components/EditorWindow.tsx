@@ -279,7 +279,7 @@ export function EditorWindow() {
     // Content detection - debounced, only show toast on paste/drag events
     useEffect(() => {
         const timer = setTimeout(() => {
-            const result = detectContent(content);
+            let result = detectContent(content);
 
             // Add "Switch to {lang}" action if a different language is suggested
             if (result?.suggestedLanguage && settings?.auto_detect_language && result.suggestedLanguage !== language) {
