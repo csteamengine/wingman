@@ -650,11 +650,11 @@ export function EditorWindow() {
     }, [language, setLanguage, settings, isPro, setValidationToast]);
 
     // Validate handler
-    const handleValidate = useCallback(() => {
+    const handleValidate = useCallback(async () => {
         const view = viewRef.current;
         if (!view) return;
 
-        const linters: Record<string, (v: EditorView) => Diagnostic[]> = {
+        const linters: Record<string, (v: EditorView) => Diagnostic[] | Promise<Diagnostic[]>> = {
             json: jsonLinter,
             xml: xmlLinter,
             python: pythonLinter,
@@ -665,7 +665,7 @@ export function EditorWindow() {
         const linterFn = linters[language];
         if (!linterFn) return;
 
-        const diagnostics = linterFn(view);
+        const diagnostics = await linterFn(view);
 
         if (diagnostics.length === 0) {
             setValidationToast({ type: 'success', message: `Valid ${language.toUpperCase()}` });
