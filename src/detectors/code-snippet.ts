@@ -30,22 +30,20 @@ export const codeSnippetDetector: Detector = {
         return matches.length >= 1;
     },
     toastMessage: 'Code snippet detected',
-    actions: [
-        {
-            id: 'wrap-markdown',
-            label: 'Wrap in Markdown',
-            execute: (text: string) => {
-                const lang = detectLanguage(text);
-                return `\`\`\`${lang}\n${text}\n\`\`\``;
+    actions: [], // Dynamic actions provided by getActions
+    getActions: (text: string) => {
+        const lang = detectLanguage(text);
+        return [
+            {
+                id: 'wrap-markdown',
+                label: 'Wrap in Markdown',
+                execute: (t: string) => `\`\`\`${lang}\n${t}\n\`\`\``,
             },
-        },
-        {
-            id: 'detect-language',
-            label: 'Detect Language',
-            execute: (text: string) => {
-                const lang = detectLanguage(text);
-                return `// Detected language: ${lang}\n${text}`;
+            {
+                id: `switch-language:${lang}`,
+                label: `Switch to ${lang.toUpperCase()}`,
+                execute: (t: string) => t, // No-op, handler switches language based on ID
             },
-        },
-    ],
+        ];
+    },
 };
