@@ -281,8 +281,8 @@ export function EditorWindow() {
         const timer = setTimeout(() => {
             const result = detectContent(content);
 
-            // Add "Switch to {lang}" action if language is plaintext and a language is suggested
-            if (result?.suggestedLanguage && settings?.auto_detect_language && language === 'plaintext') {
+            // Add "Switch to {lang}" action if a different language is suggested
+            if (result?.suggestedLanguage && settings?.auto_detect_language && result.suggestedLanguage !== language) {
                 const lang = result.suggestedLanguage;
                 const switchAction: DetectorAction = {
                     id: `switch-language:${lang}`,
