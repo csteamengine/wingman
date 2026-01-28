@@ -47,7 +47,7 @@ export function useGlobalHotkey() {
 }
 
 export function useKeyboardShortcuts() {
-  const { pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isQuickActionsOpen, toggleQuickActions, saveToFile } = useEditorStore();
+  const { pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isQuickActionsOpen, toggleQuickActions, saveToFile, setLanguage } = useEditorStore();
   const { isProFeatureEnabled } = useLicenseStore();
   const { settings } = useSettingsStore();
   const lastEscapeRef = useRef<number>(0);
@@ -171,9 +171,21 @@ export function useKeyboardShortcuts() {
             break;
         }
       }
+
+      // Language hotkeys: Cmd/Ctrl + 0-9
+      if (isMod && !e.shiftKey && !e.altKey) {
+        const num = parseInt(e.key, 10);
+        if (!isNaN(num) && num >= 0 && num <= 9) {
+          const languageHotkeys = settings?.language_hotkeys;
+          if (languageHotkeys && languageHotkeys[num]) {
+            e.preventDefault();
+            setLanguage(languageHotkeys[num]);
+          }
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isProFeatureEnabled, settings?.sticky_mode, settings?.primary_action, isQuickActionsOpen, toggleQuickActions, saveToFile]);
+  }, [pasteAndClose, closeWithoutPaste, setActivePanel, activePanel, transformText, isProFeatureEnabled, settings?.sticky_mode, settings?.primary_action, isQuickActionsOpen, toggleQuickActions, saveToFile, setLanguage, settings?.language_hotkeys]);
 }

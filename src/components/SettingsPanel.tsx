@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react';
+import {useState, useEffect, useCallback} from 'react';
 import {open} from '@tauri-apps/plugin-shell';
 import {invoke} from '@tauri-apps/api/core';
 import {listen} from '@tauri-apps/api/event';
@@ -6,6 +6,8 @@ import {useSettings} from '../hooks/useSettings';
 import {useEditorStore} from '../stores/editorStore';
 import {useLicenseStore} from '../stores/licenseStore';
 import {usePremiumStore, formatTokenUsage} from '../stores/premiumStore';
+import {DEFAULT_LANGUAGE_HOTKEYS} from '../stores/settingsStore';
+import {LANGUAGE_OPTIONS} from './editor/languageConfig';
 import {LicenseActivation} from './LicenseActivation';
 import {ObsidianConfig} from './ObsidianConfig';
 import {GitHubSettings} from './GitHubSettings';
@@ -51,6 +53,89 @@ type TabType = 'settings' | 'hotkeys' | 'license' | 'obsidian' | 'github';
 // Platform detection - opacity slider only available on Linux
 // macOS uses native vibrancy (NSVisualEffectView), Windows uses acrylic/mica
 const isLinux = navigator.platform.includes('Linux');
+const isMac = navigator.platform.includes('Mac');
+
+// Language Hotkeys Section Component
+interface LanguageHotkeysSectionProps {
+    languageHotkeys: string[];
+    onUpdate: (hotkeys: string[]) => void;
+}
+
+function LanguageHotkeysSection({ languageHotkeys, onUpdate }: LanguageHotkeysSectionProps) {
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+    const handleLanguageChange = useCallback((index: number, newLanguage: string) => {
+        const newHotkeys = [...languageHotkeys];
+
+        // If this language is already assigned to another slot, swap them
+        const existingIndex = newHotkeys.indexOf(newLanguage);
+        if (existingIndex !== -1 && existingIndex !== index) {
+            newHotkeys[existingIndex] = newHotkeys[index];
+        }
+
+        newHotkeys[index] = newLanguage;
+        onUpdate(newHotkeys);
+        setEditingIndex(null);
+    }, [languageHotkeys, onUpdate]);
+
+    const resetToDefaults = useCallback(() => {
+        onUpdate(DEFAULT_LANGUAGE_HOTKEYS);
+    }, [onUpdate]);
+
+    return (
+        <div>
+            <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium">Language Hotkeys</h3>
+                <button
+                    onClick={resetToDefaults}
+                    className="text-xs text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors"
+                >
+                    Reset to defaults
+                </button>
+            </div>
+            <p className="text-xs text-[var(--ui-text-muted)] mb-3">
+                Quickly switch languages with {isMac ? '⌘' : 'Ctrl+'}0-9. Click to change a language.
+            </p>
+            <div className="space-y-1.5 text-xs">
+                {languageHotkeys.map((langValue, index) => {
+                    const langOption = LANGUAGE_OPTIONS.find(l => l.value === langValue);
+                    const isEditing = editingIndex === index;
+
+                    return (
+                        <div key={index} className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
+                            {isEditing ? (
+                                <select
+                                    autoFocus
+                                    value={langValue}
+                                    onChange={(e) => handleLanguageChange(index, e.target.value)}
+                                    onBlur={() => setEditingIndex(null)}
+                                    className="flex-1 mr-2 px-2 py-1 text-xs bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded text-[var(--ui-text)] focus:outline-none focus:border-[var(--ui-accent)]"
+                                >
+                                    {LANGUAGE_OPTIONS.map((lang) => (
+                                        <option key={lang.value} value={lang.value}>
+                                            {lang.label}
+                                            {languageHotkeys.includes(lang.value) && lang.value !== langValue
+                                                ? ` (swap with ${isMac ? '⌘' : 'Ctrl+'}${languageHotkeys.indexOf(lang.value)})`
+                                                : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <button
+                                    onClick={() => setEditingIndex(index)}
+                                    className="flex-1 text-left text-[var(--ui-text)] hover:text-[var(--ui-accent)] transition-colors"
+                                >
+                                    {langOption?.label || langValue}
+                                </button>
+                            )}
+                            <span className="kbd ml-2">{isMac ? '⌘' : 'Ctrl+'}{index}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
 
 export function SettingsPanel() {
     const {settings, handleUpdate, handleReset} = useSettings();
@@ -701,8 +786,18 @@ export function SettingsPanel() {
                                     <span className="text-[var(--ui-text)]">lowercase</span>
                                     <span className="kbd">⌘⇧L</span>
                                 </div>
+                                <div className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
+                                    <span className="text-[var(--ui-text)]">Switch Language</span>
+                                    <span className="kbd">{isMac ? '⌘' : 'Ctrl+'}0-9</span>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Language Hotkeys */}
+                        <LanguageHotkeysSection
+                            languageHotkeys={settings.language_hotkeys || DEFAULT_LANGUAGE_HOTKEYS}
+                            onUpdate={(hotkeys) => handleUpdate({ language_hotkeys: hotkeys })}
+                        />
                     </div>
                 )}
 

@@ -65,6 +65,8 @@ pub struct AppSettings {
     pub auto_detect_language: bool,
     #[serde(default = "default_last_quick_actions_tab")]
     pub last_quick_actions_tab: String,
+    #[serde(default = "default_language_hotkeys")]
+    pub language_hotkeys: Vec<String>,
 }
 
 fn default_primary_action() -> String {
@@ -85,6 +87,21 @@ fn default_show_dev_tier_selector() -> bool {
 
 fn default_last_quick_actions_tab() -> String {
     "clipboard".to_string()
+}
+
+fn default_language_hotkeys() -> Vec<String> {
+    vec![
+        "markdown".to_string(),    // Cmd+0
+        "plaintext".to_string(),   // Cmd+1
+        "javascript".to_string(),  // Cmd+2
+        "typescript".to_string(),  // Cmd+3
+        "python".to_string(),      // Cmd+4
+        "json".to_string(),        // Cmd+5
+        "html".to_string(),        // Cmd+6
+        "css".to_string(),         // Cmd+7
+        "sql".to_string(),         // Cmd+8
+        "bash".to_string(),        // Cmd+9
+    ]
 }
 
 impl Default for AppSettings {
@@ -116,6 +133,7 @@ impl Default for AppSettings {
             colorblind_mode: false,
             auto_detect_language: default_auto_detect_language(),
             last_quick_actions_tab: default_last_quick_actions_tab(),
+            language_hotkeys: default_language_hotkeys(),
         }
     }
 }

@@ -1100,6 +1100,7 @@ export function EditorWindow() {
                     setLanguage={setLanguage}
                     hasStatsDisplay={hasStatsDisplay}
                     isProFeatureEnabled={() => isPro}
+                    languageHotkeys={settings?.language_hotkeys}
                 />
             )}
 

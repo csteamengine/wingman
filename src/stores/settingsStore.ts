@@ -11,6 +11,19 @@ interface SettingsState {
   resetToDefaults: () => Promise<void>;
 }
 
+export const DEFAULT_LANGUAGE_HOTKEYS = [
+  'markdown',    // Cmd+0
+  'plaintext',   // Cmd+1
+  'javascript',  // Cmd+2
+  'typescript',  // Cmd+3
+  'python',      // Cmd+4
+  'json',        // Cmd+5
+  'html',        // Cmd+6
+  'css',         // Cmd+7
+  'sql',         // Cmd+8
+  'bash',        // Cmd+9
+];
+
 const defaultSettings: AppSettings = {
   hotkey: navigator.platform.includes('Mac') ? 'Command+Shift+Space' : 'Control+Shift+Space',
   theme: 'dark',
@@ -34,6 +47,7 @@ const defaultSettings: AppSettings = {
   colorblind_mode: false,
   auto_detect_language: true,
   last_quick_actions_tab: 'clipboard',
+  language_hotkeys: DEFAULT_LANGUAGE_HOTKEYS,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
