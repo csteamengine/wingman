@@ -1,16 +1,16 @@
 import * as prettier from 'prettier/standalone';
+import type { Plugin } from 'prettier';
 import parserBabel from 'prettier/plugins/babel';
 import parserTypeScript from 'prettier/plugins/typescript';
 import parserHtml from 'prettier/plugins/html';
 import parserCss from 'prettier/plugins/postcss';
 import parserMarkdown from 'prettier/plugins/markdown';
 import parserYaml from 'prettier/plugins/yaml';
-// @ts-expect-error - estree plugin is required for babel/typescript but has no types
 import parserEstree from 'prettier/plugins/estree';
 import { format as formatSQL } from 'sql-formatter';
 
 // Map language names to Prettier parsers and required plugins
-const languageConfig: Record<string, { parser: string; plugins: prettier.Plugin[] }> = {
+const languageConfig: Record<string, { parser: string; plugins: Plugin[] }> = {
   javascript: { parser: 'babel', plugins: [parserBabel, parserEstree] },
   typescript: { parser: 'typescript', plugins: [parserTypeScript, parserEstree] },
   react: { parser: 'babel', plugins: [parserBabel, parserEstree] },
