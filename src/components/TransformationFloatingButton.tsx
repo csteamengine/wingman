@@ -22,7 +22,7 @@ export function TransformationFloatingButton() {
   }
 
   return (
-    <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
       <div className="flex items-center gap-1 bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] rounded-lg shadow-lg overflow-hidden">
         {/* Review Changes button */}
         <button
