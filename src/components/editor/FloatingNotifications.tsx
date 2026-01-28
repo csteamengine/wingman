@@ -51,7 +51,7 @@ export function FloatingNotifications({
         <>
             {/* Validation Toast */}
             {validationToast && (
-                <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 animate-slide-up max-w-md">
+                <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 animate-slide-up max-w-md">
                     <div className={`flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg border ${
                         validationToast.type === 'success'
                             ? 'bg-green-600/95 border-green-500/50'
@@ -83,7 +83,7 @@ export function FloatingNotifications({
 
             {/* URL Parser Floating Button */}
             {parsedUrlInfo && (
-                <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+                <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
                     <button
                         onClick={onParseUrl}
                         className="flex items-center gap-2 px-4 py-2.5 bg-blue-600/95 rounded-lg shadow-lg border border-blue-500/50 hover:bg-blue-600 transition-colors text-white"
@@ -111,7 +111,7 @@ export function FloatingNotifications({
             {obsidianToast && (
                 <div
                     onClick={onToastClick}
-                    className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 cursor-pointer animate-slide-up"
+                    className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 cursor-pointer animate-slide-up"
                 >
                     <div className="flex items-center gap-3 px-4 py-3 bg-violet-600/95 rounded-lg shadow-lg border border-violet-500/50 hover:bg-violet-600 transition-colors">
                         <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -132,7 +132,7 @@ export function FloatingNotifications({
             {gistToast && (
                 <div
                     onClick={onGistToastOpen}
-                    className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 cursor-pointer animate-slide-up"
+                    className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 cursor-pointer animate-slide-up"
                 >
                     <div className="flex items-center gap-3 px-4 py-3 bg-gray-700/95 rounded-lg shadow-lg border border-gray-600/50 hover:bg-gray-700 transition-colors">
                         <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -150,7 +150,7 @@ export function FloatingNotifications({
             )}
             {/* Context Detection Toast */}
             {contextDetection && !hasOtherToast && onContextAction && onDismissContext && (
-                <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+                <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
                     <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-600/95 rounded-lg shadow-lg border border-amber-500/50">
                         <svg className="w-4 h-4 text-white flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
