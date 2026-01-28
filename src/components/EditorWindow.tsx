@@ -120,7 +120,7 @@ export function EditorWindow() {
     const [aiError, setAiError] = useState<string | null>(null);
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const [selectedCustomPromptId, setSelectedCustomPromptId] = useState<string | null>(null);
-    const [parsedUrlInfo, setParsedUrlInfo] = useState<{url: string; cursorPos: number} | null>(null);
+    const [parsedUrlInfo, setParsedUrlInfo] = useState<{url: string; from: number; to: number} | null>(null);
     const [contextDetection, setContextDetection] = useState<DetectorResult | null>(null);
     const contextDismissedRef = useRef<string | null>(null); // tracks dismissed detector id
     const pasteOrDropRef = useRef(false); // tracks if content change came from paste/drag
@@ -787,11 +787,11 @@ export function EditorWindow() {
 
             const output = lines.join('\n');
             const view = viewRef.current;
-            const cursorPos = parsedUrlInfo.cursorPos;
 
+            // Replace the URL with parsed output
             view.dispatch({
-                changes: {from: cursorPos, to: cursorPos, insert: output},
-                selection: {anchor: cursorPos + output.length},
+                changes: {from: parsedUrlInfo.from, to: parsedUrlInfo.to, insert: output},
+                selection: {anchor: parsedUrlInfo.from + output.length},
             });
             view.focus();
         } catch {
@@ -813,10 +813,13 @@ export function EditorWindow() {
         if (pastedText && isUrl(pastedText) && viewRef.current) {
             const selection = viewRef.current.state.selection.main;
             if (selection.empty) {
+                // Capture position before paste
+                const startPos = selection.head;
                 setTimeout(() => {
                     if (viewRef.current) {
-                        const newCursorPos = viewRef.current.state.selection.main.head;
-                        setParsedUrlInfo({url: pastedText.trim(), cursorPos: newCursorPos});
+                        // After paste, cursor is at end of pasted text
+                        const endPos = viewRef.current.state.selection.main.head;
+                        setParsedUrlInfo({url: pastedText.trim(), from: startPos, to: endPos});
                     }
                 }, 10);
             }

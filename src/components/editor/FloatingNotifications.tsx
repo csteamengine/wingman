@@ -8,7 +8,7 @@ export interface ValidationToast {
 
 interface FloatingNotificationsProps {
     // URL Parser state
-    parsedUrlInfo: {url: string; cursorPos: number} | null;
+    parsedUrlInfo: {url: string; from: number; to: number} | null;
     onParseUrl: () => void;
     onDismissUrlParser: () => void;
 
