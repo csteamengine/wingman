@@ -1,17 +1,25 @@
-import * as prettier from 'prettier';
+import * as prettier from 'prettier/standalone';
+import parserBabel from 'prettier/plugins/babel';
+import parserTypeScript from 'prettier/plugins/typescript';
+import parserHtml from 'prettier/plugins/html';
+import parserCss from 'prettier/plugins/postcss';
+import parserMarkdown from 'prettier/plugins/markdown';
+import parserYaml from 'prettier/plugins/yaml';
+// @ts-expect-error - estree plugin is required for babel/typescript but has no types
+import parserEstree from 'prettier/plugins/estree';
 import { format as formatSQL } from 'sql-formatter';
 
-// Map language names to Prettier parsers
-const languageToParser: Record<string, string> = {
-  javascript: 'babel',
-  typescript: 'typescript',
-  react: 'babel',
-  html: 'html',
-  css: 'css',
-  json: 'json',
-  markdown: 'markdown',
-  yaml: 'yaml',
-  xml: 'html', // Prettier uses HTML parser for XML-like content
+// Map language names to Prettier parsers and required plugins
+const languageConfig: Record<string, { parser: string; plugins: prettier.Plugin[] }> = {
+  javascript: { parser: 'babel', plugins: [parserBabel, parserEstree] },
+  typescript: { parser: 'typescript', plugins: [parserTypeScript, parserEstree] },
+  react: { parser: 'babel', plugins: [parserBabel, parserEstree] },
+  html: { parser: 'html', plugins: [parserHtml] },
+  css: { parser: 'css', plugins: [parserCss] },
+  json: { parser: 'json', plugins: [parserBabel, parserEstree] },
+  markdown: { parser: 'markdown', plugins: [parserMarkdown] },
+  yaml: { parser: 'yaml', plugins: [parserYaml] },
+  xml: { parser: 'html', plugins: [parserHtml] },
 };
 
 // Languages that need special handling or external tools
@@ -54,21 +62,26 @@ export async function formatCode(text: string, language: string): Promise<string
   }
 
   // Use Prettier for supported languages
-  const parser = languageToParser[language];
-  if (!parser) {
+  const config = languageConfig[language];
+  if (!config) {
     return text;
   }
 
-  // Detect TypeScript in React files
-  let actualParser = parser;
+  // Detect TypeScript in React files and use appropriate parser
+  let parser = config.parser;
+  let plugins = config.plugins;
   if (language === 'react') {
     const isTypeScript = detectTypeScript(text);
-    actualParser = isTypeScript ? 'typescript' : 'babel';
+    if (isTypeScript) {
+      parser = 'typescript';
+      plugins = [parserTypeScript, parserEstree];
+    }
   }
 
   try {
     const formatted = await prettier.format(text, {
-      parser: actualParser,
+      parser,
+      plugins,
       printWidth: 100,
       tabWidth: 2,
       semi: true,
@@ -202,13 +215,17 @@ function removeJSComments(text: string): string {
 
 async function minifyJS(text: string, language: string): Promise<string> {
   const withoutComments = removeJSComments(text);
-  const parser = language === 'typescript' || (language === 'react' && detectTypeScript(text))
-    ? 'typescript'
-    : 'babel';
+
+  const isTypeScript = language === 'typescript' || (language === 'react' && detectTypeScript(text));
+  const parser = isTypeScript ? 'typescript' : 'babel';
+  const plugins = isTypeScript
+    ? [parserTypeScript, parserEstree]
+    : [parserBabel, parserEstree];
 
   try {
     const formatted = await prettier.format(withoutComments, {
       parser,
+      plugins,
       printWidth: 99999,
     });
 
