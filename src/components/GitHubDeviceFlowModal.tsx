@@ -125,8 +125,9 @@ export function GitHubDeviceFlowModal({
       }
     };
 
-    // Start first poll after a short delay (not immediately)
-    const initialDelay = 1000; // 1 second initial delay
+    // Start first poll after a longer delay to give users time to copy the code,
+    // navigate to GitHub, and start signing in before we hit the API
+    const initialDelay = 10000; // 10 second initial delay
     scheduleNextPoll(initialDelay);
 
     return () => {
