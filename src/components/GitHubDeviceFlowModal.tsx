@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
 import { useGitHubStore } from '../stores/githubStore';
-import { Github, ExternalLink, X, Loader2, CheckCircle } from 'lucide-react';
+import { Github, ExternalLink, X, Loader2, CheckCircle, Copy, Check } from 'lucide-react';
 import type { DeviceFlowStart } from '../types';
 
 interface GitHubDeviceFlowModalProps {
@@ -21,6 +21,7 @@ export function GitHubDeviceFlowModal({
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timeoutSeconds, setTimeoutSeconds] = useState(flowStart.expires_in);
+  const [copied, setCopied] = useState(false);
   const pollingRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // GitHub requires minimum 5 seconds, we use 8 to be safe and avoid rate limits
@@ -154,6 +155,16 @@ export function GitHubDeviceFlowModal({
     }
   };
 
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(flowStart.user_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy code:', err);
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -229,9 +240,22 @@ export function GitHubDeviceFlowModal({
                 <p className="text-xs text-[var(--ui-text-muted)] mb-2 text-center">
                   Enter this code on GitHub:
                 </p>
-                <p className="text-3xl font-mono font-bold text-center text-[var(--ui-text)] tracking-wider">
-                  {flowStart.user_code}
-                </p>
+                <div className="flex items-center justify-center gap-3">
+                  <p className="text-3xl font-mono font-bold text-[var(--ui-text)] tracking-wider">
+                    {flowStart.user_code}
+                  </p>
+                  <button
+                    onClick={handleCopyCode}
+                    className="p-2 rounded-md hover:bg-[var(--ui-hover)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] transition-colors"
+                    title="Copy code"
+                  >
+                    {copied ? (
+                      <Check className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <Copy className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Open GitHub Button */}
