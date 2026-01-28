@@ -1,4 +1,4 @@
-import {useState, useEffect, useCallback} from 'react';
+import {useState, useEffect, useCallback, useRef} from 'react';
 import {open} from '@tauri-apps/plugin-shell';
 import {invoke} from '@tauri-apps/api/core';
 import {listen} from '@tauri-apps/api/event';
@@ -62,7 +62,8 @@ interface LanguageHotkeysSectionProps {
 }
 
 function LanguageHotkeysSection({ languageHotkeys, onUpdate }: LanguageHotkeysSectionProps) {
-    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
+    const dropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
 
     const handleLanguageChange = useCallback((index: number, newLanguage: string) => {
         const newHotkeys = [...languageHotkeys];
@@ -75,12 +76,27 @@ function LanguageHotkeysSection({ languageHotkeys, onUpdate }: LanguageHotkeysSe
 
         newHotkeys[index] = newLanguage;
         onUpdate(newHotkeys);
-        setEditingIndex(null);
+        setOpenDropdownIndex(null);
     }, [languageHotkeys, onUpdate]);
 
     const resetToDefaults = useCallback(() => {
         onUpdate(DEFAULT_LANGUAGE_HOTKEYS);
     }, [onUpdate]);
+
+    // Handle click outside to close dropdown
+    useEffect(() => {
+        if (openDropdownIndex === null) return;
+
+        const handleClickOutside = (e: MouseEvent) => {
+            const dropdownEl = dropdownRefs.current[openDropdownIndex];
+            if (dropdownEl && !dropdownEl.contains(e.target as Node)) {
+                setOpenDropdownIndex(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [openDropdownIndex]);
 
     return (
         <div>
@@ -99,36 +115,49 @@ function LanguageHotkeysSection({ languageHotkeys, onUpdate }: LanguageHotkeysSe
             <div className="space-y-1.5 text-xs">
                 {languageHotkeys.map((langValue, index) => {
                     const langOption = LANGUAGE_OPTIONS.find(l => l.value === langValue);
-                    const isEditing = editingIndex === index;
+                    const isOpen = openDropdownIndex === index;
 
                     return (
-                        <div key={index} className="flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md">
-                            {isEditing ? (
-                                <select
-                                    autoFocus
-                                    value={langValue}
-                                    onChange={(e) => handleLanguageChange(index, e.target.value)}
-                                    onBlur={() => setEditingIndex(null)}
-                                    className="flex-1 mr-2 px-2 py-1 text-xs bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded text-[var(--ui-text)] focus:outline-none focus:border-[var(--ui-accent)]"
-                                >
-                                    {LANGUAGE_OPTIONS.map((lang) => (
-                                        <option key={lang.value} value={lang.value}>
-                                            {lang.label}
-                                            {languageHotkeys.includes(lang.value) && lang.value !== langValue
-                                                ? ` (swap with ${isMac ? '⌘' : 'Ctrl+'}${languageHotkeys.indexOf(lang.value)})`
-                                                : ''}
-                                        </option>
-                                    ))}
-                                </select>
-                            ) : (
-                                <button
-                                    onClick={() => setEditingIndex(index)}
-                                    className="flex-1 text-left text-[var(--ui-text)] hover:text-[var(--ui-accent)] transition-colors"
-                                >
-                                    {langOption?.label || langValue}
-                                </button>
-                            )}
+                        <div
+                            key={index}
+                            ref={(el) => { dropdownRefs.current[index] = el; }}
+                            className="relative flex items-center justify-between py-2 px-3 bg-[var(--ui-surface)] rounded-md"
+                        >
+                            <button
+                                onClick={() => setOpenDropdownIndex(isOpen ? null : index)}
+                                className="flex-1 text-left text-[var(--ui-text)] hover:text-[var(--ui-accent)] transition-colors flex items-center"
+                            >
+                                <span>{langOption?.label || langValue}</span>
+                                <span className="ml-1.5 opacity-40">▾</span>
+                            </button>
                             <span className="kbd ml-2">{isMac ? '⌘' : 'Ctrl+'}{index}</span>
+
+                            {isOpen && (
+                                <div className="absolute left-0 top-full mt-1 bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] rounded-md shadow-lg z-50 min-w-[200px] max-h-[240px] overflow-y-auto py-1">
+                                    {LANGUAGE_OPTIONS.map((lang) => {
+                                        const existingHotkeyIndex = languageHotkeys.indexOf(lang.value);
+                                        const hasExistingHotkey = existingHotkeyIndex !== -1 && existingHotkeyIndex !== index;
+                                        const isSelected = lang.value === langValue;
+
+                                        return (
+                                            <button
+                                                key={lang.value}
+                                                onClick={() => handleLanguageChange(index, lang.value)}
+                                                className={`w-full text-left text-xs px-3 py-1.5 flex items-center justify-between gap-2 hover:bg-[var(--ui-hover)] ${
+                                                    isSelected ? 'text-[var(--ui-accent)]' : ''
+                                                }`}
+                                            >
+                                                <span className="flex-1">{lang.label}</span>
+                                                {hasExistingHotkey && (
+                                                    <span className="text-[9px] text-[var(--ui-text-muted)]">
+                                                        swap {isMac ? '⌘' : ''}{existingHotkeyIndex}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     );
                 })}

@@ -33,6 +33,19 @@ export function StatusBar({
         return map;
     }, [languageHotkeys]);
 
+    // Sort languages: hotkey languages first (0-9), then remaining alphabetically
+    const sortedLanguageOptions = useMemo(() => {
+        const withHotkeys = languageHotkeys
+            .map(langValue => LANGUAGE_OPTIONS.find(l => l.value === langValue))
+            .filter((l): l is typeof LANGUAGE_OPTIONS[number] => l !== undefined);
+
+        const withoutHotkeys = LANGUAGE_OPTIONS
+            .filter(l => !languageHotkeys.includes(l.value))
+            .sort((a, b) => a.label.localeCompare(b.label));
+
+        return [...withHotkeys, ...withoutHotkeys];
+    }, [languageHotkeys]);
+
     const isMac = navigator.platform.includes('Mac');
 
     // Close language dropdown when clicking outside
@@ -79,37 +92,43 @@ export function StatusBar({
                     {showLanguageDropdown && (
                         <div
                             className="absolute bottom-full mb-1 right-0 bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] rounded-md shadow-lg z-50 min-w-[160px] max-h-[280px] overflow-y-auto py-1">
-                            {LANGUAGE_OPTIONS.map((lang) => {
+                            {sortedLanguageOptions.map((lang, index) => {
                                 const isProLang = lang.isPro;
                                 const hasAccess = !isProLang || isProFeatureEnabled('syntax_highlighting');
                                 const hotkeyNum = hotkeyMap.get(lang.value);
                                 const hasHotkey = hotkeyNum !== undefined;
+                                // Add separator after hotkey languages
+                                const showSeparator = index === languageHotkeys.length - 1 && index < sortedLanguageOptions.length - 1;
                                 return (
-                                    <button
-                                        key={lang.value}
-                                        onClick={() => {
-                                            if (hasAccess) {
-                                                setLanguage(lang.value);
-                                                setShowLanguageDropdown(false);
-                                            }
-                                        }}
-                                        disabled={!hasAccess}
-                                        className={`w-full text-left text-xs px-3 py-1.5 flex items-center justify-between gap-2 ${
-                                            hasAccess ? 'hover:bg-[var(--ui-hover)]' : 'opacity-50 cursor-not-allowed'
-                                        } ${language === lang.value ? 'text-[var(--ui-accent)]' : ''}`}
-                                    >
-                                        <span className="flex-1">{lang.label}</span>
-                                        <span className="flex items-center gap-1.5">
-                                            {hasHotkey && (
-                                                <span className="text-[9px] text-[var(--ui-text-muted)] font-medium px-1 py-0.5 rounded bg-[var(--ui-hover)]">
-                                                    {isMac ? '⌘' : 'Ctrl+'}{hotkeyNum}
-                                                </span>
-                                            )}
-                                            {isProLang && (
-                                                <span className="text-[9px] text-[var(--ui-accent)]">PRO</span>
-                                            )}
-                                        </span>
-                                    </button>
+                                    <div key={lang.value}>
+                                        <button
+                                            onClick={() => {
+                                                if (hasAccess) {
+                                                    setLanguage(lang.value);
+                                                    setShowLanguageDropdown(false);
+                                                }
+                                            }}
+                                            disabled={!hasAccess}
+                                            className={`w-full text-left text-xs px-3 py-1.5 flex items-center justify-between gap-2 ${
+                                                hasAccess ? 'hover:bg-[var(--ui-hover)]' : 'opacity-50 cursor-not-allowed'
+                                            } ${language === lang.value ? 'text-[var(--ui-accent)]' : ''}`}
+                                        >
+                                            <span className="flex-1">{lang.label}</span>
+                                            <span className="flex items-center gap-1.5">
+                                                {hasHotkey && (
+                                                    <span className="text-[9px] text-[var(--ui-text-muted)] font-medium px-1 py-0.5 rounded bg-[var(--ui-hover)]">
+                                                        {isMac ? '⌘' : 'Ctrl+'}{hotkeyNum}
+                                                    </span>
+                                                )}
+                                                {isProLang && (
+                                                    <span className="text-[9px] text-[var(--ui-accent)]">PRO</span>
+                                                )}
+                                            </span>
+                                        </button>
+                                        {showSeparator && (
+                                            <div className="my-1 border-t border-[var(--ui-border)]" />
+                                        )}
+                                    </div>
                                 );
                             })}
                         </div>
