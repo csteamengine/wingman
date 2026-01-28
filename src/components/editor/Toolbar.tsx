@@ -11,13 +11,18 @@ import {
     ListOrdered,
     Form,
     ChevronsDownUp,
-    EyeOff
+    EyeOff,
+    CircleCheck,
 } from 'lucide-react';
 
 const FORMATTABLE_LANGUAGES = new Set([
-    'json', 'xml', 'html', 'css', 'python', 'react', 'jsx', 'tsx',
+    'json', 'xml', 'html', 'css', 'react', 'jsx', 'tsx',
     'javascript', 'typescript', 'sql', 'go', 'rust', 'java', 'php',
-    'ruby', 'swift', 'kotlin', 'csharp', 'bash', 'c', 'cpp', 'markdown',
+    'ruby', 'swift', 'kotlin', 'csharp', 'c', 'cpp',
+]);
+
+const VALIDATABLE_LANGUAGES = new Set([
+    'json', 'xml', 'python', 'html', 'yaml',
 ]);
 
 interface ToolbarProps {
@@ -26,12 +31,14 @@ interface ToolbarProps {
     onNumberedList: () => void;
     onFormat: () => void;
     onMinify: () => void;
+    onValidate: () => void;
     onMaskSecrets: () => void;
     language?: string;
 }
 
-export function Toolbar({ onTransform, onBulletList, onNumberedList, onFormat, onMinify, onMaskSecrets, language }: ToolbarProps) {
-    const showFormat = !language || language === 'plaintext' || FORMATTABLE_LANGUAGES.has(language);
+export function Toolbar({ onTransform, onBulletList, onNumberedList, onFormat, onMinify, onValidate, onMaskSecrets, language }: ToolbarProps) {
+    const formatDisabled = !!language && language !== 'plaintext' && !FORMATTABLE_LANGUAGES.has(language);
+    const validateDisabled = !language || !VALIDATABLE_LANGUAGES.has(language);
 
     return (
         <div className="border-b border-[var(--ui-border)] px-2 py-2 overflow-x-auto">
@@ -75,17 +82,16 @@ export function Toolbar({ onTransform, onBulletList, onNumberedList, onFormat, o
                 </button>
                 <div className="w-px h-6 bg-[var(--ui-border)] mx-1"/>
 
-                {/* Format & Minify Group */}
-                {showFormat && (
-                    <>
-                        <button onClick={onFormat} title="Format Code" className="toolbar-btn">
-                            <Form className="w-5 h-5" />
-                        </button>
-                        <button onClick={onMinify} title="Minify Code" className="toolbar-btn">
-                            <ChevronsDownUp className="w-5 h-5" />
-                        </button>
-                    </>
-                )}
+                {/* Format, Validate & Minify Group */}
+                <button onClick={formatDisabled ? undefined : onFormat} title="Format Code" className={`toolbar-btn${formatDisabled ? ' opacity-40 cursor-not-allowed' : ''}`} disabled={formatDisabled}>
+                    <Form className="w-5 h-5" />
+                </button>
+                <button onClick={formatDisabled ? undefined : onMinify} title="Minify Code" className={`toolbar-btn${formatDisabled ? ' opacity-40 cursor-not-allowed' : ''}`} disabled={formatDisabled}>
+                    <ChevronsDownUp className="w-5 h-5" />
+                </button>
+                <button onClick={validateDisabled ? undefined : onValidate} title="Validate" className={`toolbar-btn${validateDisabled ? ' opacity-40 cursor-not-allowed' : ''}`} disabled={validateDisabled}>
+                    <CircleCheck className="w-5 h-5" />
+                </button>
                 <button onClick={onMaskSecrets} title="Mask Secrets — redacts API keys, tokens, passwords, JWTs, connection strings, private keys, and hashes" className="toolbar-btn">
                     <EyeOff className="w-5 h-5" />
                 </button>

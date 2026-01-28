@@ -649,6 +649,33 @@ export function EditorWindow() {
         }
     }, [language, setLanguage, settings, isPro, setValidationToast]);
 
+    // Validate handler
+    const handleValidate = useCallback(() => {
+        const view = viewRef.current;
+        if (!view) return;
+
+        const linters: Record<string, (v: EditorView) => Diagnostic[]> = {
+            json: jsonLinter,
+            xml: xmlLinter,
+            python: pythonLinter,
+            html: htmlLinter,
+            yaml: yamlLinter,
+        };
+
+        const linterFn = linters[language];
+        if (!linterFn) return;
+
+        const diagnostics = linterFn(view);
+
+        if (diagnostics.length === 0) {
+            setValidationToast({ type: 'success', message: `Valid ${language.toUpperCase()}` });
+        } else {
+            const first = diagnostics[0];
+            setValidationToast({ type: 'error', message: first.message });
+            showErrorDiagnostic(view, viewRef, first.from, first.to, first.message, 'Validate');
+        }
+    }, [language, setValidationToast]);
+
     // Mask Secrets handler
     const handleMaskSecrets = useCallback(() => {
         const view = viewRef.current;
@@ -817,6 +844,16 @@ export function EditorWindow() {
         document.addEventListener('paste', handlePaste);
         return () => document.removeEventListener('paste', handlePaste);
     }, [handlePaste]);
+
+    // Listen for external inserts (e.g. clipboard item clicks)
+    useEffect(() => {
+        const handler = () => {
+            pasteOrDropRef.current = true;
+            contextDismissedRef.current = null;
+        };
+        window.addEventListener('wingman-external-insert', handler);
+        return () => window.removeEventListener('wingman-external-insert', handler);
+    }, []);
 
     // Drag and drop handlers
     const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -1017,6 +1054,7 @@ export function EditorWindow() {
                 onNumberedList={applyNumberedList}
                 onFormat={handleFormat}
                 onMinify={handleMinify}
+                onValidate={handleValidate}
                 onMaskSecrets={handleMaskSecrets}
                 language={language}
             />
