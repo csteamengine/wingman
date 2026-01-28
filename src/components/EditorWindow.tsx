@@ -281,9 +281,15 @@ export function EditorWindow() {
         const timer = setTimeout(() => {
             const result = detectContent(content);
 
-            // Auto-switch language if setting enabled and language is plaintext
+            // Add "Switch to {lang}" action if language is plaintext and a language is suggested
             if (result?.suggestedLanguage && settings?.auto_detect_language && language === 'plaintext') {
-                setLanguage(result.suggestedLanguage);
+                const lang = result.suggestedLanguage;
+                const switchAction: DetectorAction = {
+                    id: `switch-language:${lang}`,
+                    label: `Switch to ${lang.toUpperCase()}`,
+                    execute: (text: string) => text,
+                };
+                result = { ...result, actions: [switchAction, ...result.actions] };
             }
 
             // Only show toast on paste/drag, and not if user already dismissed this detector
@@ -692,6 +698,13 @@ export function EditorWindow() {
 
     // Context detection action handler
     const handleContextAction = useCallback((action: DetectorAction) => {
+        if (action.id.startsWith('switch-language:')) {
+            const lang = action.id.split(':')[1];
+            setLanguage(lang);
+            setContextDetection(null);
+            return;
+        }
+
         const result = action.execute(content);
         setContextDetection(null);
 
@@ -722,7 +735,7 @@ export function EditorWindow() {
                 }
             }
         }
-    }, [content, setContent, setValidationToast]);
+    }, [content, setContent, setValidationToast, setLanguage, setContextDetection]);
 
     // URL Parser
     const handleParseUrl = useCallback(() => {
