@@ -373,6 +373,8 @@ export function QuickActionsPanel() {
         } else {
             setContent(content + itemContent);
         }
+        // Signal to EditorWindow that this was an external insert (like paste/drop)
+        window.dispatchEvent(new CustomEvent('wingman-external-insert'));
     }, [editorView, content, setContent]);
 
     // Get drag store functions
