@@ -11,6 +11,7 @@ import {oneDark} from '@codemirror/theme-one-dark';
 import {listen} from '@tauri-apps/api/event';
 import {invoke} from '@tauri-apps/api/core';
 import {formatCode} from '../lib/formatters';
+import {getLicenseKey} from '../lib/secureStorage';
 
 import {useEditorStore} from '../stores/editorStore';
 import {useSettingsStore} from '../stores/settingsStore';
@@ -243,10 +244,13 @@ export function EditorWindow() {
             loadAIConfig();
             loadAIPresets();
             loadCustomAIPrompts();
-            const licenseKey = localStorage.getItem('wingman_license_key');
-            if (licenseKey) {
-                loadSubscriptionStatus(licenseKey);
-            }
+            // Get license key from secure storage (async)
+            (async () => {
+                const licenseKey = await getLicenseKey();
+                if (licenseKey) {
+                    loadSubscriptionStatus(licenseKey);
+                }
+            })();
         }
     }, [isPremium, loadAIConfig, loadAIPresets, loadSubscriptionStatus]);
 
@@ -416,7 +420,7 @@ export function EditorWindow() {
         if (aiLoading || !content.trim()) return;
         setAiError(null);
 
-        const licenseKey = localStorage.getItem('wingman_license_key');
+        const licenseKey = await getLicenseKey();
         if (!licenseKey) {
             setAiError('License key not found');
             return;

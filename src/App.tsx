@@ -1,7 +1,8 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { migrateLicenseFromLocalStorage, syncLicenseFromRustCache } from './lib/secureStorage';
 import {
   Settings,
   Clock,
@@ -38,6 +39,21 @@ function App() {
 
   // Initialize license check
   useLicense();
+
+  // Sync license credentials on startup
+  const syncRan = useRef(false);
+  useEffect(() => {
+    if (!syncRan.current) {
+      syncRan.current = true;
+      // First migrate from localStorage (for old users)
+      migrateLicenseFromLocalStorage()
+        .then(() => {
+          // Then sync from Rust cache (for users who activated before secure storage)
+          return syncLicenseFromRustCache();
+        })
+        .catch(console.error);
+    }
+  }, []);
 
   // Initialize global hotkey
   useGlobalHotkey();

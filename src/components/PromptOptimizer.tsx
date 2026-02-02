@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePremiumStore, formatTokenUsage } from '../stores/premiumStore';
 import { useLicenseStore } from '../stores/licenseStore';
 import { PremiumFeatureGate, PremiumBadge } from './PremiumFeatureGate';
+import { getLicenseKey } from '../lib/secureStorage';
 
 interface PromptOptimizerProps {
   initialText?: string;
@@ -21,18 +22,6 @@ export function PromptOptimizer({ initialText = '', onOptimized, onClose }: Prom
   const { devTierOverride, getEffectiveTier } = useLicenseStore();
   const effectiveTier = getEffectiveTier();
 
-  // Get license key from localStorage (stored during activation)
-  const getLicenseKey = useCallback((): string | null => {
-    try {
-      // The license key is stored in the encrypted cache on disk,
-      // but we need to get it from somewhere accessible to JS
-      // For now, we'll retrieve it from the Tauri backend
-      return localStorage.getItem('wingman_license_key') || null;
-    } catch {
-      return null;
-    }
-  }, []);
-
   const handleOptimize = async () => {
     const trimmedInput = inputText.trim();
     if (!trimmedInput) {
@@ -40,7 +29,8 @@ export function PromptOptimizer({ initialText = '', onOptimized, onClose }: Prom
       return;
     }
 
-    const licenseKey = getLicenseKey();
+    // Get license key from secure storage
+    const licenseKey = await getLicenseKey();
     if (!licenseKey) {
       setError('License key not found. Please re-activate your license.');
       return;

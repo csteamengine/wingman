@@ -48,6 +48,8 @@ hostname = "0.4"
 image = { version = "0.25", default-features = false, features = ["png"] }
 # Linting/validation dependencies
 rustpython-parser = "0.4"
+# Secure credential storage (OS keychain)
+keyring = "3"
 # Regex for pattern matching in formatters
 regex = "1.10"
 

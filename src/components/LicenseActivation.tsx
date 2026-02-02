@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {open} from '@tauri-apps/plugin-shell';
 import {useLicense} from '../hooks/useLicense';
 import {usePremiumStore} from '../stores/premiumStore';
+import {storeLicenseCredentials, deleteLicenseCredentials} from '../lib/secureStorage';
 
 const SUPABASE_URL = 'https://yhpetdqcmqpfwhdtbhat.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_t4l4DUhI_I2rpT9pMU8dgg_Y2j55oJY';
@@ -38,11 +39,22 @@ export function LicenseActivation() {
         const trimmedKey = licenseKey.trim();
         const trimmedEmail = activationEmail.trim().toLowerCase();
 
-        // Store license key in localStorage BEFORE activating so Premium features can access it
-        localStorage.setItem('wingman_license_key', trimmedKey);
-        localStorage.setItem('wingman_license_email', trimmedEmail);
+        console.log('[LicenseActivation] Starting activation for:', trimmedEmail);
 
+        // Store license key in secure storage BEFORE activating so Premium features can access it
+        try {
+            console.log('[LicenseActivation] Storing credentials...');
+            await storeLicenseCredentials(trimmedKey, trimmedEmail);
+            console.log('[LicenseActivation] Credentials stored successfully');
+        } catch (err) {
+            console.error('[LicenseActivation] Failed to store credentials securely:', err);
+            setActivationError('Failed to store credentials securely');
+            return;
+        }
+
+        console.log('[LicenseActivation] Calling handleActivate...');
         const success = await handleActivate(trimmedKey, trimmedEmail);
+        console.log('[LicenseActivation] handleActivate result:', success);
         if (success) {
             setLicenseKey('');
             setActivationEmail('');
@@ -51,9 +63,12 @@ export function LicenseActivation() {
             loadObsidianConfig();
             loadAIConfig();
         } else {
-            // Clear localStorage on failure
-            localStorage.removeItem('wingman_license_key');
-            localStorage.removeItem('wingman_license_email');
+            // Clear secure storage on failure
+            try {
+                await deleteLicenseCredentials();
+            } catch (err) {
+                console.error('Failed to clear credentials:', err);
+            }
             setActivationError(error || 'Activation failed. Please check your license key and email.');
         }
     };
@@ -131,8 +146,11 @@ export function LicenseActivation() {
                                     setShowDeactivateConfirm(false);
                                     if (success) {
                                         // Clear stored license key on deactivation
-                                        localStorage.removeItem('wingman_license_key');
-                                        localStorage.removeItem('wingman_license_email');
+                                        try {
+                                            await deleteLicenseCredentials();
+                                        } catch (err) {
+                                            console.error('Failed to clear credentials:', err);
+                                        }
                                     } else {
                                         setActivationError('Failed to deactivate. You may need to be online.');
                                     }

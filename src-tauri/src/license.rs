@@ -553,6 +553,21 @@ pub fn get_feature_status() -> Vec<(ProFeature, bool)> {
     features.into_iter().map(|f| (f, is_pro_or_premium)).collect()
 }
 
+/// Get the cached license key (if any)
+/// This is used to sync the license key to the frontend's secure storage
+pub fn get_cached_license_key() -> Option<String> {
+    match load_license_cache() {
+        Ok(cache) => {
+            log::info!("get_cached_license_key: found={}", cache.license_key.is_some());
+            cache.license_key
+        }
+        Err(e) => {
+            log::error!("get_cached_license_key: failed to load cache: {}", e);
+            None
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -123,7 +123,8 @@ export function FloatingNotifications({
                         </svg>
                         <span className="text-sm text-white font-medium whitespace-nowrap">{contextDetection.toastMessage}</span>
                         <div className="flex items-center gap-1.5">
-                            {contextDetection.actions.map((action) => (
+                            {/* Limit to 5 actions max to keep the bar manageable */}
+                            {contextDetection.actions.slice(0, 5).map((action) => (
                                 <button
                                     key={action.id}
                                     onClick={() => onContextAction(action)}

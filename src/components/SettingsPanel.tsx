@@ -12,6 +12,7 @@ import {LicenseActivation} from './LicenseActivation';
 import {ObsidianConfig} from './ObsidianConfig';
 import {GitHubSettings} from './GitHubSettings';
 import {ProBadge} from './ProFeatureGate';
+import {getLicenseKey} from '../lib/secureStorage';
 import type {ThemeType} from '../types';
 
 const THEMES: { value: ThemeType; label: string; isPro: boolean }[] = [
@@ -212,10 +213,12 @@ export function SettingsPanel() {
     // Load subscription status for Premium users
     useEffect(() => {
         if (isPremium) {
-            const licenseKey = localStorage.getItem('wingman_license_key');
-            if (licenseKey) {
-                loadSubscriptionStatus(licenseKey);
-            }
+            (async () => {
+                const licenseKey = await getLicenseKey();
+                if (licenseKey) {
+                    loadSubscriptionStatus(licenseKey);
+                }
+            })();
         }
     }, [isPremium, loadSubscriptionStatus]);
 
@@ -944,7 +947,7 @@ export function SettingsPanel() {
                                     </p>
                                     <button
                                         onClick={async () => {
-                                            const licenseKey = localStorage.getItem('wingman_license_key');
+                                            const licenseKey = await getLicenseKey();
                                             if (!licenseKey) {
                                                 alert('License key not found. Please activate your license first.');
                                                 return;

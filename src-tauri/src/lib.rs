@@ -1,4 +1,5 @@
 mod clipboard;
+mod credentials;
 mod formatters;
 mod github;
 mod history;
@@ -24,6 +25,7 @@ use tauri_nspanel::ManagerExt;
 use window::{start_workspace_monitor, set_window_blur, update_vibrancy_material, get_window_monitor_name, WebviewWindowExt, MAIN_WINDOW_LABEL};
 
 use clipboard::{calculate_text_stats, transform_text, TextStats, TextTransform};
+use credentials::{store_credential, get_credential, delete_credential};
 use github::{
     check_github_auth_status, create_github_gist, get_github_config, logout_github,
     poll_github_device_flow, save_github_config, start_github_device_flow,
@@ -36,7 +38,7 @@ use hotkey::{get_default_hotkey, validate_hotkey};
 use license::{
     check_license_status, is_feature_enabled, load_license_cache, refresh_license,
     validate_license_online, deactivate_license_online, clear_license_cache,
-    LicenseStatusInfo, ProFeature,
+    get_cached_license_key, LicenseStatusInfo, ProFeature,
 };
 use premium::{
     validate_premium_license, get_ai_usage, call_ai_feature, create_customer_portal_session,
@@ -722,6 +724,11 @@ async fn deactivate_license() -> Result<(), String> {
 #[tauri::command]
 fn get_license_status() -> Result<LicenseStatusInfo, String> {
     check_license_status().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_cached_license_key_cmd() -> Option<String> {
+    get_cached_license_key()
 }
 
 #[tauri::command]
@@ -1586,6 +1593,7 @@ pub fn run() {
             activate_license,
             deactivate_license,
             get_license_status,
+            get_cached_license_key_cmd,
             check_feature_enabled,
             refresh_license_status,
             // Premium
@@ -1628,6 +1636,10 @@ pub fn run() {
             check_for_app_updates,
             download_and_install_update,
             get_app_version,
+            // Secure credentials
+            store_credential,
+            get_credential,
+            delete_credential,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
