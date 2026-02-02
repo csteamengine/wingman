@@ -26,3 +26,7 @@ export { FloatingNotifications } from './FloatingNotifications';
 export type { ValidationToast } from './FloatingNotifications';
 export { Toolbar } from './Toolbar';
 export { FileDragOverlay, ClipboardDragIndicator, AILoadingOverlay } from './DragOverlays';
+
+// Search panel with case preservation
+export { searchPanelExtension } from './searchPanel';
+export { preserveCase } from './casePreservation';

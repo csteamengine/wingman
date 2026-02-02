@@ -2,7 +2,7 @@ import {useEffect, useRef, useCallback, useState} from 'react';
 import {EditorView, placeholder, drawSelection, dropCursor, keymap} from '@codemirror/view';
 import {EditorState} from '@codemirror/state';
 import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/commands';
-import {search, searchKeymap} from '@codemirror/search';
+import {searchKeymap} from '@codemirror/search';
 import {bracketMatching} from '@codemirror/language';
 import {autocompletion, closeBrackets, closeBracketsKeymap} from '@codemirror/autocomplete';
 import {linter, lintGutter, setDiagnostics} from '@codemirror/lint';
@@ -46,6 +46,7 @@ import {
     FileDragOverlay,
     ClipboardDragIndicator,
     AILoadingOverlay,
+    searchPanelExtension,
 } from './editor';
 
 import type {ObsidianResult, GistResult, AIPreset} from '../types';
@@ -871,7 +872,7 @@ export function EditorWindow() {
             dropCursor(),
             editorKeymap,
             keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
-            search({ top: true }),
+            searchPanelExtension,
             placeholder('Start typing...'),
             EditorView.lineWrapping,
             EditorView.updateListener.of((update) => {
