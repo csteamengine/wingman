@@ -19,7 +19,7 @@ function parseCsv(text: string, delim: string): string[][] {
 
 export const csvTsvDetector: Detector = {
     id: 'csv-tsv',
-    priority: 6,
+    priority: 9,
     detect: (text: string) => detectDelimiter(text) !== null,
     toastMessage: 'CSV/TSV data detected',
     actions: [

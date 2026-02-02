@@ -5,7 +5,7 @@ const ENV_LINE_RE = /^[A-Z_][A-Z0-9_]*=.+/m;
 
 export const envFileDetector: Detector = {
     id: 'env-file',
-    priority: 4,
+    priority: 13,
     detect: (text: string) => {
         const lines = text.trim().split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
         const envLines = lines.filter(l => ENV_LINE_RE.test(l));

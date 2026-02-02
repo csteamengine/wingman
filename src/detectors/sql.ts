@@ -33,7 +33,7 @@ function formatSql(text: string): string {
 
 export const sqlDetector: Detector = {
     id: 'sql',
-    priority: 5,
+    priority: 7,
     detect: (text: string) => SQL_RE.test(text),
     toastMessage: 'SQL query detected',
     suggestedLanguage: 'sql',

@@ -24,7 +24,7 @@ function detectLanguage(text: string): string {
 
 export const codeSnippetDetector: Detector = {
     id: 'code-snippet',
-    priority: 10,
+    priority: 17,
     detect: (text: string) => {
         const matches = CODE_PATTERNS.filter(p => p.test(text));
         return matches.length >= 1;

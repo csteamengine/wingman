@@ -7,11 +7,6 @@ export interface ValidationToast {
 }
 
 interface FloatingNotificationsProps {
-    // URL Parser state
-    parsedUrlInfo: {url: string; from: number; to: number} | null;
-    onParseUrl: () => void;
-    onDismissUrlParser: () => void;
-
     // Obsidian toast state
     obsidianToast: ObsidianResult | null;
     onToastClick: () => void;
@@ -32,9 +27,6 @@ interface FloatingNotificationsProps {
 }
 
 export function FloatingNotifications({
-    parsedUrlInfo,
-    onParseUrl,
-    onDismissUrlParser,
     obsidianToast,
     onToastClick,
     gistToast,
@@ -46,7 +38,7 @@ export function FloatingNotifications({
     onContextAction,
     onDismissContext,
 }: FloatingNotificationsProps) {
-    const hasOtherToast = !!(parsedUrlInfo || obsidianToast || gistToast || validationToast);
+    const hasOtherToast = !!(obsidianToast || gistToast || validationToast);
     return (
         <>
             {/* Validation Toast */}
@@ -78,32 +70,6 @@ export function FloatingNotifications({
                             </svg>
                         </button>
                     </div>
-                </div>
-            )}
-
-            {/* URL Parser Floating Button */}
-            {parsedUrlInfo && (
-                <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
-                    <button
-                        onClick={onParseUrl}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-blue-600/95 rounded-lg shadow-lg border border-blue-500/50 hover:bg-blue-600 transition-colors text-white"
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                        </svg>
-                        <span className="text-sm font-medium">Parse URL</span>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDismissUrlParser();
-                            }}
-                            className="ml-1 w-5 h-5 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
-                        >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </button>
                 </div>
             )}
 

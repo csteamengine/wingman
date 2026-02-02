@@ -23,7 +23,7 @@ function relativeTime(date: Date): string {
 
 export const timestampDetector: Detector = {
     id: 'timestamp',
-    priority: 9,
+    priority: 15,
     detect: (text: string) => {
         if (ISO_RE.test(text)) return true;
         const match = text.match(EPOCH_RE);

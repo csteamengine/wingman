@@ -12,7 +12,7 @@ const STACK_PATTERNS = [
 
 export const stackTraceDetector: Detector = {
     id: 'stack-trace',
-    priority: 3,
+    priority: 11,
     detect: (text: string) => {
         const matches = STACK_PATTERNS.filter(p => p.test(text));
         return matches.length >= 1 && text.split('\n').length >= 3;

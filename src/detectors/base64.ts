@@ -14,7 +14,7 @@ function tryDecode(text: string): string | null {
 
 export const base64Detector: Detector = {
     id: 'base64',
-    priority: 8,
+    priority: 4,
     detect: (text: string) => {
         if (!BASE64_RE.test(text)) return false;
         return tryDecode(text) !== null;

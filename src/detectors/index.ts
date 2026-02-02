@@ -1,30 +1,42 @@
 import type {Detector, DetectorResult} from './types';
+import {jwtDetector} from './jwt';
 import {secretsDetector} from './secrets';
-import {jsonYamlDetector} from './json-yaml';
-import {stackTraceDetector} from './stack-trace';
-import {envFileDetector} from './env-file';
-import {sqlDetector} from './sql';
-import {csvTsvDetector} from './csv-tsv';
 import {uuidDetector} from './uuid';
 import {base64Detector} from './base64';
-import {timestampDetector} from './timestamp';
-import {codeSnippetDetector} from './code-snippet';
-import {filePathDetector} from './file-path';
+import {jsonYamlDetector} from './json-yaml';
+import {urlDetector} from './url';
+import {sqlDetector} from './sql';
+import {xmlHtmlDetector} from './xml-html';
+import {csvTsvDetector} from './csv-tsv';
+import {colorDetector} from './color';
+import {stackTraceDetector} from './stack-trace';
 import {cssDetector} from './css';
+import {envFileDetector} from './env-file';
+import {filePathDetector} from './file-path';
+import {timestampDetector} from './timestamp';
+import {markdownDetector} from './markdown';
+import {codeSnippetDetector} from './code-snippet';
+import {plainTextDetector} from './plain-text';
 
 const detectors: Detector[] = [
+    jwtDetector,
     secretsDetector,
-    jsonYamlDetector,
-    cssDetector,
-    stackTraceDetector,
-    envFileDetector,
-    sqlDetector,
-    csvTsvDetector,
     uuidDetector,
     base64Detector,
-    timestampDetector,
-    codeSnippetDetector,
+    jsonYamlDetector,
+    urlDetector,
+    sqlDetector,
+    xmlHtmlDetector,
+    csvTsvDetector,
+    colorDetector,
+    stackTraceDetector,
+    cssDetector,
+    envFileDetector,
     filePathDetector,
+    timestampDetector,
+    markdownDetector,
+    codeSnippetDetector,
+    plainTextDetector,
 ].sort((a, b) => a.priority - b.priority);
 
 export function detectContent(text: string): DetectorResult | null {

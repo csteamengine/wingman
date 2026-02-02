@@ -4,7 +4,6 @@ import {maskSecrets} from '../utils/maskSecrets';
 const SECRET_PATTERNS = [
     /-----BEGIN [A-Z ]+-----/,
     /(?:postgres|mysql|mongodb|redis|amqp|mssql)(?:\+\w+)?:\/\/[^:/\s]+:[^\s]+@/i,
-    /\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/,
     /(?:Authorization:\s*Bearer\s+|bearer\s+)[A-Za-z0-9\-_.=+/]{8,}/i,
     /(?:sk_live_|rk_live_|ghp_|github_pat_|sk-)[A-Za-z0-9_]{8,}/,
     /(?:SECRET|PASSWORD|TOKEN|API[_.]?KEY|PRIVATE[_.]?KEY|ACCESS[_.]?KEY)\s*[=:]\s*[^\s"',;]{4,}/i,

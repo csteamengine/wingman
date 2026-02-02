@@ -12,7 +12,7 @@ const CSS_PATTERNS = [
 
 export const cssDetector: Detector = {
     id: 'css',
-    priority: 3,
+    priority: 12,
     detect: (text: string) => {
         const matches = CSS_PATTERNS.filter(p => p.test(text));
         // Need at least 2 CSS-like patterns to be confident

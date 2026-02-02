@@ -5,7 +5,7 @@ const WIN_PATH_RE = /(?:^|\s)([A-Z]:\\(?:[\w.-]+\\)+[\w.-]+)/mi;
 
 export const filePathDetector: Detector = {
     id: 'file-path',
-    priority: 11,
+    priority: 14,
     detect: (text: string) => UNIX_PATH_RE.test(text) || WIN_PATH_RE.test(text),
     toastMessage: 'File paths detected',
     actions: [

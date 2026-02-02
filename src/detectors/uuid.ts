@@ -4,7 +4,7 @@ const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 export const uuidDetector: Detector = {
     id: 'uuid',
-    priority: 7,
+    priority: 3,
     detect: (text: string) => UUID_RE.test(text),
     toastMessage: 'UUID detected',
     actions: [

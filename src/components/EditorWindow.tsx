@@ -37,7 +37,6 @@ import {
     codeBlockTheme,
     markdownLinkPasteHandler,
     clipboardDropHandler,
-    isUrl,
     editorKeymap,
     StatusBar,
     ActionButtons,
@@ -121,7 +120,6 @@ export function EditorWindow() {
     const [aiError, setAiError] = useState<string | null>(null);
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const [selectedCustomPromptId, setSelectedCustomPromptId] = useState<string | null>(null);
-    const [parsedUrlInfo, setParsedUrlInfo] = useState<{url: string; from: number; to: number} | null>(null);
     const [contextDetection, setContextDetection] = useState<DetectorResult | null>(null);
     const contextDismissedRef = useRef<string | null>(null); // tracks dismissed detector id
     const pasteOrDropRef = useRef(false); // tracks if content change came from paste/drag
@@ -262,13 +260,6 @@ export function EditorWindow() {
             return () => clearTimeout(timer);
         }
     }, [githubError]);
-
-    useEffect(() => {
-        if (parsedUrlInfo) {
-            const timer = setTimeout(() => setParsedUrlInfo(null), 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [parsedUrlInfo]);
 
     useEffect(() => {
         if (validationToast) {
@@ -765,66 +756,13 @@ export function EditorWindow() {
         }
     }, [content, setContent, setValidationToast, setLanguage, setContextDetection]);
 
-    // URL Parser
-    const handleParseUrl = useCallback(() => {
-        if (!parsedUrlInfo || !viewRef.current) return;
-
-        try {
-            const url = new URL(parsedUrlInfo.url);
-            const lines: string[] = [];
-
-            lines.push(`Protocol: ${url.protocol.replace(':', '')}`);
-            lines.push(`Host: ${url.hostname}`);
-            if (url.port) lines.push(`Port: ${url.port}`);
-            if (url.pathname && url.pathname !== '/') lines.push(`Path: ${url.pathname}`);
-            if (url.search) {
-                lines.push('Query Parameters:');
-                url.searchParams.forEach((value, key) => {
-                    lines.push(`  - ${key}: ${decodeURIComponent(value)}`);
-                });
-            }
-            if (url.hash) lines.push(`Fragment: ${url.hash.slice(1)}`);
-            lines.push(`Full URL: ${url.href}`);
-
-            const output = lines.join('\n');
-            const view = viewRef.current;
-
-            // Replace the URL with parsed output
-            view.dispatch({
-                changes: {from: parsedUrlInfo.from, to: parsedUrlInfo.to, insert: output},
-                selection: {anchor: parsedUrlInfo.from + output.length},
-            });
-            view.focus();
-        } catch {
-            // Invalid URL, do nothing
-        }
-
-        setParsedUrlInfo(null);
-    }, [parsedUrlInfo]);
-
-    // Handle paste for file attachments and URL detection
+    // Handle paste for file attachments
     const handlePaste = useCallback(async (e: ClipboardEvent) => {
         const items = e.clipboardData?.items;
         if (!items) return;
 
         pasteOrDropRef.current = true;
         contextDismissedRef.current = null;
-
-        const pastedText = e.clipboardData?.getData('text/plain');
-        if (pastedText && isUrl(pastedText) && viewRef.current) {
-            const selection = viewRef.current.state.selection.main;
-            if (selection.empty) {
-                // Capture position before paste
-                const startPos = selection.head;
-                setTimeout(() => {
-                    if (viewRef.current) {
-                        // After paste, cursor is at end of pasted text
-                        const endPos = viewRef.current.state.selection.main.head;
-                        setParsedUrlInfo({url: pastedText.trim(), from: startPos, to: endPos});
-                    }
-                }, 10);
-            }
-        }
 
         if (!hasImageSupport) return;
 
@@ -1134,9 +1072,6 @@ export function EditorWindow() {
             />
 
             <FloatingNotifications
-                parsedUrlInfo={parsedUrlInfo}
-                onParseUrl={handleParseUrl}
-                onDismissUrlParser={() => setParsedUrlInfo(null)}
                 obsidianToast={obsidianToast}
                 onToastClick={handleToastClick}
                 gistToast={gistToast}
