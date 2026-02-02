@@ -234,7 +234,6 @@ import {
   Info,
   HelpCircle,
   CircleDot,
-  Circle,
 
   // Time & Date
   Clock,

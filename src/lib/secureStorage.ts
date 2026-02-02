@@ -19,7 +19,7 @@ let storePromise: ReturnType<typeof load> | null = null;
 
 async function getStore() {
   if (!storePromise) {
-    storePromise = load('credentials.json', { autoSave: true });
+    storePromise = load('credentials.json', { autoSave: true, defaults: {} });
   }
   return storePromise;
 }
