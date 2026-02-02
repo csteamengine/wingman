@@ -67,6 +67,8 @@ pub struct AppSettings {
     pub last_quick_actions_tab: String,
     #[serde(default = "default_language_hotkeys")]
     pub language_hotkeys: Vec<String>,
+    #[serde(default = "default_show_tips")]
+    pub show_tips: bool,
 }
 
 fn default_primary_action() -> String {
@@ -104,6 +106,10 @@ fn default_language_hotkeys() -> Vec<String> {
     ]
 }
 
+fn default_show_tips() -> bool {
+    true
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
@@ -134,6 +140,7 @@ impl Default for AppSettings {
             auto_detect_language: default_auto_detect_language(),
             last_quick_actions_tab: default_last_quick_actions_tab(),
             language_hotkeys: default_language_hotkeys(),
+            show_tips: default_show_tips(),
         }
     }
 }

@@ -33,6 +33,7 @@ export interface AppSettings {
   auto_detect_language: boolean;
   last_quick_actions_tab: 'clipboard' | 'actions';
   language_hotkeys: string[]; // Array of 10 language IDs for Cmd+0 through Cmd+9
+  show_tips: boolean;
 }
 
 export interface HistoryEntry {

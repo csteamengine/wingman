@@ -47,6 +47,7 @@ import {
     ClipboardDragIndicator,
     AILoadingOverlay,
     searchPanelExtension,
+    TipsBar,
 } from './editor';
 
 import type {ObsidianResult, GistResult, AIPreset} from '../types';
@@ -1071,6 +1072,8 @@ export function EditorWindow() {
                 aiError={aiError}
                 githubError={githubError}
             />
+
+            {settings?.show_tips !== false && <TipsBar />}
 
             <FloatingNotifications
                 obsidianToast={obsidianToast}

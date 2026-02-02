@@ -48,6 +48,7 @@ const defaultSettings: AppSettings = {
   auto_detect_language: true,
   last_quick_actions_tab: 'clipboard',
   language_hotkeys: DEFAULT_LANGUAGE_HOTKEYS,
+  show_tips: true,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({

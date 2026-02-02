@@ -30,3 +30,6 @@ export { FileDragOverlay, ClipboardDragIndicator, AILoadingOverlay } from './Dra
 // Search panel with case preservation
 export { searchPanelExtension } from './searchPanel';
 export { preserveCase } from './casePreservation';
+
+// Tips bar
+export { TipsBar } from './TipsBar';
