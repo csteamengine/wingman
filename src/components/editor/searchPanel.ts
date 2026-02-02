@@ -68,6 +68,9 @@ function createSearchPanel(view: EditorView): Panel {
     searchInput.placeholder = 'Search';
     searchInput.setAttribute('main-field', 'true');
     searchInput.style.cssText = 'flex: 1; min-width: 150px;';
+    searchInput.autocomplete = 'off';
+    searchInput.autocapitalize = 'off';
+    searchInput.spellcheck = false;
 
     // Case sensitive checkbox
     const caseSensitiveLabel = document.createElement('label');
@@ -76,6 +79,7 @@ function createSearchPanel(view: EditorView): Panel {
     const caseSensitiveCheckbox = document.createElement('input');
     caseSensitiveCheckbox.type = 'checkbox';
     caseSensitiveCheckbox.name = 'case';
+    caseSensitiveCheckbox.tabIndex = -1; // Skip in tab order
     caseSensitiveLabel.appendChild(caseSensitiveCheckbox);
     caseSensitiveLabel.appendChild(document.createTextNode('Aa'));
     caseSensitiveLabel.title = 'Case sensitive';
@@ -87,6 +91,7 @@ function createSearchPanel(view: EditorView): Panel {
     const regexCheckbox = document.createElement('input');
     regexCheckbox.type = 'checkbox';
     regexCheckbox.name = 'regexp';
+    regexCheckbox.tabIndex = -1; // Skip in tab order
     regexLabel.appendChild(regexCheckbox);
     regexLabel.appendChild(document.createTextNode('.*'));
     regexLabel.title = 'Regular expression';
@@ -98,6 +103,7 @@ function createSearchPanel(view: EditorView): Panel {
     const wholeWordCheckbox = document.createElement('input');
     wholeWordCheckbox.type = 'checkbox';
     wholeWordCheckbox.name = 'word';
+    wholeWordCheckbox.tabIndex = -1; // Skip in tab order
     wholeWordLabel.appendChild(wholeWordCheckbox);
     wholeWordLabel.appendChild(document.createTextNode('W'));
     wholeWordLabel.title = 'Whole word';
@@ -107,11 +113,13 @@ function createSearchPanel(view: EditorView): Panel {
     prevButton.className = 'cm-button';
     prevButton.textContent = '< Prev';
     prevButton.type = 'button';
+    prevButton.tabIndex = -1; // Skip in tab order
 
     const nextButton = document.createElement('button');
     nextButton.className = 'cm-button';
     nextButton.textContent = 'Next >';
     nextButton.type = 'button';
+    nextButton.tabIndex = -1; // Skip in tab order
 
     // Close button
     const closeButton = document.createElement('button');
@@ -121,6 +129,7 @@ function createSearchPanel(view: EditorView): Panel {
     closeButton.type = 'button';
     closeButton.title = 'Close search';
     closeButton.style.cssText = 'margin-left: auto;';
+    closeButton.tabIndex = -1; // Skip in tab order
 
     // Assemble search row
     searchRow.appendChild(searchInput);
@@ -142,18 +151,23 @@ function createSearchPanel(view: EditorView): Panel {
     replaceInput.name = 'replace';
     replaceInput.placeholder = 'Replace';
     replaceInput.style.cssText = 'flex: 1; min-width: 150px;';
+    replaceInput.autocomplete = 'off';
+    replaceInput.autocapitalize = 'off';
+    replaceInput.spellcheck = false;
 
     // Replace button
     const replaceButton = document.createElement('button');
     replaceButton.className = 'cm-button';
     replaceButton.textContent = 'Replace';
     replaceButton.type = 'button';
+    replaceButton.tabIndex = -1; // Skip in tab order
 
     // Replace all button
     const replaceAllButton = document.createElement('button');
     replaceAllButton.className = 'cm-button';
     replaceAllButton.textContent = 'All';
     replaceAllButton.type = 'button';
+    replaceAllButton.tabIndex = -1; // Skip in tab order
 
     // Preserve case checkbox
     const preserveCaseLabel = document.createElement('label');
@@ -162,6 +176,7 @@ function createSearchPanel(view: EditorView): Panel {
     const preserveCaseCheckbox = document.createElement('input');
     preserveCaseCheckbox.type = 'checkbox';
     preserveCaseCheckbox.name = 'preserve-case';
+    preserveCaseCheckbox.tabIndex = -1; // Skip in tab order
     preserveCaseLabel.appendChild(preserveCaseCheckbox);
     preserveCaseLabel.appendChild(document.createTextNode('Preserve Case'));
     preserveCaseLabel.title = 'Preserve the case pattern of matched text when replacing';
