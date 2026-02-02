@@ -54,6 +54,9 @@ coverage/
 .temp/
 .tmp/
 
+# Serena (AI coding tool)
+.serena/
+
 # Update system (NEVER commit private keys!)
 *.key
 *.priv
