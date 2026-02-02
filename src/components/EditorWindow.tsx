@@ -1083,6 +1083,8 @@ export function EditorWindow() {
                 language={language}
                 pinnedTransformations={pinnedTransformations}
                 onPinnedTransform={handlePinnedTransform}
+                toolbarOrder={settings?.toolbar_order}
+                onToolbarOrderChange={(newOrder) => updateSettings({ toolbar_order: newOrder })}
             />
 
             <FileDragOverlay isDragging={isDragging} />

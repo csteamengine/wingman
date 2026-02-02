@@ -71,6 +71,8 @@ pub struct AppSettings {
     pub show_tips: bool,
     #[serde(default = "default_show_intelligent_suggestions")]
     pub show_intelligent_suggestions: bool,
+    #[serde(default = "default_toolbar_order")]
+    pub toolbar_order: Vec<String>,
 }
 
 fn default_primary_action() -> String {
@@ -116,6 +118,28 @@ fn default_show_intelligent_suggestions() -> bool {
     true
 }
 
+fn default_toolbar_order() -> Vec<String> {
+    vec![
+        "uppercase".to_string(),
+        "lowercase".to_string(),
+        "titlecase".to_string(),
+        "sentencecase".to_string(),
+        "separator-1".to_string(),
+        "trim".to_string(),
+        "sort".to_string(),
+        "deduplicate".to_string(),
+        "reverse".to_string(),
+        "separator-2".to_string(),
+        "bulletList".to_string(),
+        "numberedList".to_string(),
+        "separator-3".to_string(),
+        "format".to_string(),
+        "minify".to_string(),
+        "validate".to_string(),
+        "maskSecrets".to_string(),
+    ]
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
@@ -148,6 +172,7 @@ impl Default for AppSettings {
             language_hotkeys: default_language_hotkeys(),
             show_tips: default_show_tips(),
             show_intelligent_suggestions: default_show_intelligent_suggestions(),
+            toolbar_order: default_toolbar_order(),
         }
     }
 }

@@ -24,6 +24,26 @@ export const DEFAULT_LANGUAGE_HOTKEYS = [
   'bash',        // Cmd+9
 ];
 
+export const DEFAULT_TOOLBAR_ORDER = [
+  'uppercase',
+  'lowercase',
+  'titlecase',
+  'sentencecase',
+  'separator-1',
+  'trim',
+  'sort',
+  'deduplicate',
+  'reverse',
+  'separator-2',
+  'bulletList',
+  'numberedList',
+  'separator-3',
+  'format',
+  'minify',
+  'validate',
+  'maskSecrets',
+];
+
 const defaultSettings: AppSettings = {
   hotkey: navigator.platform.includes('Mac') ? 'Command+Shift+Space' : 'Control+Shift+Space',
   theme: 'dark',
@@ -50,6 +70,7 @@ const defaultSettings: AppSettings = {
   language_hotkeys: DEFAULT_LANGUAGE_HOTKEYS,
   show_tips: true,
   show_intelligent_suggestions: true,
+  toolbar_order: DEFAULT_TOOLBAR_ORDER,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({

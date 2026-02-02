@@ -35,6 +35,7 @@ export interface AppSettings {
   language_hotkeys: string[]; // Array of 10 language IDs for Cmd+0 through Cmd+9
   show_tips: boolean;
   show_intelligent_suggestions: boolean;
+  toolbar_order: string[]; // Array of toolbar item IDs in display order
 }
 
 export interface HistoryEntry {
