@@ -1,4 +1,4 @@
-import {useEffect, useRef, useCallback, useState} from 'react';
+import {useEffect, useRef, useCallback, useState, useMemo} from 'react';
 import {EditorView, placeholder, drawSelection, dropCursor, keymap} from '@codemirror/view';
 import {EditorState} from '@codemirror/state';
 import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/commands';
@@ -20,6 +20,7 @@ import {useGitHubStore} from '../stores/githubStore';
 import {useDragStore} from '../stores/dragStore';
 import {useCustomAIPromptsStore} from '../stores/customAIPromptsStore';
 import {useDiffStore} from '../stores/diffStore';
+import {useCustomTransformationsStore} from '../stores/customTransformationsStore';
 
 import {DiffPreviewModal} from './DiffPreviewModal';
 import {DiffReviewModal} from './DiffReviewModal';
@@ -189,6 +190,12 @@ export function EditorWindow() {
         createGist,
     } = useGitHubStore();
 
+    const {
+        transformations: customTransformations,
+        loadTransformations: loadCustomTransformations,
+        executeTransformation: executeCustomTransformation,
+    } = useCustomTransformationsStore();
+
     // Feature flags - compute effective tier to react to dev tier changes
     // Premium tier has access to all Pro features
     const effectiveTier = (isDev && devTierOverride !== null) ? devTierOverride : tier;
@@ -216,6 +223,19 @@ export function EditorWindow() {
             loadGitHubAuthStatus();
         }
     }, [hasGitHubAccess, loadGitHubConfig, loadGitHubAuthStatus]);
+
+    // Load custom transformations when user has Pro/Premium access
+    useEffect(() => {
+        if (isPro) {
+            loadCustomTransformations();
+        }
+    }, [isPro, loadCustomTransformations]);
+
+    // Get pinned custom transformations
+    const pinnedTransformations = useMemo(() => {
+        if (!isPro) return [];
+        return customTransformations.filter(t => t.enabled && t.pinned_to_toolbar);
+    }, [customTransformations, isPro]);
 
     // Load Premium features when user has Premium tier
     useEffect(() => {
@@ -287,7 +307,9 @@ export function EditorWindow() {
             }
 
             // Only show toast on paste/drag, and not if user already dismissed this detector
-            if (pasteOrDropRef.current && result && contextDismissedRef.current !== result.detectorId) {
+            // Also check if intelligent suggestions are enabled in settings
+            const showSuggestions = settings?.show_intelligent_suggestions !== false;
+            if (pasteOrDropRef.current && result && contextDismissedRef.current !== result.detectorId && showSuggestions) {
                 setContextDetection(result);
                 pasteOrDropRef.current = false;
             }
@@ -717,6 +739,60 @@ export function EditorWindow() {
         }
     }, [settings, isPro]);
 
+    // Handle pinned custom transformation execution
+    const handlePinnedTransform = useCallback((transformation: typeof customTransformations[0]) => {
+        const view = viewRef.current;
+        if (!view) return;
+
+        const selection = view.state.selection.main;
+        const cursorPos = selection.head;
+        const text = selection.empty ? view.state.doc.toString() : view.state.sliceDoc(selection.from, selection.to);
+        const from = selection.empty ? 0 : selection.from;
+        const to = selection.empty ? view.state.doc.length : selection.to;
+
+        if (!text.trim()) return;
+
+        const result = executeCustomTransformation(transformation.id, text);
+
+        if (!result.success) {
+            setValidationToast({ type: 'error', message: result.error || 'Transformation failed' });
+            return;
+        }
+
+        const transformed = result.result || '';
+
+        const applyCallback = () => {
+            const lengthDiff = transformed.length - (to - from);
+            const newCursorPos = cursorPos <= from ? cursorPos : cursorPos + lengthDiff;
+            view.dispatch({
+                changes: { from, to, insert: transformed },
+                selection: { anchor: newCursorPos },
+            });
+        };
+
+        const showDiffPreview = settings?.show_diff_preview;
+        if (showDiffPreview && isPro && text !== transformed) {
+            useDiffStore.getState().setPendingDiff({
+                originalText: text,
+                transformedText: transformed,
+                transformationType: transformation.name,
+                selectionRange: selection.empty ? null : { from, to },
+                cursorPos,
+                applyCallback,
+            });
+            useDiffStore.getState().openPreviewModal();
+        } else {
+            applyCallback();
+            if (text !== transformed && isPro) {
+                useDiffStore.getState().addTransformationRecord({
+                    originalText: text,
+                    transformedText: transformed,
+                    transformationType: transformation.name,
+                });
+            }
+        }
+    }, [settings, isPro, executeCustomTransformation, setValidationToast]);
+
     // Context detection action handler
     const handleContextAction = useCallback((action: DetectorAction) => {
         if (action.id.startsWith('switch-language:')) {
@@ -1001,6 +1077,8 @@ export function EditorWindow() {
                 onValidate={handleValidate}
                 onMaskSecrets={handleMaskSecrets}
                 language={language}
+                pinnedTransformations={pinnedTransformations}
+                onPinnedTransform={handlePinnedTransform}
             />
 
             <FileDragOverlay isDragging={isDragging} />

@@ -69,6 +69,8 @@ pub struct AppSettings {
     pub language_hotkeys: Vec<String>,
     #[serde(default = "default_show_tips")]
     pub show_tips: bool,
+    #[serde(default = "default_show_intelligent_suggestions")]
+    pub show_intelligent_suggestions: bool,
 }
 
 fn default_primary_action() -> String {
@@ -110,6 +112,10 @@ fn default_show_tips() -> bool {
     true
 }
 
+fn default_show_intelligent_suggestions() -> bool {
+    true
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
@@ -141,6 +147,7 @@ impl Default for AppSettings {
             last_quick_actions_tab: default_last_quick_actions_tab(),
             language_hotkeys: default_language_hotkeys(),
             show_tips: default_show_tips(),
+            show_intelligent_suggestions: default_show_intelligent_suggestions(),
         }
     }
 }
@@ -306,6 +313,10 @@ pub struct CustomTransformation {
     pub created_at: String,
     pub updated_at: String,
     pub enabled: bool,
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub pinned_to_toolbar: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

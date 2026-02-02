@@ -6,6 +6,7 @@ export { QuickActionsPanel } from './QuickActionsPanel';
 export { TransformationChainsPanel } from './TransformationChainsPanel';
 export { CustomTransformationsPanel } from './CustomTransformationsPanel';
 export { CustomAIPromptsPanel } from './CustomAIPromptsPanel';
+export { RegexPlaygroundPanel } from './RegexPlaygroundPanel';
 export { StatsDisplay } from './StatsDisplay';
 export { ProFeatureGate } from './ProFeatureGate';
 export { LicenseActivation } from './LicenseActivation';

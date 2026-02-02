@@ -49,6 +49,7 @@ const defaultSettings: AppSettings = {
   last_quick_actions_tab: 'clipboard',
   language_hotkeys: DEFAULT_LANGUAGE_HOTKEYS,
   show_tips: true,
+  show_intelligent_suggestions: true,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({

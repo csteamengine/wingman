@@ -11,7 +11,8 @@ import {
   Maximize2,
   Minimize2,
   Zap,
-  Sparkles
+  Sparkles,
+  Regex,
 } from 'lucide-react';
 import {
   EditorWindow,
@@ -22,6 +23,7 @@ import {
   TransformationChainsPanel,
   CustomTransformationsPanel,
   CustomAIPromptsPanel,
+  RegexPlaygroundPanel,
   LicenseStatusBanner,
   DevModeTierSwitcher,
 } from './components';
@@ -276,6 +278,21 @@ function App() {
             <Link2 className="w-4 h-4" />
           </button>
 
+          {/* Regex Playground button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActivePanel(activePanel === 'regexPlayground' ? 'editor' : 'regexPlayground');
+            }}
+            tabIndex={-1}
+            className={`w-8 h-8 flex items-center justify-center rounded-md hover:bg-[var(--ui-hover)] transition-colors outline-none ${
+              activePanel === 'regexPlayground' ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]'
+            }`}
+            title="Regex Playground"
+          >
+            <Regex className="w-4 h-4" />
+          </button>
+
           {/* Custom AI Prompts button */}
           <div className="relative">
             <button
@@ -391,6 +408,12 @@ function App() {
         {activePanel === 'customAIPrompts' && (
           <div className="flex-1">
             <CustomAIPromptsPanel />
+          </div>
+        )}
+
+        {activePanel === 'regexPlayground' && (
+          <div className="flex-1">
+            <RegexPlaygroundPanel />
           </div>
         )}
 

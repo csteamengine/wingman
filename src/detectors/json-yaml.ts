@@ -1,3 +1,4 @@
+import yaml from 'js-yaml';
 import type {Detector, DetectorAction, DetectorActionResult} from './types';
 
 function isValidJson(text: string): boolean {
@@ -178,6 +179,50 @@ const yamlSortKeysAction: DetectorAction = {
     },
 };
 
+const jsonToYamlAction: DetectorAction = {
+    id: 'json-to-yaml',
+    label: 'Convert to YAML',
+    execute: (text: string): string | DetectorActionResult => {
+        const trimmed = text.trim();
+        if (isValidJson(trimmed)) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                const yamlOutput = yaml.dump(parsed, {
+                    indent: 2,
+                    lineWidth: -1, // Don't wrap lines
+                    noRefs: true,
+                });
+                return yamlOutput;
+            } catch (e) {
+                return {
+                    text,
+                    validationMessage: `Conversion failed: ${e instanceof Error ? e.message : String(e)}`,
+                    validationType: 'error',
+                };
+            }
+        }
+        return text;
+    },
+};
+
+const yamlToJsonAction: DetectorAction = {
+    id: 'yaml-to-json',
+    label: 'Convert to JSON',
+    execute: (text: string): string | DetectorActionResult => {
+        const trimmed = text.trim();
+        try {
+            const parsed = yaml.load(trimmed);
+            return JSON.stringify(parsed, null, 2);
+        } catch (e) {
+            return {
+                text,
+                validationMessage: `Conversion failed: ${e instanceof Error ? e.message : String(e)}`,
+                validationType: 'error',
+            };
+        }
+    },
+};
+
 export const jsonYamlDetector: Detector = {
     id: 'json-yaml',
     priority: 2,
@@ -196,11 +241,11 @@ export const jsonYamlDetector: Detector = {
     actions: [], // use getActions instead
     getActions: (text: string) => {
         if (isYaml(text)) {
-            return [yamlSortKeysAction];
+            return [yamlToJsonAction, yamlSortKeysAction];
         }
         if (looksLikeInvalidJson(text)) {
             return [jsonValidateAction];
         }
-        return [jsonFormatAction, jsonMinifyAction, jsonSortKeysAction, jsonValidateAction];
+        return [jsonToYamlAction, jsonFormatAction, jsonMinifyAction, jsonSortKeysAction, jsonValidateAction];
     },
 };

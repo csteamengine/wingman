@@ -31,6 +31,7 @@ const FEATURE_NAMES: Record<ProFeature, string> = {
   diff_preview: 'Diff Preview',
   custom_transformations: 'Custom Transformations',
   transformation_chains: 'Transformation Chains',
+  regex_playground: 'Regex Playground',
 };
 
 export function ProFeatureGate({

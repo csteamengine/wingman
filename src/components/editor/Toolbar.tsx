@@ -14,6 +14,8 @@ import {
     EyeOff,
     CircleCheck,
 } from 'lucide-react';
+import { getIconComponent } from '../IconPicker';
+import type { CustomTransformation } from '../../types';
 
 const FORMATTABLE_LANGUAGES = new Set([
     'json', 'xml', 'html', 'css', 'react', 'jsx', 'tsx',
@@ -34,9 +36,11 @@ interface ToolbarProps {
     onValidate: () => void;
     onMaskSecrets: () => void;
     language?: string;
+    pinnedTransformations?: CustomTransformation[];
+    onPinnedTransform?: (transformation: CustomTransformation) => void;
 }
 
-export function Toolbar({ onTransform, onBulletList, onNumberedList, onFormat, onMinify, onValidate, onMaskSecrets, language }: ToolbarProps) {
+export function Toolbar({ onTransform, onBulletList, onNumberedList, onFormat, onMinify, onValidate, onMaskSecrets, language, pinnedTransformations, onPinnedTransform }: ToolbarProps) {
     const formatDisabled = !!language && language !== 'plaintext' && !FORMATTABLE_LANGUAGES.has(language);
     const validateDisabled = !language || !VALIDATABLE_LANGUAGES.has(language);
 
@@ -95,6 +99,26 @@ export function Toolbar({ onTransform, onBulletList, onNumberedList, onFormat, o
                 <button onClick={onMaskSecrets} title="Mask Secrets — redacts API keys, tokens, passwords, JWTs, connection strings, private keys, and hashes" className="toolbar-btn">
                     <EyeOff className="w-5 h-5" />
                 </button>
+
+                {/* Pinned Custom Transformations */}
+                {pinnedTransformations && pinnedTransformations.length > 0 && onPinnedTransform && (
+                    <>
+                        <div className="w-px h-6 bg-[var(--ui-border)] mx-1"/>
+                        {pinnedTransformations.map((t) => {
+                            const Icon = getIconComponent(t.icon || 'Wand2');
+                            return (
+                                <button
+                                    key={t.id}
+                                    onClick={() => onPinnedTransform(t)}
+                                    title={t.name + (t.description ? ` — ${t.description}` : '')}
+                                    className="toolbar-btn"
+                                >
+                                    <Icon className="w-5 h-5" />
+                                </button>
+                            );
+                        })}
+                    </>
+                )}
             </div>
         </div>
     );

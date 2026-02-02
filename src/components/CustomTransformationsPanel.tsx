@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useCustomTransformationsStore } from '../stores/customTransformationsStore';
 import { useEditorStore } from '../stores/editorStore';
 import { ProFeatureGate } from './ProFeatureGate';
+import { IconPicker, getIconComponent } from './IconPicker';
 import type { CustomTransformation } from '../types';
 
 const DEFAULT_CODE = `// Transform the input text and return the result
@@ -54,6 +55,8 @@ function TransformationEditor({ transformation, onSave, onCancel, onTest }: Tran
   const [name, setName] = useState(transformation?.name || '');
   const [description, setDescription] = useState(transformation?.description || '');
   const [code, setCode] = useState(transformation?.code || DEFAULT_CODE);
+  const [icon, setIcon] = useState(transformation?.icon || 'Wand2');
+  const [pinnedToToolbar, setPinnedToToolbar] = useState(transformation?.pinned_to_toolbar || false);
   const [testResult, setTestResult] = useState<{ success: boolean; result?: string; error?: string } | null>(null);
   const [showExamples, setShowExamples] = useState(false);
 
@@ -70,8 +73,10 @@ function TransformationEditor({ transformation, onSave, onCancel, onTest }: Tran
       code,
       language: 'javascript',
       enabled: transformation?.enabled ?? true,
+      icon,
+      pinned_to_toolbar: pinnedToToolbar,
     });
-  }, [name, description, code, transformation, onSave]);
+  }, [name, description, code, transformation, onSave, icon, pinnedToToolbar]);
 
   const handleUseExample = useCallback((example: typeof EXAMPLE_TRANSFORMATIONS[0]) => {
     setName(example.name);
@@ -121,6 +126,23 @@ function TransformationEditor({ transformation, onSave, onCancel, onTest }: Tran
             placeholder="What does this transformation do?"
             className="w-full px-3 py-2 text-sm bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-md text-[var(--ui-text)] placeholder:text-[var(--ui-text-muted)]"
           />
+        </div>
+
+        {/* Icon and Pin to Toolbar */}
+        <div className="flex items-end gap-4">
+          <div>
+            <label className="block text-xs font-medium text-[var(--ui-text)] mb-1">Icon</label>
+            <IconPicker value={icon} onChange={setIcon} />
+          </div>
+          <label className="flex items-center gap-2 py-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={pinnedToToolbar}
+              onChange={(e) => setPinnedToToolbar(e.target.checked)}
+              className="w-4 h-4 rounded border-[var(--ui-border)] bg-[var(--ui-surface)] text-[var(--ui-accent)] focus:ring-[var(--ui-accent)] focus:ring-offset-0"
+            />
+            <span className="text-sm text-[var(--ui-text)]">Pin to toolbar</span>
+          </label>
         </div>
 
         {/* Code */}
@@ -355,9 +377,26 @@ function CustomTransformationsPanelContent() {
                   />
                 </button>
 
+                {/* Icon */}
+                {(() => {
+                  const Icon = getIconComponent(t.icon || 'Wand2');
+                  return (
+                    <div className="w-8 h-8 flex items-center justify-center rounded-md bg-[var(--ui-surface)] text-[var(--ui-text-muted)]">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                  );
+                })()}
+
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[var(--ui-text)] truncate">{t.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium text-[var(--ui-text)] truncate">{t.name}</p>
+                    {t.pinned_to_toolbar && (
+                      <span className="text-[10px] px-1 py-0.5 rounded bg-[var(--ui-accent)]/10 text-[var(--ui-accent)] border border-[var(--ui-accent)]/20">
+                        Pinned
+                      </span>
+                    )}
+                  </div>
                   {t.description && (
                     <p className="text-xs text-[var(--ui-text-muted)] truncate">{t.description}</p>
                   )}

@@ -34,6 +34,7 @@ export interface AppSettings {
   last_quick_actions_tab: 'clipboard' | 'actions';
   language_hotkeys: string[]; // Array of 10 language IDs for Cmd+0 through Cmd+9
   show_tips: boolean;
+  show_intelligent_suggestions: boolean;
 }
 
 export interface HistoryEntry {
@@ -98,7 +99,7 @@ export type TextTransform =
   | 'deduplicate'
   | 'reverse';
 
-export type PanelType = 'editor' | 'settings' | 'history' | 'snippets' | 'customTransformations' | 'chains' | 'customAIPrompts';
+export type PanelType = 'editor' | 'settings' | 'history' | 'snippets' | 'customTransformations' | 'chains' | 'customAIPrompts' | 'regexPlayground';
 
 // License types
 export type LicenseTier = 'free' | 'pro' | 'premium';
@@ -122,7 +123,8 @@ export type ProFeature =
   | 'sticky_mode'
   | 'diff_preview'
   | 'custom_transformations'
-  | 'transformation_chains';
+  | 'transformation_chains'
+  | 'regex_playground';
 
 export type PremiumFeature =
   | 'prompt_optimizer'
@@ -257,6 +259,8 @@ export interface CustomTransformation {
   created_at: string;
   updated_at: string;
   enabled: boolean;
+  icon?: string; // Lucide icon name
+  pinned_to_toolbar?: boolean;
 }
 
 export interface CustomTransformationsData {
