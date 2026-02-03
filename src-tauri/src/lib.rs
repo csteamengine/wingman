@@ -598,7 +598,7 @@ fn generate_uuid_v7() -> String {
 #[tauri::command]
 fn generate_nanoid(length: Option<usize>) -> String {
     let len = length.unwrap_or(21);
-    nanoid::nanoid!(len)
+    nanoid::nanoid(len)
 }
 
 #[tauri::command]
@@ -655,7 +655,7 @@ fn generate_bulk(
         .map(|i| match generator.as_str() {
             "uuid" | "uuid_v4" => uuid::Uuid::new_v4().to_string(),
             "uuid_v7" => uuid::Uuid::now_v7().to_string(),
-            "nanoid" => nanoid::nanoid!(length.unwrap_or(21)),
+            "nanoid" => nanoid::nanoid(length.unwrap_or(21)),
             "short_hash" => {
                 let seed = format!(
                     "{}{}{}",
