@@ -598,7 +598,7 @@ fn generate_uuid_v7() -> String {
 #[tauri::command]
 fn generate_nanoid(length: Option<usize>) -> String {
     let len = length.unwrap_or(21);
-    nanoid::nanoid(len)
+    nanoid::format(nanoid::rngs::default, &nanoid::alphabet::SAFE, len)
 }
 
 #[tauri::command]
@@ -655,7 +655,7 @@ fn generate_bulk(
         .map(|i| match generator.as_str() {
             "uuid" | "uuid_v4" => uuid::Uuid::new_v4().to_string(),
             "uuid_v7" => uuid::Uuid::now_v7().to_string(),
-            "nanoid" => nanoid::nanoid(length.unwrap_or(21)),
+            "nanoid" => nanoid::format(nanoid::rngs::default, &nanoid::alphabet::SAFE, length.unwrap_or(21)),
             "short_hash" => {
                 let seed = format!(
                     "{}{}{}",
@@ -718,7 +718,7 @@ fn generate_sha512(text: String) -> String {
 // Timestamp utility commands
 #[tauri::command]
 fn unix_to_human(timestamp: i64, format: Option<String>) -> Result<String, String> {
-    use chrono::{DateTime, Utc};
+    use chrono::DateTime;
 
     // Auto-detect seconds vs milliseconds (timestamps after year 2001 in ms are > 10^12)
     let (secs, nsecs) = if timestamp > 10_000_000_000 {
