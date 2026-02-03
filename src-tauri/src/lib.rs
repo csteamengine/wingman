@@ -276,6 +276,9 @@ fn transform_text_cmd(text: String, transform: String) -> Result<String, String>
         "lowercase" => TextTransform::Lowercase,
         "titlecase" => TextTransform::TitleCase,
         "sentencecase" => TextTransform::SentenceCase,
+        "camelcase" => TextTransform::CamelCase,
+        "snakecase" => TextTransform::SnakeCase,
+        "kebabcase" => TextTransform::KebabCase,
         "trim" => TextTransform::TrimWhitespace,
         "sort" => TextTransform::SortLines,
         "deduplicate" => TextTransform::RemoveDuplicateLines,
@@ -584,7 +587,99 @@ fn decode_html(text: String) -> Result<String, String> {
 // UUID generator command
 #[tauri::command]
 fn generate_uuid() -> String {
-    uuid_v4()
+    uuid::Uuid::new_v4().to_string()
+}
+
+#[tauri::command]
+fn generate_uuid_v7() -> String {
+    uuid::Uuid::now_v7().to_string()
+}
+
+#[tauri::command]
+fn generate_nanoid(length: Option<usize>) -> String {
+    let len = length.unwrap_or(21);
+    nanoid::nanoid!(len)
+}
+
+#[tauri::command]
+fn generate_short_hash(length: Option<usize>) -> String {
+    use sha2::{Digest, Sha256};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let len = length.unwrap_or(8).min(64);
+
+    // Generate random data
+    let seed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let random_bytes = format!("{}{}{}", seed, std::process::id(), rand::random::<u64>());
+
+    let mut hasher = Sha256::new();
+    hasher.update(random_bytes.as_bytes());
+    let hash = format!("{:x}", hasher.finalize());
+
+    hash[..len].to_string()
+}
+
+#[tauri::command]
+fn generate_prefixed_id(prefix: String, id_type: Option<String>) -> Result<String, String> {
+    // Validate prefix (alphanumeric + underscore only)
+    if !prefix.chars().all(|c| c.is_alphanumeric() || c == '_') {
+        return Err("Prefix must be alphanumeric with underscores only".to_string());
+    }
+
+    let id = match id_type.as_deref().unwrap_or("nanoid") {
+        "uuid" => {
+            let uuid = uuid::Uuid::new_v4().to_string().replace("-", "");
+            uuid[..12].to_string()
+        }
+        "nanoid" | _ => nanoid::nanoid!(16),
+    };
+
+    Ok(format!("{}{}", prefix, id))
+}
+
+#[tauri::command]
+fn generate_bulk(
+    generator: String,
+    count: u32,
+    prefix: Option<String>,
+    length: Option<usize>,
+) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+
+    let count = count.min(100) as usize; // Cap at 100
+
+    let results: Vec<String> = (0..count)
+        .map(|i| match generator.as_str() {
+            "uuid" | "uuid_v4" => uuid::Uuid::new_v4().to_string(),
+            "uuid_v7" => uuid::Uuid::now_v7().to_string(),
+            "nanoid" => nanoid::nanoid!(length.unwrap_or(21)),
+            "short_hash" => {
+                let seed = format!(
+                    "{}{}{}",
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_nanos(),
+                    rand::random::<u64>(),
+                    i
+                );
+                let mut hasher = Sha256::new();
+                hasher.update(seed.as_bytes());
+                let hash = format!("{:x}", hasher.finalize());
+                hash[..length.unwrap_or(8).min(64)].to_string()
+            }
+            "prefixed" => {
+                let pfx = prefix.as_deref().unwrap_or("id_");
+                format!("{}{}", pfx, nanoid::nanoid!(16))
+            }
+            _ => uuid::Uuid::new_v4().to_string(),
+        })
+        .collect();
+
+    Ok(results.join("\n"))
 }
 
 // Hash generator commands
@@ -618,6 +713,134 @@ fn generate_sha512(text: String) -> String {
     let mut hasher = Sha512::new();
     hasher.update(text.as_bytes());
     format!("{:x}", hasher.finalize())
+}
+
+// Timestamp utility commands
+#[tauri::command]
+fn unix_to_human(timestamp: i64, format: Option<String>) -> Result<String, String> {
+    use chrono::{DateTime, Utc};
+
+    // Auto-detect seconds vs milliseconds (timestamps after year 2001 in ms are > 10^12)
+    let (secs, nsecs) = if timestamp > 10_000_000_000 {
+        (timestamp / 1000, ((timestamp % 1000) * 1_000_000) as u32)
+    } else {
+        (timestamp, 0)
+    };
+
+    let dt = DateTime::from_timestamp(secs, nsecs)
+        .ok_or_else(|| "Invalid timestamp".to_string())?;
+
+    let fmt = format.as_deref().unwrap_or("%Y-%m-%d %H:%M:%S UTC");
+    Ok(dt.format(fmt).to_string())
+}
+
+#[tauri::command]
+fn human_to_unix(datetime: String, output_ms: Option<bool>) -> Result<i64, String> {
+    use chrono::{NaiveDateTime, TimeZone, Utc, DateTime};
+
+    // Try common formats
+    let formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+        "%d/%m/%Y %H:%M:%S",
+        "%m/%d/%Y %H:%M:%S",
+    ];
+
+    for fmt in &formats {
+        if let Ok(naive) = NaiveDateTime::parse_from_str(&datetime, fmt) {
+            let dt = Utc.from_utc_datetime(&naive);
+            return Ok(if output_ms.unwrap_or(false) {
+                dt.timestamp_millis()
+            } else {
+                dt.timestamp()
+            });
+        }
+    }
+
+    // Try ISO 8601 with timezone
+    if let Ok(dt) = DateTime::parse_from_rfc3339(&datetime) {
+        return Ok(if output_ms.unwrap_or(false) {
+            dt.timestamp_millis()
+        } else {
+            dt.timestamp()
+        });
+    }
+
+    Err("Could not parse datetime. Try formats like: 2024-01-15 14:30:00".to_string())
+}
+
+#[tauri::command]
+fn convert_timezone(datetime: String, from_tz: String, to_tz: String) -> Result<String, String> {
+    use chrono::{NaiveDateTime, TimeZone, FixedOffset};
+
+    // Parse timezone offsets (e.g., "+05:30", "-08:00", "UTC", "Z")
+    fn parse_offset(tz: &str) -> Result<FixedOffset, String> {
+        match tz.to_uppercase().as_str() {
+            "UTC" | "Z" => Ok(FixedOffset::east_opt(0).unwrap()),
+            "EST" => Ok(FixedOffset::west_opt(5 * 3600).unwrap()),
+            "EDT" => Ok(FixedOffset::west_opt(4 * 3600).unwrap()),
+            "CST" => Ok(FixedOffset::west_opt(6 * 3600).unwrap()),
+            "CDT" => Ok(FixedOffset::west_opt(5 * 3600).unwrap()),
+            "MST" => Ok(FixedOffset::west_opt(7 * 3600).unwrap()),
+            "MDT" => Ok(FixedOffset::west_opt(6 * 3600).unwrap()),
+            "PST" => Ok(FixedOffset::west_opt(8 * 3600).unwrap()),
+            "PDT" => Ok(FixedOffset::west_opt(7 * 3600).unwrap()),
+            "IST" => Ok(FixedOffset::east_opt(5 * 3600 + 1800).unwrap()),
+            "JST" => Ok(FixedOffset::east_opt(9 * 3600).unwrap()),
+            "CET" => Ok(FixedOffset::east_opt(1 * 3600).unwrap()),
+            "CEST" => Ok(FixedOffset::east_opt(2 * 3600).unwrap()),
+            "GMT" => Ok(FixedOffset::east_opt(0).unwrap()),
+            "AEST" => Ok(FixedOffset::east_opt(10 * 3600).unwrap()),
+            "AEDT" => Ok(FixedOffset::east_opt(11 * 3600).unwrap()),
+            s if s.starts_with('+') || s.starts_with('-') => {
+                let sign = if s.starts_with('-') { -1 } else { 1 };
+                let parts: Vec<&str> = s[1..].split(':').collect();
+                let hours: i32 = parts.get(0).and_then(|h| h.parse().ok()).unwrap_or(0);
+                let mins: i32 = parts.get(1).and_then(|m| m.parse().ok()).unwrap_or(0);
+                let offset_secs = sign * (hours * 3600 + mins * 60);
+                if sign > 0 {
+                    FixedOffset::east_opt(offset_secs)
+                } else {
+                    FixedOffset::west_opt(-offset_secs)
+                }
+                .ok_or_else(|| format!("Invalid offset: {}", s))
+            }
+            _ => Err(format!(
+                "Unknown timezone: {}. Use UTC, EST, PST, or offset like +05:30",
+                tz
+            )),
+        }
+    }
+
+    let from_offset = parse_offset(&from_tz)?;
+    let to_offset = parse_offset(&to_tz)?;
+
+    // Parse the datetime
+    let naive = NaiveDateTime::parse_from_str(&datetime, "%Y-%m-%d %H:%M:%S")
+        .or_else(|_| NaiveDateTime::parse_from_str(&datetime, "%Y-%m-%d %H:%M"))
+        .map_err(|_| "Could not parse datetime. Use format: 2024-01-15 14:30:00")?;
+
+    let from_dt = from_offset
+        .from_local_datetime(&naive)
+        .single()
+        .ok_or_else(|| "Ambiguous datetime".to_string())?;
+
+    let to_dt = from_dt.with_timezone(&to_offset);
+
+    Ok(to_dt.format("%Y-%m-%d %H:%M:%S %:z").to_string())
+}
+
+#[tauri::command]
+fn get_current_timestamp(as_ms: Option<bool>) -> String {
+    use chrono::Utc;
+
+    if as_ms.unwrap_or(false) {
+        Utc::now().timestamp_millis().to_string()
+    } else {
+        Utc::now().timestamp().to_string()
+    }
 }
 
 // Lorem ipsum generator command
@@ -1459,27 +1682,9 @@ async fn save_file_dialog(content: String, file_type: Option<String>) -> Result<
     }
 }
 
-// Simple UUID v4 generator
+// Simple UUID v4 generator (using uuid crate)
 fn uuid_v4() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let duration = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default();
-    let nanos = duration.as_nanos();
-    let pid = std::process::id() as u64;
-
-    // Generate two pseudo-random u64 values
-    let r1: u64 = (nanos as u64).wrapping_mul(0x517cc1b727220a95).wrapping_add(pid);
-    let r2: u64 = ((nanos >> 64) as u64).wrapping_mul(0x2545F4914F6CDD1D).wrapping_add(pid.wrapping_mul(0x9E3779B97F4A7C15));
-
-    format!(
-        "{:08x}-{:04x}-4{:03x}-{:04x}-{:012x}",
-        (r1 >> 32) as u32,
-        (r1 >> 16) as u16 & 0xFFFF,
-        r1 as u16 & 0x0FFF,
-        ((r2 >> 48) as u16 & 0x3FFF) | 0x8000,
-        r2 & 0xFFFFFFFFFFFF
-    )
+    uuid::Uuid::new_v4().to_string()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -1583,7 +1788,17 @@ pub fn run() {
             decode_html,
             // Generators
             generate_uuid,
+            generate_uuid_v7,
+            generate_nanoid,
+            generate_short_hash,
+            generate_prefixed_id,
+            generate_bulk,
             generate_lorem_ipsum,
+            // Timestamps
+            unix_to_human,
+            human_to_unix,
+            convert_timezone,
+            get_current_timestamp,
             // Hash generators
             generate_md5,
             generate_sha1,

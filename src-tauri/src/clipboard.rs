@@ -37,6 +37,9 @@ pub enum TextTransform {
     Lowercase,
     TitleCase,
     SentenceCase,
+    CamelCase,
+    SnakeCase,
+    KebabCase,
     TrimWhitespace,
     SortLines,
     RemoveDuplicateLines,
@@ -50,6 +53,21 @@ pub fn transform_text(text: &str, transform: TextTransform) -> String {
         TextTransform::Lowercase => text.to_lowercase(),
         TextTransform::TitleCase => to_title_case(text),
         TextTransform::SentenceCase => to_sentence_case(text),
+        TextTransform::CamelCase => text
+            .lines()
+            .map(|line| to_camel_case(line))
+            .collect::<Vec<_>>()
+            .join("\n"),
+        TextTransform::SnakeCase => text
+            .lines()
+            .map(|line| to_snake_case(line))
+            .collect::<Vec<_>>()
+            .join("\n"),
+        TextTransform::KebabCase => text
+            .lines()
+            .map(|line| to_kebab_case(line))
+            .collect::<Vec<_>>()
+            .join("\n"),
         TextTransform::TrimWhitespace => text
             .lines()
             .map(|line| line.trim())
@@ -126,6 +144,63 @@ fn to_sentence_case(text: &str) -> String {
     }
 
     result
+}
+
+/// Split text into words, handling camelCase, snake_case, kebab-case, and spaces
+fn split_into_words(text: &str) -> Vec<String> {
+    let mut words = Vec::new();
+    let mut current_word = String::new();
+
+    for c in text.chars() {
+        if c == '_' || c == '-' || c.is_whitespace() {
+            if !current_word.is_empty() {
+                words.push(current_word.to_lowercase());
+                current_word = String::new();
+            }
+        } else if c.is_uppercase() && !current_word.is_empty() {
+            // camelCase boundary
+            words.push(current_word.to_lowercase());
+            current_word = c.to_lowercase().to_string();
+        } else if c.is_alphanumeric() {
+            current_word.push(c);
+        } else {
+            // Preserve other characters as word boundaries
+            if !current_word.is_empty() {
+                words.push(current_word.to_lowercase());
+                current_word = String::new();
+            }
+        }
+    }
+
+    if !current_word.is_empty() {
+        words.push(current_word.to_lowercase());
+    }
+
+    words
+}
+
+fn to_camel_case(text: &str) -> String {
+    let words = split_into_words(text);
+    if words.is_empty() {
+        return String::new();
+    }
+
+    let mut result = words[0].clone();
+    for word in words.iter().skip(1) {
+        if let Some(first) = word.chars().next() {
+            result.push_str(&first.to_uppercase().to_string());
+            result.push_str(&word[first.len_utf8()..]);
+        }
+    }
+    result
+}
+
+fn to_snake_case(text: &str) -> String {
+    split_into_words(text).join("_")
+}
+
+fn to_kebab_case(text: &str) -> String {
+    split_into_words(text).join("-")
 }
 
 pub fn count_occurrences(text: &str, pattern: &str) -> usize {

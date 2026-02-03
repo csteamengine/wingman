@@ -30,6 +30,57 @@ interface Action {
 
 const actionSections: ActionSection[] = [
     {
+        title: 'Case Conversion',
+        actions: [
+            {
+                id: 'camelcase',
+                label: 'camelCase',
+                description: 'Convert to camelCase',
+                handler: 'transform',
+                requiresInput: true
+            },
+            {
+                id: 'snakecase',
+                label: 'snake_case',
+                description: 'Convert to snake_case',
+                handler: 'transform',
+                requiresInput: true
+            },
+            {
+                id: 'kebabcase',
+                label: 'kebab-case',
+                description: 'Convert to kebab-case',
+                handler: 'transform',
+                requiresInput: true
+            },
+        ],
+    },
+    {
+        title: 'Timestamps',
+        actions: [
+            {
+                id: 'unix_to_human',
+                label: 'Unix → Human',
+                description: 'Convert Unix timestamp to readable date',
+                handler: 'encode',
+                requiresInput: true
+            },
+            {
+                id: 'human_to_unix',
+                label: 'Human → Unix',
+                description: 'Convert datetime to Unix timestamp',
+                handler: 'encode',
+                requiresInput: true
+            },
+            {
+                id: 'get_current_timestamp',
+                label: 'Current Timestamp',
+                description: 'Insert current Unix timestamp',
+                handler: 'generate'
+            },
+        ],
+    },
+    {
         title: 'Encode/Decode',
         proFeature: 'encode_decode',
         actions: [
@@ -78,17 +129,52 @@ const actionSections: ActionSection[] = [
         ],
     },
     {
-        title: 'Generators',
+        title: 'ID Generators',
         actions: [
             {
                 id: 'generate_uuid',
-                label: 'Generate UUID',
-                description: 'Generate a random UUID v4',
+                label: 'UUID v4',
+                description: 'Random UUID (standard)',
                 handler: 'generate'
             },
-            {id: 'lorem_1', label: 'Lorem Ipsum (1 para)', description: 'Generate 1 paragraph', handler: 'generate'},
-            {id: 'lorem_3', label: 'Lorem Ipsum (3 para)', description: 'Generate 3 paragraphs', handler: 'generate'},
-            {id: 'lorem_5', label: 'Lorem Ipsum (5 para)', description: 'Generate 5 paragraphs', handler: 'generate'},
+            {
+                id: 'generate_uuid_v7',
+                label: 'UUID v7',
+                description: 'Time-sortable UUID',
+                handler: 'generate'
+            },
+            {
+                id: 'generate_nanoid',
+                label: 'NanoID',
+                description: 'Compact URL-safe ID (21 chars)',
+                handler: 'generate'
+            },
+            {
+                id: 'generate_short_hash',
+                label: 'Short Hash',
+                description: '8-char random hash',
+                handler: 'generate'
+            },
+            {
+                id: 'generate_prefixed_id',
+                label: 'Prefixed ID (usr_)',
+                description: 'ID with usr_ prefix',
+                handler: 'generate'
+            },
+            {
+                id: 'generate_bulk_uuid',
+                label: 'Bulk UUIDs (10)',
+                description: 'Generate 10 UUIDs at once',
+                handler: 'generate'
+            },
+        ],
+    },
+    {
+        title: 'Lorem Ipsum',
+        actions: [
+            {id: 'lorem_1', label: '1 Paragraph', description: 'Generate 1 paragraph', handler: 'generate'},
+            {id: 'lorem_3', label: '3 Paragraphs', description: 'Generate 3 paragraphs', handler: 'generate'},
+            {id: 'lorem_5', label: '5 Paragraphs', description: 'Generate 5 paragraphs', handler: 'generate'},
         ],
     },
     {
@@ -193,7 +279,7 @@ export function QuickActionsPanel() {
     const searchInputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
     const [expandedSections, setExpandedSections] = useState<Set<string>>(
-        new Set([...actionSections.map(s => s.title), 'Chains', 'Custom'])
+        new Set([...actionSections.map(s => s.title), 'Chains', 'Custom', 'Case Conversion', 'Timestamps', 'ID Generators', 'Lorem Ipsum'])
     );
     const [draggedItem, setDraggedItem] = useState<string | null>(null);
 
@@ -574,19 +660,44 @@ export function QuickActionsPanel() {
                     break;
                 }
 
-                case 'generate':
+                case 'generate': {
+                    let generated: string;
+
                     if (action.id === 'generate_uuid') {
-                        const uuid = await invoke<string>('generate_uuid');
-                        setContent(content ? content + '\n' + uuid : uuid);
+                        generated = await invoke<string>('generate_uuid');
+                    } else if (action.id === 'generate_uuid_v7') {
+                        generated = await invoke<string>('generate_uuid_v7');
+                    } else if (action.id === 'generate_nanoid') {
+                        generated = await invoke<string>('generate_nanoid', {length: 21});
+                    } else if (action.id === 'generate_short_hash') {
+                        generated = await invoke<string>('generate_short_hash', {length: 8});
+                    } else if (action.id === 'generate_prefixed_id') {
+                        generated = await invoke<string>('generate_prefixed_id', {
+                            prefix: 'usr_',
+                            idType: 'nanoid'
+                        });
+                    } else if (action.id === 'generate_bulk_uuid') {
+                        generated = await invoke<string>('generate_bulk', {
+                            generator: 'uuid',
+                            count: 10
+                        });
+                    } else if (action.id === 'get_current_timestamp') {
+                        generated = await invoke<string>('get_current_timestamp', {asMs: false});
                     } else if (action.id.startsWith('lorem_')) {
                         const paragraphs = parseInt(action.id.split('_')[1], 10);
-                        const lorem = await invoke<string>('generate_lorem_ipsum', {
+                        generated = await invoke<string>('generate_lorem_ipsum', {
                             paragraphs,
                             format: 'plain',
                         });
-                        setContent(content ? content + '\n\n' + lorem : lorem);
+                        setContent(content ? content + '\n\n' + generated : generated);
+                        break;
+                    } else {
+                        break;
                     }
+
+                    setContent(content ? content + '\n' + generated : generated);
                     break;
+                }
 
                 case 'custom': {
                     const {text, hasSelection, from, to, cursorPos} = getTextToProcess();

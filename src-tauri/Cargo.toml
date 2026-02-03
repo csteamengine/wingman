@@ -44,6 +44,8 @@ rand = "0.8"
 sha2 = "0.10"
 sha1 = "0.10"
 md-5 = "0.10"
+uuid = { version = "1.0", features = ["v4", "v7"] }
+nanoid = "0.4"
 hostname = "0.4"
 image = { version = "0.25", default-features = false, features = ["png"] }
 # Linting/validation dependencies
