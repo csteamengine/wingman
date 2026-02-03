@@ -28,16 +28,20 @@ Everything you need for quick text manipulation:
 
 - **Text Scratchpad**: CodeMirror-based code editor for quick text work
 - **Text Transformations**:
-    - Case conversion (UPPERCASE, lowercase, Title Case, Sentence case)
+    - Case conversion (UPPERCASE, lowercase, Title Case, Sentence case, camelCase, snake_case, kebab-case)
     - Line operations (sort, deduplicate, reverse)
     - Trim whitespace and remove empty lines
     - Bullet list and numbered list formatting
     - Custom transformations (write your own JavaScript/TypeScript transforms)
     - Transformation chains: combine multiple transforms into a single action
 - **Generators**:
-    - UUID v4 generator
+    - UUID v4 & v7 generators
+    - NanoID generator (compact URL-safe IDs)
+    - Short hash & prefixed ID generators
+    - Bulk ID generation (up to 100 at once)
     - Lorem Ipsum generator (configurable paragraphs)
     - Hash generators (MD5, SHA-1, SHA-256, SHA-512)
+    - Unix/human timestamp conversion
 - **Export Options**:
     - Copy to clipboard with keyboard shortcut (⌘↵)
     - Save to file with native OS file picker
