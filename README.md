@@ -2,6 +2,10 @@
   <img src="icons/icon-128.png" alt="Wingman Logo" width="128" height="128">
 </p>
 
+<p align="center">
+  <a href="https://github.com/sponsors/csteamengine"><img src="https://img.shields.io/badge/Sponsor-❤-ea4aaa?style=for-the-badge&logo=github" alt="Sponsor on GitHub"></a>
+</p>
+
 # Wingman
 
 A lightweight, cross-platform developer toolkit that provides a spotlight-style overlay for quick access to essential development utilities.
