@@ -717,8 +717,11 @@ fn generate_sha512(text: String) -> String {
 
 // Timestamp utility commands
 #[tauri::command]
-fn unix_to_human(timestamp: i64, format: Option<String>) -> Result<String, String> {
+fn unix_to_human(text: String) -> Result<String, String> {
     use chrono::DateTime;
+
+    let timestamp: i64 = text.trim().parse()
+        .map_err(|_| "Invalid timestamp. Enter a Unix timestamp (e.g., 1704067200)".to_string())?;
 
     // Auto-detect seconds vs milliseconds (timestamps after year 2001 in ms are > 10^12)
     let (secs, nsecs) = if timestamp > 10_000_000_000 {
@@ -730,13 +733,14 @@ fn unix_to_human(timestamp: i64, format: Option<String>) -> Result<String, Strin
     let dt = DateTime::from_timestamp(secs, nsecs)
         .ok_or_else(|| "Invalid timestamp".to_string())?;
 
-    let fmt = format.as_deref().unwrap_or("%Y-%m-%d %H:%M:%S UTC");
-    Ok(dt.format(fmt).to_string())
+    Ok(dt.format("%Y-%m-%d %H:%M:%S UTC").to_string())
 }
 
 #[tauri::command]
-fn human_to_unix(datetime: String, output_ms: Option<bool>) -> Result<i64, String> {
+fn human_to_unix(text: String) -> Result<String, String> {
     use chrono::{NaiveDateTime, TimeZone, Utc, DateTime};
+
+    let datetime = text.trim();
 
     // Try common formats
     let formats = [
@@ -749,23 +753,15 @@ fn human_to_unix(datetime: String, output_ms: Option<bool>) -> Result<i64, Strin
     ];
 
     for fmt in &formats {
-        if let Ok(naive) = NaiveDateTime::parse_from_str(&datetime, fmt) {
+        if let Ok(naive) = NaiveDateTime::parse_from_str(datetime, fmt) {
             let dt = Utc.from_utc_datetime(&naive);
-            return Ok(if output_ms.unwrap_or(false) {
-                dt.timestamp_millis()
-            } else {
-                dt.timestamp()
-            });
+            return Ok(dt.timestamp().to_string());
         }
     }
 
     // Try ISO 8601 with timezone
-    if let Ok(dt) = DateTime::parse_from_rfc3339(&datetime) {
-        return Ok(if output_ms.unwrap_or(false) {
-            dt.timestamp_millis()
-        } else {
-            dt.timestamp()
-        });
+    if let Ok(dt) = DateTime::parse_from_rfc3339(datetime) {
+        return Ok(dt.timestamp().to_string());
     }
 
     Err("Could not parse datetime. Try formats like: 2024-01-15 14:30:00".to_string())
