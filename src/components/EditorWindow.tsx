@@ -417,6 +417,7 @@ export function EditorWindow() {
     }, []);
 
     const handleAiRefineWithPreset = useCallback(async (preset: Parameters<typeof callAIWithPreset>[2]) => {
+        const view = viewRef.current;
         if (aiLoading || !content.trim()) return;
         setAiError(null);
 
@@ -426,9 +427,27 @@ export function EditorWindow() {
             return;
         }
 
-        const response = await callAIWithPreset(licenseKey, content, preset);
+        // Check if there's a selection - if so, only refine the selected text
+        const selection = view?.state.selection.main;
+        const hasSelection = selection && !selection.empty;
+        const textToRefine = hasSelection
+            ? view!.state.sliceDoc(selection.from, selection.to)
+            : content;
+        const from = hasSelection ? selection.from : 0;
+        const to = hasSelection ? selection.to : (view?.state.doc.length ?? content.length);
+
+        const response = await callAIWithPreset(licenseKey, textToRefine, preset);
         if (response && response.result) {
-            setContent(response.result);
+            if (hasSelection && view) {
+                // Replace only the selected portion
+                view.dispatch({
+                    changes: { from, to, insert: response.result },
+                    selection: { anchor: from + response.result.length },
+                });
+            } else {
+                // Replace entire content (original behavior)
+                setContent(response.result);
+            }
             if (preset.id === 'code_explainer') {
                 setLanguage('markdown');
             }
