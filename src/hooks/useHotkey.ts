@@ -38,7 +38,28 @@ export function useGlobalHotkey() {
 
     setupHotkey();
 
+    // Detect system wake from sleep by monitoring timer gaps.
+    // setInterval callbacks pause during sleep — when the system wakes,
+    // the elapsed time since the last tick will be much larger than expected.
+    // The OS can silently invalidate global shortcut registrations during
+    // sleep, so we force re-register when wake is detected.
+    let lastTick = Date.now();
+    const WAKE_THRESHOLD_MS = 15_000;
+    const CHECK_INTERVAL_MS = 5_000;
+
+    const wakeDetectorId = setInterval(async () => {
+      const now = Date.now();
+      const elapsed = now - lastTick;
+      lastTick = now;
+
+      if (elapsed > WAKE_THRESHOLD_MS) {
+        console.log(`System wake detected (gap: ${elapsed}ms), re-registering hotkey`);
+        await setupHotkey();
+      }
+    }, CHECK_INTERVAL_MS);
+
     return () => {
+      clearInterval(wakeDetectorId);
       if (registered) {
         unregister(shortcut).catch(console.error);
       }
