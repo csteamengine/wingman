@@ -983,6 +983,13 @@ export function EditorWindow() {
             searchPanelExtension,
             placeholder('Start typing...'),
             EditorView.lineWrapping,
+            // Disable OS spellcheck/autocorrect in the code editor to avoid
+            // native red underlines in packaged builds (e.g. macOS WKWebView).
+            EditorView.contentAttributes.of({
+                spellcheck: 'false',
+                autocorrect: 'off',
+                autocapitalize: 'off',
+            }),
             highlightActiveLine(),
             highlightActiveLineGutter(),
             EditorView.updateListener.of((update) => {
