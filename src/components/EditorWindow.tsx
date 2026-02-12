@@ -531,7 +531,7 @@ export function EditorWindow() {
 
     const handleGistToastOpen = useCallback(async () => {
         if (gistToast) {
-            await invoke('open_url', { url: gistToast.html_url });
+            await invoke('open_github_url', { url: gistToast.html_url });
             setGistToast(null);
             await hideWindow();
         }

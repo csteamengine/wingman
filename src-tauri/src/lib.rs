@@ -1057,23 +1057,13 @@ fn add_to_obsidian(content: String) -> Result<ObsidianResult, String> {
     })
 }
 
-/// Open a URL (used for opening Obsidian notes from toast notification)
-#[tauri::command]
-fn open_url(url: String) -> Result<(), String> {
-    let normalized = url.trim().to_ascii_lowercase();
-    let is_allowed = normalized.starts_with("https://")
-        || normalized.starts_with("http://")
-        || normalized.starts_with("mailto:")
-        || normalized.starts_with("obsidian://");
-
-    if !is_allowed {
-        return Err("Blocked URL scheme. Only https, http, mailto, and obsidian are allowed.".to_string());
-    }
+fn open_with_system_handler(url: &str) -> Result<(), String> {
+    let trimmed = url.trim();
 
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open")
-            .arg(&url)
+            .arg(trimmed)
             .spawn()
             .map_err(|e| format!("Failed to open URL: {}", e))?;
     }
@@ -1081,7 +1071,7 @@ fn open_url(url: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("cmd")
-            .args(["/C", "start", "", &url])
+            .args(["/C", "start", "", trimmed])
             .spawn()
             .map_err(|e| format!("Failed to open URL: {}", e))?;
     }
@@ -1089,12 +1079,45 @@ fn open_url(url: String) -> Result<(), String> {
     #[cfg(target_os = "linux")]
     {
         std::process::Command::new("xdg-open")
-            .arg(&url)
+            .arg(trimmed)
             .spawn()
             .map_err(|e| format!("Failed to open URL: {}", e))?;
     }
 
     Ok(())
+}
+
+fn is_allowed_https_host(url: &str, allowed_hosts: &[&str]) -> bool {
+    let trimmed = url.trim();
+    if !trimmed.to_ascii_lowercase().starts_with("https://") {
+        return false;
+    }
+
+    let rest = &trimmed[8..];
+    let host_port = rest
+        .split('/')
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let host = host_port.split(':').next().unwrap_or("");
+
+    allowed_hosts.iter().any(|allowed| host == *allowed)
+}
+
+#[tauri::command]
+fn open_github_url(url: String) -> Result<(), String> {
+    if !is_allowed_https_host(&url, &["github.com", "gist.github.com"]) {
+        return Err("Blocked URL host for GitHub open operation.".to_string());
+    }
+    open_with_system_handler(&url)
+}
+
+#[tauri::command]
+fn open_obsidian_url(url: String) -> Result<(), String> {
+    if !url.trim().to_ascii_lowercase().starts_with("obsidian://") {
+        return Err("Blocked URL scheme for Obsidian open operation.".to_string());
+    }
+    open_with_system_handler(&url)
 }
 
 // AI commands
@@ -1836,7 +1859,8 @@ pub fn run() {
             configure_obsidian,
             validate_obsidian_vault_cmd,
             add_to_obsidian,
-            open_url,
+            open_obsidian_url,
+            open_github_url,
             // GitHub
             start_github_device_flow,
             poll_github_device_flow,
