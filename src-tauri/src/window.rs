@@ -573,6 +573,8 @@ pub fn set_window_blur(window: &WebviewWindow<impl Runtime>, enabled: bool) -> R
     unsafe {
         // Make window transparent
         let _: () = msg_send![ns_window, setOpaque: NO];
+        // Use native macOS window shadow (Raycast-style outside-window shadow).
+        let _: () = msg_send![ns_window, setHasShadow: YES];
         ns_window.setBackgroundColor_(NSColor::clearColor(nil));
 
         // Set window to have no title bar (should already be set via decorations: false)
