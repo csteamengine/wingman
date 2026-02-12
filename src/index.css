@@ -369,6 +369,15 @@ body {
   background: transparent !important;
 }
 
+/* Suppress native WKWebView spellcheck/grammar underlines in packaged builds */
+.cm-editor .cm-content ::spelling-error {
+  text-decoration: none;
+}
+
+.cm-editor .cm-content ::grammar-error {
+  text-decoration: none;
+}
+
 .cm-editor.cm-focused {
   outline: none;
 }
@@ -384,6 +393,11 @@ body {
 
 .cm-editor .cm-activeLine {
   background: var(--editor-line-highlight);
+  text-decoration: none !important;
+}
+
+.cm-editor .cm-activeLine * {
+  text-decoration: none !important;
 }
 
 /* CodeMirror search panel styles */
