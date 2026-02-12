@@ -10,6 +10,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+interface CreatePortalSessionRequest {
+  license_key: string;
+  email: string;
+  device_id: string;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -33,12 +39,12 @@ serve(async (req) => {
       );
     }
 
-    // Get license key from request body
-    const { license_key } = await req.json();
+    const body: CreatePortalSessionRequest = await req.json();
+    const { license_key, email, device_id } = body;
 
-    if (!license_key) {
+    if (!license_key || !email || !device_id) {
       return new Response(
-        JSON.stringify({ error: "License key required" }),
+        JSON.stringify({ error: "license_key, email, and device_id are required" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -46,19 +52,90 @@ serve(async (req) => {
       );
     }
 
-    // Look up the customer ID from the license
+    // Get client IP address for rate limiting
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                     req.headers.get("x-real-ip") ||
+                     "unknown";
+
+    // Rate limiting: max 10 portal requests per IP per hour
+    const ipRateLimitIdentifier = `${clientIp}:create-portal-session`;
+    const { data: ipRateLimited, error: ipRateLimitError } = await supabase.rpc("check_rate_limit", {
+      p_identifier: ipRateLimitIdentifier,
+      p_endpoint: "create-portal-session",
+      p_max_attempts: 10,
+      p_window_minutes: 60,
+    });
+
+    if (!ipRateLimitError && ipRateLimited) {
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Also rate-limit by license key to slow brute-force attempts
+    const licenseRateLimitIdentifier = `${license_key}:create-portal-session`;
+    const { data: licenseRateLimited, error: licenseRateLimitError } = await supabase.rpc("check_rate_limit", {
+      p_identifier: licenseRateLimitIdentifier,
+      p_endpoint: "create-portal-session-license",
+      p_max_attempts: 5,
+      p_window_minutes: 60,
+    });
+
+    if (!licenseRateLimitError && licenseRateLimited) {
+      return new Response(
+        JSON.stringify({ error: "Too many requests for this license. Please try again later." }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Look up license and ensure the supplied email matches it
     const { data: license, error: licenseError } = await supabase
       .from("licenses")
-      .select("stripe_customer_id")
+      .select("id, stripe_customer_id, is_active")
       .eq("license_key", license_key)
+      .eq("email", email.toLowerCase())
       .single();
 
     if (licenseError || !license) {
-      console.error("License not found:", licenseError);
       return new Response(
         JSON.stringify({ error: "License not found" }),
         {
-          status: 404,
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!license.is_active) {
+      return new Response(
+        JSON.stringify({ error: "License is inactive" }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Ensure the calling device is currently activated for this license
+    const { data: activation, error: activationError } = await supabase
+      .from("device_activations")
+      .select("id")
+      .eq("license_id", license.id)
+      .eq("device_id", device_id)
+      .single();
+
+    if (activationError || !activation) {
+      return new Response(
+        JSON.stringify({ error: "Device is not activated for this license" }),
+        {
+          status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
@@ -100,7 +177,7 @@ serve(async (req) => {
     }
 
     const session = await response.json();
-    console.log("Portal session created for customer:", license.stripe_customer_id);
+    console.log("Portal session created successfully");
 
     return new Response(
       JSON.stringify({

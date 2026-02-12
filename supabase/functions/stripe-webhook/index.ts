@@ -10,7 +10,18 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Generate a license key in format: XXXX-XXXX-XXXX-XXXX
+function secureRandomInt(max: number): number {
+  if (max <= 0) throw new Error("max must be > 0");
+  const limit = Math.floor(0x1_0000_0000 / max) * max;
+  const bytes = new Uint32Array(1);
+  while (true) {
+    crypto.getRandomValues(bytes);
+    const value = bytes[0];
+    if (value < limit) return value % max;
+  }
+}
+
+// Generate a license key in format: XXXX-XXXX-XXXX-XXXX using CSPRNG
 function generateLicenseKey(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   const segments: string[] = [];
@@ -18,7 +29,7 @@ function generateLicenseKey(): string {
   for (let i = 0; i < 4; i++) {
     let segment = "";
     for (let j = 0; j < 4; j++) {
-      const randomIndex = Math.floor(Math.random() * chars.length);
+      const randomIndex = secureRandomInt(chars.length);
       segment += chars[randomIndex];
     }
     segments.push(segment);
@@ -30,10 +41,6 @@ function generateLicenseKey(): string {
 // Send license key email via Resend
 async function sendLicenseEmail(email: string, licenseKey: string): Promise<boolean> {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
-
-  console.log("sendLicenseEmail called for:", email);
-  console.log("RESEND_API_KEY present:", !!resendApiKey);
-  console.log("RESEND_API_KEY length:", resendApiKey?.length || 0);
 
   if (!resendApiKey) {
     console.error("RESEND_API_KEY not configured");
@@ -80,8 +87,6 @@ async function sendLicenseEmail(email: string, licenseKey: string): Promise<bool
       `,
     };
 
-    console.log("Sending email to Resend API...");
-
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -92,15 +97,13 @@ async function sendLicenseEmail(email: string, licenseKey: string): Promise<bool
     });
 
     const responseText = await response.text();
-    console.log("Resend API response status:", response.status);
-    console.log("Resend API response body:", responseText);
 
     if (!response.ok) {
       console.error("Resend API error:", responseText);
       return false;
     }
 
-    console.log("License email sent successfully to:", email);
+    console.log("License email sent successfully");
     return true;
   } catch (error) {
     console.error("Failed to send email, error:", error);
@@ -231,7 +234,7 @@ serve(async (req) => {
       const sessionId = session.id;
       const customerId = session.customer;
 
-      console.log("Checkout completed (one-time payment):", { email, sessionId, customerId, mode });
+      console.log("Checkout completed (one-time payment)");
 
       if (!email) {
         console.error("No email in checkout session");
@@ -323,11 +326,7 @@ serve(async (req) => {
         );
       }
 
-      console.log("License created:", {
-        license_key: licenseKey,
-        email,
-        session_id: sessionId,
-      });
+      console.log("License created successfully");
 
       // Send license key email
       const emailSent = await sendLicenseEmail(email, licenseKey);

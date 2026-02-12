@@ -297,14 +297,8 @@ CREATE POLICY "Service role has full access to webhook_events"
     ON webhook_events FOR ALL
     USING (auth.role() = 'service_role');
 
--- Allow anon to read subscription status (needed for client validation)
-CREATE POLICY "Anon can read subscriptions"
-    ON subscriptions FOR SELECT
-    USING (true);
-
-CREATE POLICY "Anon can read api_usage"
-    ON api_usage FOR SELECT
-    USING (true);
+-- Do not grant anonymous read access to premium usage/subscription data.
+-- Access is intentionally restricted to service_role-backed edge functions.
 
 -- ============================================
 -- UPDATE LICENSES TABLE

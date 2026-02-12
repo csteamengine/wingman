@@ -1,10 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use keyring::Entry;
 
 // GitHub OAuth Client ID (from GitHub App registration)
 // TODO: Replace with your actual Client ID after registering the GitHub App
 const GITHUB_CLIENT_ID: &str = "Iv23liEWBm84xdG4FROh";
+const KEYRING_SERVICE_NAME: &str = "com.wingman.app";
+const KEYRING_GITHUB_ACCOUNT: &str = "github_access_token";
 
 // ============================================================================
 // Error Types
@@ -133,7 +136,12 @@ fn get_config_path() -> Result<PathBuf, GitHubError> {
 // Token Storage
 // ============================================================================
 
-pub fn save_token(access_token: &str) -> Result<(), GitHubError> {
+fn get_keyring_entry() -> Result<Entry, GitHubError> {
+    Entry::new(KEYRING_SERVICE_NAME, KEYRING_GITHUB_ACCOUNT)
+        .map_err(|e| GitHubError::TokenSave(format!("Failed to create keyring entry: {}", e)))
+}
+
+fn save_token_to_file(access_token: &str) -> Result<(), GitHubError> {
     let token = GitHubToken {
         access_token: access_token.to_string(),
         created_at: chrono::Utc::now().to_rfc3339(),
@@ -141,30 +149,73 @@ pub fn save_token(access_token: &str) -> Result<(), GitHubError> {
 
     let token_path = get_token_path()?;
     let json = serde_json::to_string_pretty(&token)?;
-
-    fs::write(&token_path, json)
-        .map_err(|e| GitHubError::TokenSave(e.to_string()))?;
-
-    Ok(())
+    fs::write(&token_path, json).map_err(|e| GitHubError::TokenSave(e.to_string()))
 }
 
-pub fn load_token() -> Result<String, GitHubError> {
+fn load_token_from_file() -> Result<String, GitHubError> {
     let token_path = get_token_path()?;
 
     if !token_path.exists() {
         return Err(GitHubError::NotAuthenticated);
     }
 
-    let json = fs::read_to_string(&token_path)
-        .map_err(|e| GitHubError::TokenLoad(e.to_string()))?;
-
+    let json = fs::read_to_string(&token_path).map_err(|e| GitHubError::TokenLoad(e.to_string()))?;
     let token: GitHubToken = serde_json::from_str(&json)?;
     Ok(token.access_token)
 }
 
-pub fn delete_token() -> Result<(), GitHubError> {
-    let token_path = get_token_path()?;
+pub fn save_token(access_token: &str) -> Result<(), GitHubError> {
+    // Primary: OS keychain
+    if let Ok(entry) = get_keyring_entry() {
+        if entry.set_password(access_token).is_ok() {
+            // Best effort cleanup of legacy plaintext token file
+            if let Ok(token_path) = get_token_path() {
+                let _ = fs::remove_file(token_path);
+            }
+            return Ok(());
+        }
+    }
 
+    // Fallback for environments where keyring is unavailable
+    save_token_to_file(access_token)
+}
+
+pub fn load_token() -> Result<String, GitHubError> {
+    // Primary: OS keychain
+    if let Ok(entry) = get_keyring_entry() {
+        match entry.get_password() {
+            Ok(token) => return Ok(token),
+            Err(keyring::Error::NoEntry) => {}
+            Err(_) => {}
+        }
+    }
+
+    // Fallback: legacy plaintext file
+    let token = load_token_from_file()?;
+
+    // Best-effort migration back into keychain when possible
+    if let Ok(entry) = get_keyring_entry() {
+        if entry.set_password(&token).is_ok() {
+            if let Ok(token_path) = get_token_path() {
+                let _ = fs::remove_file(token_path);
+            }
+        }
+    }
+
+    Ok(token)
+}
+
+pub fn delete_token() -> Result<(), GitHubError> {
+    // Best effort keychain cleanup
+    if let Ok(entry) = get_keyring_entry() {
+        match entry.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => {}
+            Err(e) => return Err(GitHubError::TokenSave(e.to_string())),
+        }
+    }
+
+    // Remove legacy token file if present
+    let token_path = get_token_path()?;
     if token_path.exists() {
         fs::remove_file(&token_path)?;
     }

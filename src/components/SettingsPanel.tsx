@@ -947,15 +947,8 @@ export function SettingsPanel() {
                                     </p>
                                     <button
                                         onClick={async () => {
-                                            const licenseKey = await getLicenseKey();
-                                            if (!licenseKey) {
-                                                alert('License key not found. Please activate your license first.');
-                                                return;
-                                            }
                                             try {
-                                                const portalUrl = await invoke<string>('create_customer_portal_session_cmd', {
-                                                    licenseKey
-                                                });
+                                                const portalUrl = await invoke<string>('create_customer_portal_session_cmd');
                                                 await open(portalUrl);
                                             } catch (error) {
                                                 console.error('Failed to open customer portal:', error);

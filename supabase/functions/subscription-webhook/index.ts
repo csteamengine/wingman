@@ -10,7 +10,18 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, stripe-signature",
 };
 
-// Generate a license key in format: XXXX-XXXX-XXXX-XXXX
+function secureRandomInt(max: number): number {
+  if (max <= 0) throw new Error("max must be > 0");
+  const limit = Math.floor(0x1_0000_0000 / max) * max;
+  const bytes = new Uint32Array(1);
+  while (true) {
+    crypto.getRandomValues(bytes);
+    const value = bytes[0];
+    if (value < limit) return value % max;
+  }
+}
+
+// Generate a license key in format: XXXX-XXXX-XXXX-XXXX using CSPRNG
 function generateLicenseKey(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   const segments: string[] = [];
@@ -18,7 +29,7 @@ function generateLicenseKey(): string {
   for (let i = 0; i < 4; i++) {
     let segment = "";
     for (let j = 0; j < 4; j++) {
-      const randomIndex = Math.floor(Math.random() * chars.length);
+      const randomIndex = secureRandomInt(chars.length);
       segment += chars[randomIndex];
     }
     segments.push(segment);

@@ -14,12 +14,6 @@ async function sendDevLicenseEmail(
 ): Promise<{ success: boolean; error?: string }> {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
-  console.log("=== sendDevLicenseEmail called ===");
-  console.log("Email:", email);
-  console.log("Tier:", tier);
-  console.log("RESEND_API_KEY present:", !!resendApiKey);
-  console.log("RESEND_API_KEY length:", resendApiKey?.length || 0);
-
   if (!resendApiKey) {
     console.error("RESEND_API_KEY not configured");
     return { success: false, error: "RESEND_API_KEY not configured" };
@@ -88,10 +82,6 @@ async function sendDevLicenseEmail(
       `,
     };
 
-    console.log("Sending dev license email to Resend API...");
-    console.log("Email payload to:", emailPayload.to);
-    console.log("Email payload from:", emailPayload.from);
-
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -102,15 +92,13 @@ async function sendDevLicenseEmail(
     });
 
     const responseText = await response.text();
-    console.log("Resend API response status:", response.status);
-    console.log("Resend API response body:", responseText);
 
     if (!response.ok) {
       console.error("Resend API error:", responseText);
       return { success: false, error: `Resend API error: ${response.status} - ${responseText}` };
     }
 
-    console.log("Dev license email sent successfully to:", email);
+    console.log("Dev license email sent successfully");
     return { success: true };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
@@ -133,7 +121,18 @@ interface CreateDevLicenseRequest {
   secret: string;
 }
 
-// Generate a license key in format: XXXX-XXXX-XXXX-XXXX
+function secureRandomInt(max: number): number {
+  if (max <= 0) throw new Error("max must be > 0");
+  const limit = Math.floor(0x1_0000_0000 / max) * max;
+  const bytes = new Uint32Array(1);
+  while (true) {
+    crypto.getRandomValues(bytes);
+    const value = bytes[0];
+    if (value < limit) return value % max;
+  }
+}
+
+// Generate a license key in format: XXXX-XXXX-XXXX-XXXX using CSPRNG
 function generateLicenseKey(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   const segments = 4;
@@ -141,7 +140,7 @@ function generateLicenseKey(): string {
 
   const key = Array.from({ length: segments }, () => {
     return Array.from({ length: segmentLength }, () => {
-      return chars.charAt(Math.floor(Math.random() * chars.length));
+      return chars.charAt(secureRandomInt(chars.length));
     }).join("");
   }).join("-");
 
@@ -249,7 +248,7 @@ serve(async (req) => {
     }
 
     // Create dev license
-    const { data: license, error: insertError } = await supabase
+    const { error: insertError } = await supabase
       .from("licenses")
       .insert({
         license_key: licenseKey!,
@@ -276,11 +275,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("Dev license created:", {
-      license_key: licenseKey,
-      email: email.toLowerCase(),
-      tier,
-    });
+    console.log("Dev license created successfully");
 
     // Send dev license email
     const emailResult = await sendDevLicenseEmail(email.toLowerCase(), licenseKey!, tier, max_devices);

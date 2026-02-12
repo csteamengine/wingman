@@ -38,7 +38,7 @@ use hotkey::{get_default_hotkey, validate_hotkey};
 use license::{
     check_license_status, is_feature_enabled, load_license_cache, refresh_license,
     validate_license_online, deactivate_license_online, clear_license_cache,
-    get_cached_license_key, LicenseStatusInfo, ProFeature,
+    get_cached_license_key, get_device_id, LicenseStatusInfo, ProFeature,
 };
 use premium::{
     validate_premium_license, get_ai_usage, call_ai_feature, create_customer_portal_session,
@@ -989,8 +989,17 @@ async fn get_ai_usage_cmd(license_key: String) -> Result<UsageStats, String> {
 }
 
 #[tauri::command]
-async fn create_customer_portal_session_cmd(license_key: String) -> Result<String, String> {
-    create_customer_portal_session(&license_key)
+async fn create_customer_portal_session_cmd() -> Result<String, String> {
+    let cache = load_license_cache().map_err(|e| e.to_string())?;
+    let license_key = cache
+        .license_key
+        .ok_or_else(|| "No active license key found".to_string())?;
+    let email = cache
+        .email
+        .ok_or_else(|| "No active license email found".to_string())?;
+    let device_id = get_device_id().map_err(|e| e.to_string())?;
+
+    create_customer_portal_session(&license_key, &email, &device_id)
         .await
         .map_err(|e| e.to_string())
 }
