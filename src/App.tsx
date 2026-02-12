@@ -177,7 +177,7 @@ function App() {
   }, []);
 
   return (
-    <div className="h-screen w-screen flex flex-col editor-container relative">
+    <div className="h-screen w-screen flex flex-col editor-container relative shadow-[0_14px_40px_rgba(0,0,0,0.32)]">
       {/* Resize handles */}
       <div
         className="absolute top-0 left-0 right-0 h-1 cursor-n-resize z-50"
