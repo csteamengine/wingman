@@ -1,5 +1,13 @@
 import {useEffect, useRef, useCallback, useState, useMemo} from 'react';
-import {EditorView, placeholder, drawSelection, dropCursor, keymap} from '@codemirror/view';
+import {
+    EditorView,
+    placeholder,
+    drawSelection,
+    dropCursor,
+    keymap,
+    highlightActiveLine,
+    highlightActiveLineGutter,
+} from '@codemirror/view';
 import {EditorState} from '@codemirror/state';
 import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/commands';
 import {searchKeymap} from '@codemirror/search';
@@ -975,6 +983,8 @@ export function EditorWindow() {
             searchPanelExtension,
             placeholder('Start typing...'),
             EditorView.lineWrapping,
+            highlightActiveLine(),
+            highlightActiveLineGutter(),
             EditorView.updateListener.of((update) => {
                 if (update.docChanged) {
                     setContent(update.state.doc.toString());
@@ -1017,6 +1027,12 @@ export function EditorWindow() {
             '.cm-scroller': { backgroundColor: 'transparent' },
             '.cm-content': { backgroundColor: 'transparent' },
             '.cm-gutters': { backgroundColor: 'transparent' },
+            '.cm-activeLine': {
+                backgroundColor: 'rgba(127, 127, 127, 0.10)',
+                textDecoration: 'none',
+            },
+            '.cm-activeLine *': { textDecoration: 'none' },
+            '.cm-activeLineGutter': { backgroundColor: 'rgba(127, 127, 127, 0.10)' },
         }));
 
         if (isLightTheme) {
@@ -1024,7 +1040,8 @@ export function EditorWindow() {
                 '.cm-content': { color: '#1a1a1a' },
                 '.cm-gutters': { color: '#666666' },
                 '.cm-cursor': { borderLeftColor: '#1a1a1a' },
-                '.cm-activeLine': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
+                '.cm-activeLine': { backgroundColor: 'rgba(0, 0, 0, 0.04)', textDecoration: 'none' },
+                '.cm-activeLine *': { textDecoration: 'none' },
                 '.cm-activeLineGutter': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
             }));
         }
