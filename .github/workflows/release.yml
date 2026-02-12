@@ -315,8 +315,6 @@ jobs:
             echo "No version changes to commit (version may already be correct)"
           else
             git commit -m "Release $TAG"
-            # Pull and rebase in case main moved (e.g., manual push during build)
-            git pull --rebase origin main
             git push origin HEAD:main
           fi
 
