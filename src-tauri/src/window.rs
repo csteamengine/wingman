@@ -540,6 +540,139 @@ pub fn get_window_monitor_name<R: Runtime>(window: &WebviewWindow<R>) -> Option<
     get_monitor_name_for_point(center_x, center_y)
 }
 
+/// Disable continuous spellcheck and automatic spelling correction on the
+/// WKWebView.  In packaged (.dmg) builds, macOS WKWebView can draw native
+/// red underlines even when the HTML `spellcheck="false"` attribute is set.
+/// We walk the view hierarchy to find every view that responds to the
+/// relevant Cocoa selectors and flip them off.  We also poke NSUserDefaults
+/// for the legacy WebKit preferences keys, in case the WebView reads them.
+#[allow(deprecated)]
+pub fn disable_webview_spellcheck(window: &WebviewWindow<impl Runtime>) -> Result<(), String> {
+    use cocoa::appkit::NSWindow as NSWindowTrait;
+    use cocoa::base::{id, nil, NO};
+    use objc::{class, msg_send, sel, sel_impl};
+
+    let ns_window = match window.ns_window() {
+        Ok(w) => w as id,
+        Err(e) => return Err(e.to_string()),
+    };
+    if ns_window.is_null() {
+        return Err("ns_window is null".to_string());
+    }
+
+    unsafe {
+        // ── 1. NSUserDefaults: disable legacy WebKit spell-checking prefs ──
+        let defaults: id = msg_send![class!(NSUserDefaults), standardUserDefaults];
+        if !defaults.is_null() {
+            for key_bytes in &[
+                b"WebContinuousSpellCheckingEnabled\0" as &[u8],
+                b"WebAutomaticSpellingCorrectionEnabled\0",
+                b"NSAllowsContinuousSpellChecking\0",
+            ] {
+                let key: id = msg_send![
+                    class!(NSString),
+                    stringWithUTF8String: key_bytes.as_ptr()
+                ];
+                let _: () = msg_send![defaults, setBool: NO forKey: key];
+            }
+        }
+
+        // ── 2. Walk the view tree and disable spellcheck on every view ──
+        fn disable_on_view(view: cocoa::base::id) {
+            use objc::{msg_send, sel, sel_impl};
+
+            let sel_continuous = sel!(setContinuousSpellCheckingEnabled:);
+            let sel_automatic = sel!(setAutomaticSpellCheckingEnabled:);
+            let sel_grammar   = sel!(setGrammarCheckingEnabled:);
+
+            let responds_continuous: bool = unsafe {
+                msg_send![view, respondsToSelector: sel_continuous]
+            };
+            if responds_continuous {
+                unsafe {
+                    let _: () = msg_send![view, setContinuousSpellCheckingEnabled: false];
+                }
+            }
+            let responds_automatic: bool = unsafe {
+                msg_send![view, respondsToSelector: sel_automatic]
+            };
+            if responds_automatic {
+                unsafe {
+                    let _: () = msg_send![view, setAutomaticSpellCheckingEnabled: false];
+                }
+            }
+            let responds_grammar: bool = unsafe {
+                msg_send![view, respondsToSelector: sel_grammar]
+            };
+            if responds_grammar {
+                unsafe {
+                    let _: () = msg_send![view, setGrammarCheckingEnabled: false];
+                }
+            }
+
+            // Recurse into subviews
+            let subviews: cocoa::base::id = unsafe {
+                msg_send![view, subviews]
+            };
+            if !subviews.is_null() {
+                let count: usize = unsafe { msg_send![subviews, count] };
+                for i in 0..count {
+                    let child: cocoa::base::id =
+                        unsafe { msg_send![subviews, objectAtIndex: i] };
+                    if !child.is_null() {
+                        disable_on_view(child);
+                    }
+                }
+            }
+        }
+
+        let content_view: id = ns_window.contentView();
+        if !content_view.is_null() {
+            disable_on_view(content_view);
+        }
+
+        // ── 3. Also inject JS as a belt-and-suspenders measure ──
+        // Find the WKWebView and call evaluateJavaScript: so the
+        // document-level spellcheck attribute is forced off.
+        fn find_wkwebview(view: cocoa::base::id) -> Option<cocoa::base::id> {
+            use objc::{class, msg_send, sel, sel_impl};
+            let wk_class = unsafe { class!(WKWebView) };
+            let is_wk: bool = unsafe { msg_send![view, isKindOfClass: wk_class] };
+            if is_wk {
+                return Some(view);
+            }
+            let subviews: cocoa::base::id = unsafe { msg_send![view, subviews] };
+            if !subviews.is_null() {
+                let count: usize = unsafe { msg_send![subviews, count] };
+                for i in 0..count {
+                    let child: cocoa::base::id =
+                        unsafe { msg_send![subviews, objectAtIndex: i] };
+                    if !child.is_null() {
+                        if let Some(wk) = find_wkwebview(child) {
+                            return Some(wk);
+                        }
+                    }
+                }
+            }
+            None
+        }
+
+        if let Some(wk) = find_wkwebview(content_view) {
+            let js: id = msg_send![
+                class!(NSString),
+                stringWithUTF8String:
+                    b"document.documentElement.setAttribute('spellcheck','false');\
+                      document.body.setAttribute('spellcheck','false');\0"
+                        .as_ptr()
+            ];
+            let _: () = msg_send![wk, evaluateJavaScript: js completionHandler: nil];
+        }
+
+        log::info!("Native WKWebView spellcheck disabled");
+    }
+    Ok(())
+}
+
 /// Apply native macOS vibrancy effect using NSVisualEffectView
 /// This is the same blur effect used by Spotlight, Finder sidebars, etc.
 /// Works during screen recording and is more stable than CSS backdrop-filter

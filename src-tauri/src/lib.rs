@@ -22,7 +22,7 @@ use tauri::{
 #[cfg(target_os = "macos")]
 use tauri_nspanel::ManagerExt;
 #[cfg(target_os = "macos")]
-use window::{start_workspace_monitor, set_window_blur, update_vibrancy_material, get_window_monitor_name, WebviewWindowExt, MAIN_WINDOW_LABEL};
+use window::{start_workspace_monitor, set_window_blur, update_vibrancy_material, get_window_monitor_name, disable_webview_spellcheck, WebviewWindowExt, MAIN_WINDOW_LABEL};
 
 use clipboard::{calculate_text_stats, transform_text, TextStats, TextTransform};
 use credentials::{store_credential, get_credential, delete_credential};
@@ -1918,6 +1918,12 @@ pub fn run() {
                         log::warn!("Failed to apply transparency on startup: {:?}", e);
                     } else {
                         log::info!("Transparency applied on startup");
+                    }
+
+                    // Disable native WKWebView spellcheck so macOS doesn't draw
+                    // red underlines in the code editor in packaged builds.
+                    if let Err(e) = disable_webview_spellcheck(&window) {
+                        log::warn!("Failed to disable webview spellcheck: {:?}", e);
                     }
 
                     // Apply sticky mode behavior based on saved settings
