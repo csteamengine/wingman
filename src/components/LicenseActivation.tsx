@@ -1,8 +1,8 @@
 import {useState} from 'react';
-import {open} from '@tauri-apps/plugin-shell';
 import {useLicense} from '../hooks/useLicense';
 import {usePremiumStore} from '../stores/premiumStore';
 import {storeLicenseCredentials, deleteLicenseCredentials} from '../lib/secureStorage';
+import { openExternalUrl } from '../utils/openExternalUrl';
 
 const SUPABASE_URL = 'https://yhpetdqcmqpfwhdtbhat.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_t4l4DUhI_I2rpT9pMU8dgg_Y2j55oJY';
@@ -39,22 +39,17 @@ export function LicenseActivation() {
         const trimmedKey = licenseKey.trim();
         const trimmedEmail = activationEmail.trim().toLowerCase();
 
-        console.log('[LicenseActivation] Starting activation for:', trimmedEmail);
 
         // Store license key in secure storage BEFORE activating so Premium features can access it
         try {
-            console.log('[LicenseActivation] Storing credentials...');
             await storeLicenseCredentials(trimmedKey, trimmedEmail);
-            console.log('[LicenseActivation] Credentials stored successfully');
         } catch (err) {
             console.error('[LicenseActivation] Failed to store credentials securely:', err);
             setActivationError('Failed to store credentials securely');
             return;
         }
 
-        console.log('[LicenseActivation] Calling handleActivate...');
         const success = await handleActivate(trimmedKey, trimmedEmail);
-        console.log('[LicenseActivation] handleActivate result:', success);
         if (success) {
             setLicenseKey('');
             setActivationEmail('');
@@ -140,9 +135,7 @@ export function LicenseActivation() {
                             <span className="text-xs text-[var(--ui-text-muted)]">Confirm?</span>
                             <button
                                 onClick={async () => {
-                                    console.log('Deactivate confirmed, calling handleDeactivate...');
                                     const success = await handleDeactivate();
-                                    console.log('handleDeactivate result:', success);
                                     setShowDeactivateConfirm(false);
                                     if (success) {
                                         // Clear stored license key on deactivation
@@ -217,9 +210,8 @@ export function LicenseActivation() {
                                             },
                                         });
                                         const data = await response.json();
-                                        console.log('Premium checkout response:', data);
                                         if (data.url) {
-                                            await open(data.url);
+                                            await openExternalUrl(data.url, ['checkout.stripe.com', 'stripe.com', 'wingman-dev.app']);
                                         }
                                     } catch (err) {
                                         console.error('Failed to create checkout session:', err);
@@ -343,9 +335,8 @@ export function LicenseActivation() {
                                     },
                                 });
                                 const data = await response.json();
-                                console.log('Pro checkout response:', data);
                                 if (data.url) {
-                                    open(data.url);
+                                    await openExternalUrl(data.url, ['checkout.stripe.com', 'stripe.com', 'wingman-dev.app']);
                                 }
                             } catch (err) {
                                 console.error('Failed to create checkout session:', err);
@@ -405,9 +396,8 @@ export function LicenseActivation() {
                                     },
                                 });
                                 const data = await response.json();
-                                console.log('Premium checkout response:', data);
                                 if (data.url) {
-                                    await open(data.url);
+                                    await openExternalUrl(data.url, ['checkout.stripe.com', 'stripe.com', 'wingman-dev.app']);
                                 }
                             } catch (err) {
                                 console.error('Failed to create checkout session:', err);

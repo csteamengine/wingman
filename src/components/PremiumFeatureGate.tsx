@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { open } from '@tauri-apps/plugin-shell';
+import { openExternalUrl } from '../utils/openExternalUrl';
 import { usePremiumStore } from '../stores/premiumStore';
 import { useLicenseStore } from '../stores/licenseStore';
 import type { PremiumFeature } from '../types';
@@ -77,7 +77,7 @@ export function PremiumFeatureGate({
             });
             const data = await response.json();
             if (data.url) {
-              await open(data.url);
+              await openExternalUrl(data.url, ['checkout.stripe.com', 'stripe.com', 'wingman-dev.app']);
             }
           } catch (err) {
             console.error('Failed to create checkout session:', err);

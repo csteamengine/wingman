@@ -1060,6 +1060,16 @@ fn add_to_obsidian(content: String) -> Result<ObsidianResult, String> {
 /// Open a URL (used for opening Obsidian notes from toast notification)
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
+    let normalized = url.trim().to_ascii_lowercase();
+    let is_allowed = normalized.starts_with("https://")
+        || normalized.starts_with("http://")
+        || normalized.starts_with("mailto:")
+        || normalized.starts_with("obsidian://");
+
+    if !is_allowed {
+        return Err("Blocked URL scheme. Only https, http, mailto, and obsidian are allowed.".to_string());
+    }
+
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open")

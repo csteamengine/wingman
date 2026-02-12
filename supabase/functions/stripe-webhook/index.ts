@@ -4,11 +4,42 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://wingman-dev.app",
+  "https://www.wingman-dev.app",
+  "http://localhost:5173",
+  "tauri://localhost",
+  "https://tauri.localhost",
+];
+
+function getAllowedOrigins(): string[] {
+  const envOrigins = Deno.env.get("CORS_ORIGINS");
+  if (!envOrigins) return DEFAULT_ALLOWED_ORIGINS;
+  const parsed = envOrigins.split(",").map((o) => o.trim()).filter(Boolean);
+  return parsed.length > 0 ? parsed : DEFAULT_ALLOWED_ORIGINS;
+}
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin");
+  const allowedOrigins = getAllowedOrigins();
+  const isAllowed = !origin || allowedOrigins.includes(origin);
+  const resolvedOrigin = origin && isAllowed ? origin : allowedOrigins[0];
+  return {
+    "Access-Control-Allow-Origin": resolvedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
+
+function timingSafeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
 
 function secureRandomInt(max: number): number {
   if (max <= 0) throw new Error("max must be > 0");
@@ -122,15 +153,15 @@ async function verifyStripeSignature(
     const parts = signature.split(",");
 
     let timestamp = "";
-    let v1Signature = "";
+    const v1Signatures: string[] = [];
 
     for (const part of parts) {
       const [key, value] = part.split("=");
       if (key === "t") timestamp = value;
-      if (key === "v1") v1Signature = value;
+      if (key === "v1" && value) v1Signatures.push(value);
     }
 
-    if (!timestamp || !v1Signature) {
+    if (!timestamp || v1Signatures.length === 0) {
       console.error("Invalid signature format");
       return false;
     }
@@ -163,7 +194,7 @@ async function verifyStripeSignature(
       .map(b => b.toString(16).padStart(2, "0"))
       .join("");
 
-    return expectedSignature === v1Signature;
+    return v1Signatures.some((sig) => timingSafeEqualHex(expectedSignature, sig));
   } catch (error) {
     console.error("Signature verification error:", error);
     return false;
@@ -171,6 +202,7 @@ async function verifyStripeSignature(
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -283,7 +315,7 @@ serve(async (req) => {
         .single();
 
       if (existingPremiumLicense) {
-        console.log("User already has Premium license, skipping Pro email:", email);
+        console.log("User already has Premium license, skipping Pro email");
         return new Response(
           JSON.stringify({
             success: true,

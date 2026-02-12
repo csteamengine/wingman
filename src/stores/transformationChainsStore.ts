@@ -147,7 +147,7 @@ export const useTransformationChainsStore = create<TransformationChainsState>((s
         } else if (step.type === 'custom') {
           // Execute custom transformation
           const customStore = useCustomTransformationsStore.getState();
-          const result = customStore.executeTransformation(step.transformId, currentText);
+          const result = await customStore.executeTransformation(step.transformId, currentText);
           if (!result.success) {
             return { success: false, error: `Step "${step.name}" failed: ${result.error}` };
           }

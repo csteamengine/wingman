@@ -99,12 +99,9 @@ export const useLicenseStore = create<LicenseState>((set, get) => ({
   },
 
   deactivateLicense: async () => {
-    console.log('deactivateLicense called');
     set({ loading: true, error: null });
     try {
-      console.log('Invoking deactivate_license command...');
       await invoke('deactivate_license');
-      console.log('deactivate_license succeeded');
       set({
         ...defaultLicenseState,
         loading: false,

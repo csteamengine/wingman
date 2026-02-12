@@ -28,12 +28,10 @@ async function getStore() {
  * Store a credential using Tauri store
  */
 export async function storeCredential(key: string, value: string): Promise<void> {
-  console.log(`[SecureStorage] Storing credential: ${key}`);
   try {
     const store = await getStore();
     await store.set(key, value);
     await store.save();
-    console.log(`[SecureStorage] Successfully stored: ${key}`);
   } catch (error) {
     console.error(`[SecureStorage] Failed to store ${key}:`, error);
     throw error;
@@ -45,11 +43,9 @@ export async function storeCredential(key: string, value: string): Promise<void>
  * Returns null if not found
  */
 export async function getCredential(key: string): Promise<string | null> {
-  console.log(`[SecureStorage] Getting credential: ${key}`);
   try {
     const store = await getStore();
     const value = await store.get<string>(key);
-    console.log(`[SecureStorage] Got credential ${key}: ${value ? 'found' : 'not found'}`);
     return value ?? null;
   } catch (error) {
     console.error(`[SecureStorage] Failed to get ${key}:`, error);
@@ -61,12 +57,10 @@ export async function getCredential(key: string): Promise<string | null> {
  * Delete a credential from Tauri store
  */
 export async function deleteCredential(key: string): Promise<void> {
-  console.log(`[SecureStorage] Deleting credential: ${key}`);
   try {
     const store = await getStore();
     await store.delete(key);
     await store.save();
-    console.log(`[SecureStorage] Successfully deleted: ${key}`);
   } catch (error) {
     console.error(`[SecureStorage] Failed to delete ${key}:`, error);
     throw error;
@@ -124,7 +118,6 @@ export async function migrateLicenseFromLocalStorage(): Promise<boolean> {
 
       if (!existingKey && localKey) {
         // Migrate to Tauri store
-        console.log('[SecureStorage] Migrating from localStorage...');
         if (localKey) {
           await storeCredential(CREDENTIAL_KEYS.LICENSE_KEY, localKey);
         }
@@ -136,7 +129,6 @@ export async function migrateLicenseFromLocalStorage(): Promise<boolean> {
         localStorage.removeItem('wingman_license_key');
         localStorage.removeItem('wingman_license_email');
 
-        console.log('[SecureStorage] License credentials migrated from localStorage');
         return true;
       }
     }
@@ -154,24 +146,18 @@ export async function migrateLicenseFromLocalStorage(): Promise<boolean> {
  */
 export async function syncLicenseFromRustCache(): Promise<boolean> {
   try {
-    console.log('[SecureStorage] Syncing license from Rust cache...');
-
     // Check if we already have the key
     const existingKey = await getLicenseKey();
     if (existingKey) {
-      console.log('[SecureStorage] Already have license key in store');
       return true;
     }
 
     // Get the cached key from Rust backend
     const cachedKey = await invoke<string | null>('get_cached_license_key_cmd');
     if (cachedKey) {
-      console.log('[SecureStorage] Found license key in Rust cache, storing...');
       await storeCredential(CREDENTIAL_KEYS.LICENSE_KEY, cachedKey);
-      console.log('[SecureStorage] License key synced from Rust cache');
       return true;
     } else {
-      console.log('[SecureStorage] No license key in Rust cache');
       return false;
     }
   } catch (error) {

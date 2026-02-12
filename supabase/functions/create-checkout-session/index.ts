@@ -3,13 +3,36 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://wingman-dev.app",
+  "https://www.wingman-dev.app",
+  "http://localhost:5173",
+  "tauri://localhost",
+  "https://tauri.localhost",
+];
+
+function getAllowedOrigins(): string[] {
+  const envOrigins = Deno.env.get("CORS_ORIGINS");
+  if (!envOrigins) return DEFAULT_ALLOWED_ORIGINS;
+  const parsed = envOrigins.split(",").map((o) => o.trim()).filter(Boolean);
+  return parsed.length > 0 ? parsed : DEFAULT_ALLOWED_ORIGINS;
+}
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin");
+  const allowedOrigins = getAllowedOrigins();
+  const isAllowed = !origin || allowedOrigins.includes(origin);
+  const resolvedOrigin = origin && isAllowed ? origin : allowedOrigins[0];
+  return {
+    "Access-Control-Allow-Origin": resolvedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
