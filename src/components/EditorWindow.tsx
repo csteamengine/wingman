@@ -973,11 +973,33 @@ export function EditorWindow() {
     useEffect(() => {
         if (!editorRef.current) return;
 
+        const preventSelectionDeletedTextInsertion = EditorView.domEventHandlers({
+            beforeinput(event, view) {
+                const inputEvent = event as InputEvent;
+                const insertedText = inputEvent.data?.trim().toLowerCase();
+                const isDeletionAnnouncement =
+                    insertedText === 'selection deleted' || insertedText === 'selected deleted';
+
+                if (!isDeletionAnnouncement) return false;
+
+                event.preventDefault();
+                const selection = view.state.selection.main;
+                if (!selection.empty) {
+                    view.dispatch({
+                        changes: { from: selection.from, to: selection.to, insert: '' },
+                        selection: { anchor: selection.from },
+                    });
+                }
+                return true;
+            },
+        });
+
         const extensions = [
             history(),
             EditorState.allowMultipleSelections.of(true),
             drawSelection(),
             dropCursor(),
+            preventSelectionDeletedTextInsertion,
             editorKeymap,
             keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
             searchPanelExtension,
@@ -985,10 +1007,25 @@ export function EditorWindow() {
             EditorView.lineWrapping,
             // Disable OS spellcheck/autocorrect in the code editor to avoid
             // native red underlines in packaged builds (e.g. macOS WKWebView).
+            EditorView.editorAttributes.of({
+                spellcheck: 'false',
+                autocorrect: 'off',
+                autocapitalize: 'off',
+                autocomplete: 'off',
+                translate: 'no',
+                'data-gramm': 'false',
+                'data-gramm_editor': 'false',
+                'data-enable-grammarly': 'false',
+            }),
             EditorView.contentAttributes.of({
                 spellcheck: 'false',
                 autocorrect: 'off',
                 autocapitalize: 'off',
+                autocomplete: 'off',
+                translate: 'no',
+                'data-gramm': 'false',
+                'data-gramm_editor': 'false',
+                'data-enable-grammarly': 'false',
             }),
             highlightActiveLine(),
             highlightActiveLineGutter(),

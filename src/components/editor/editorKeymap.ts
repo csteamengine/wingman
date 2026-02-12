@@ -18,8 +18,27 @@ export function wrapSelection(view: EditorView, open: string, close: string): bo
     return true;
 }
 
+// Ensure Backspace/Delete remove selected text instead of inserting replacement text.
+function deleteSelection(view: EditorView): boolean {
+    const selection = view.state.selection.main;
+    if (selection.empty) return false;
+
+    view.dispatch({
+        changes: {
+            from: selection.from,
+            to: selection.to,
+            insert: '',
+        },
+        selection: { anchor: selection.from },
+    });
+    return true;
+}
+
 // Editor keymaps: line operations, auto-list continuation, and bracket wrapping
 export const editorKeymap = keymap.of([
+    { key: 'Backspace', run: deleteSelection },
+    { key: 'Delete', run: deleteSelection },
+
     // Auto-wrap selection with quotes and brackets
     { key: '"', run: (view) => wrapSelection(view, '"', '"') },
     { key: "'", run: (view) => wrapSelection(view, "'", "'") },
