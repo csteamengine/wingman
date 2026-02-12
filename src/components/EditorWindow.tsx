@@ -5,7 +5,7 @@ import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/
 import {searchKeymap} from '@codemirror/search';
 import {bracketMatching} from '@codemirror/language';
 import {autocompletion, closeBrackets, closeBracketsKeymap} from '@codemirror/autocomplete';
-import {linter, lintGutter, setDiagnostics} from '@codemirror/lint';
+import {setDiagnostics} from '@codemirror/lint';
 import type {Diagnostic} from '@codemirror/lint';
 import {oneDark} from '@codemirror/theme-one-dark';
 import {listen} from '@tauri-apps/api/event';
@@ -1002,18 +1002,7 @@ export function EditorWindow() {
                 autocompletion({ activateOnTyping: true, maxRenderedOptions: 10 })
             );
 
-            // Enable linters for supported languages
-            if (language === 'json') {
-                extensions.push(lintGutter(), linter(jsonLinter, { delay: 300 }));
-            } else if (language === 'xml') {
-                extensions.push(lintGutter(), linter(xmlLinter, { delay: 300 }));
-            } else if (language === 'python') {
-                extensions.push(lintGutter(), linter(pythonLinter, { delay: 300 }));
-            } else if (language === 'html') {
-                extensions.push(lintGutter(), linter(htmlLinter, { delay: 300 }));
-            } else if (language === 'yaml') {
-                extensions.push(lintGutter(), linter(yamlLinter, { delay: 300 }));
-            }
+            // Keep validation manual to avoid persistent inline error underlines.
         }
 
         const lightThemes = ['light', 'solarized-light'];
