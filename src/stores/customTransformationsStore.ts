@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import type { CustomTransformation, CustomTransformationsData } from '../types';
+import { executeUserTransformation } from '../lib/secureTransformExecution';
 
 interface TransformationResult {
   success: boolean;
@@ -20,56 +21,8 @@ interface CustomTransformationsState {
   updateTransformation: (id: string, updates: Partial<CustomTransformation>) => void;
   deleteTransformation: (id: string) => void;
   toggleTransformation: (id: string) => void;
-  executeTransformation: (id: string, text: string) => TransformationResult;
+  executeTransformation: (id: string, text: string) => Promise<TransformationResult>;
   getEnabledTransformations: () => CustomTransformation[];
-}
-
-// Safe execution of user code with error handling
-function executeUserCode(code: string, text: string): TransformationResult {
-  try {
-    // Create a function from the user's code
-    // The function receives 'text' as input and should return transformed text
-    // We wrap it in a try-catch and add a timeout mechanism
-    const wrappedCode = `
-      "use strict";
-      return (function(text) {
-        ${code}
-      })(inputText);
-    `;
-
-    // Create and execute the function
-    const fn = new Function('inputText', wrappedCode);
-    const result = fn(text);
-
-    // Validate the result
-    if (result === undefined || result === null) {
-      return {
-        success: false,
-        error: 'Transformation returned undefined or null. Make sure to return a string.',
-      };
-    }
-
-    if (typeof result !== 'string') {
-      // Try to convert to string
-      const stringResult = String(result);
-      return {
-        success: true,
-        result: stringResult,
-      };
-    }
-
-    return {
-      success: true,
-      result,
-    };
-  } catch (error) {
-    // Handle syntax errors and runtime errors
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return {
-      success: false,
-      error: `Transformation error: ${errorMessage}`,
-    };
-  }
 }
 
 export const useCustomTransformationsStore = create<CustomTransformationsState>((set, get) => ({
@@ -157,7 +110,7 @@ export const useCustomTransformationsStore = create<CustomTransformationsState>(
     get().saveTransformations();
   },
 
-  executeTransformation: (id, text) => {
+  executeTransformation: async (id, text) => {
     const transformation = get().transformations.find((t) => t.id === id);
     if (!transformation) {
       return {
@@ -173,7 +126,7 @@ export const useCustomTransformationsStore = create<CustomTransformationsState>(
       };
     }
 
-    return executeUserCode(transformation.code, text);
+    return executeUserTransformation(transformation.code, text);
   },
 
   getEnabledTransformations: () => {

@@ -148,7 +148,7 @@ export function GitHubDeviceFlowModal({
 
   const handleOpenGitHub = async () => {
     try {
-      await invoke('open_url', { url: flowStart.verification_uri });
+      await invoke('open_github_url', { url: flowStart.verification_uri });
     } catch (err) {
       console.error('Failed to open URL:', err);
       setError('Failed to open GitHub. Please visit manually: ' + flowStart.verification_uri);

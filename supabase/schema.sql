@@ -74,11 +74,5 @@ CREATE POLICY "Service role has full access to device_activations"
     ON device_activations FOR ALL
     USING (auth.role() = 'service_role');
 
--- Allow anon to read licenses (needed for validation)
-CREATE POLICY "Anon can validate licenses"
-    ON licenses FOR SELECT
-    USING (true);
-
-CREATE POLICY "Anon can read device activations"
-    ON device_activations FOR SELECT
-    USING (true);
+-- Do not grant anonymous read access to license data.
+-- Public validation happens via edge functions using service_role.

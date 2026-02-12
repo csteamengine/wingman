@@ -1,0 +1,43 @@
+name: Security Audit
+
+on:
+  pull_request:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+jobs:
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm ci
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
+
+  rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Rust crate audit
+        run: cargo audit
+
+  signing-posture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check signing posture
+        run: |
+          if grep -q '"signingIdentity": null' src-tauri/tauri.conf.json; then
+            echo "::warning::macOS signingIdentity is null. Use a Developer ID identity for production notarized builds."
+          fi

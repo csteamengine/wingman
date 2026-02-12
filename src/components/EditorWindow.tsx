@@ -531,7 +531,7 @@ export function EditorWindow() {
 
     const handleGistToastOpen = useCallback(async () => {
         if (gistToast) {
-            await invoke('open_url', { url: gistToast.html_url });
+            await invoke('open_github_url', { url: gistToast.html_url });
             setGistToast(null);
             await hideWindow();
         }
@@ -763,7 +763,7 @@ export function EditorWindow() {
     }, [settings, isPro]);
 
     // Handle pinned custom transformation execution
-    const handlePinnedTransform = useCallback((transformation: typeof customTransformations[0]) => {
+    const handlePinnedTransform = useCallback(async (transformation: typeof customTransformations[0]) => {
         const view = viewRef.current;
         if (!view) return;
 
@@ -775,7 +775,7 @@ export function EditorWindow() {
 
         if (!text.trim()) return;
 
-        const result = executeCustomTransformation(transformation.id, text);
+        const result = await executeCustomTransformation(transformation.id, text);
 
         if (!result.success) {
             setValidationToast({ type: 'error', message: result.error || 'Transformation failed' });

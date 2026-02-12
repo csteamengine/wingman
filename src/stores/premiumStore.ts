@@ -393,7 +393,7 @@ export const usePremiumStore = create<PremiumState>((set, get) => ({
 
   openObsidianNote: async (openUri: string) => {
     try {
-      await invoke('open_url', { url: openUri });
+      await invoke('open_obsidian_url', { url: openUri });
     } catch (error) {
       console.error('Failed to open Obsidian note:', error);
     }

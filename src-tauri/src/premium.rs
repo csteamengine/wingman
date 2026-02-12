@@ -615,7 +615,11 @@ struct PortalSessionResponse {
 }
 
 /// Create a Stripe Customer Portal session URL for subscription management
-pub async fn create_customer_portal_session(license_key: &str) -> Result<String, PremiumError> {
+pub async fn create_customer_portal_session(
+    license_key: &str,
+    email: &str,
+    device_id: &str,
+) -> Result<String, PremiumError> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
@@ -631,7 +635,9 @@ pub async fn create_customer_portal_session(license_key: &str) -> Result<String,
         .header("Authorization", format!("Bearer {}", SUPABASE_PUBLISHABLE_KEY))
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
-            "license_key": license_key
+            "license_key": license_key,
+            "email": email,
+            "device_id": device_id
         }))
         .send()
         .await

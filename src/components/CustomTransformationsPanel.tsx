@@ -4,6 +4,7 @@ import { useEditorStore } from '../stores/editorStore';
 import { ProFeatureGate } from './ProFeatureGate';
 import { IconPicker, getIconComponent } from './IconPicker';
 import type { CustomTransformation } from '../types';
+import { executeUserTransformation } from '../lib/secureTransformExecution';
 
 const DEFAULT_CODE = `// Transform the input text and return the result
 // The 'text' variable contains the input
@@ -48,7 +49,7 @@ interface TransformationEditorProps {
   transformation: CustomTransformation | null;
   onSave: (data: Omit<CustomTransformation, 'id' | 'created_at' | 'updated_at'>) => void;
   onCancel: () => void;
-  onTest: (code: string) => { success: boolean; result?: string; error?: string };
+  onTest: (code: string) => Promise<{ success: boolean; result?: string; error?: string }>;
 }
 
 function TransformationEditor({ transformation, onSave, onCancel, onTest }: TransformationEditorProps) {
@@ -59,10 +60,13 @@ function TransformationEditor({ transformation, onSave, onCancel, onTest }: Tran
   const [pinnedToToolbar, setPinnedToToolbar] = useState(transformation?.pinned_to_toolbar || false);
   const [testResult, setTestResult] = useState<{ success: boolean; result?: string; error?: string } | null>(null);
   const [showExamples, setShowExamples] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
 
-  const handleTest = useCallback(() => {
-    const result = onTest(code);
+  const handleTest = useCallback(async () => {
+    setIsTesting(true);
+    const result = await onTest(code);
     setTestResult(result);
+    setIsTesting(false);
   }, [code, onTest]);
 
   const handleSave = useCallback(() => {
@@ -211,9 +215,10 @@ function TransformationEditor({ transformation, onSave, onCancel, onTest }: Tran
       <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--ui-border)]">
         <button
           onClick={handleTest}
+          disabled={isTesting}
           className="px-3 py-1.5 text-sm text-[var(--ui-text)] border border-[var(--ui-border)] rounded-md hover:bg-[var(--ui-hover)]"
         >
-          Test with Sample
+          {isTesting ? 'Testing...' : 'Test with Sample'}
         </button>
         <div className="flex gap-2">
           <button
@@ -264,26 +269,9 @@ function CustomTransformationsPanelContent() {
     loadTransformations();
   }, [loadTransformations]);
 
-  const handleTest = useCallback((code: string) => {
+  const handleTest = useCallback(async (code: string) => {
     const testText = 'Hello World\nThis is a test.\nLine 3';
-    try {
-      const wrappedCode = `
-        "use strict";
-        return (function(text) {
-          ${code}
-        })(inputText);
-      `;
-      const fn = new Function('inputText', wrappedCode);
-      const result = fn(testText);
-
-      if (result === undefined || result === null) {
-        return { success: false, error: 'Function returned undefined/null' };
-      }
-
-      return { success: true, result: String(result) };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
-    }
+    return executeUserTransformation(code, testText);
   }, []);
 
   const handleSave = useCallback((data: Omit<CustomTransformation, 'id' | 'created_at' | 'updated_at'>) => {

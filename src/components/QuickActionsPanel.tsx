@@ -708,7 +708,7 @@ export function QuickActionsPanel() {
 
                     // Extract the custom transformation ID from the action ID
                     const transformId = action.id.replace('custom_', '');
-                    const result = executeTransformation(transformId, text);
+                    const result = await executeTransformation(transformId, text);
 
                     if (!result.success) {
                         setError(result.error || 'Transformation failed');

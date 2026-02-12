@@ -1,5 +1,4 @@
 import {useState, useEffect, useCallback, useRef} from 'react';
-import {open} from '@tauri-apps/plugin-shell';
 import {invoke} from '@tauri-apps/api/core';
 import {listen} from '@tauri-apps/api/event';
 import {useSettings} from '../hooks/useSettings';
@@ -13,6 +12,7 @@ import {ObsidianConfig} from './ObsidianConfig';
 import {GitHubSettings} from './GitHubSettings';
 import {ProBadge} from './ProFeatureGate';
 import {getLicenseKey} from '../lib/secureStorage';
+import { openExternalUrl } from '../utils/openExternalUrl';
 import type {ThemeType} from '../types';
 
 const THEMES: { value: ThemeType; label: string; isPro: boolean }[] = [
@@ -304,7 +304,7 @@ export function SettingsPanel() {
     const openDownloadUrl = async () => {
         const url = updateInfo?.download_url;
         if (url) {
-            await open(url);
+            await openExternalUrl(url, ['github.com', 'objects.githubusercontent.com', 'wingman-dev.app']);
         }
     };
 
@@ -947,16 +947,9 @@ export function SettingsPanel() {
                                     </p>
                                     <button
                                         onClick={async () => {
-                                            const licenseKey = await getLicenseKey();
-                                            if (!licenseKey) {
-                                                alert('License key not found. Please activate your license first.');
-                                                return;
-                                            }
                                             try {
-                                                const portalUrl = await invoke<string>('create_customer_portal_session_cmd', {
-                                                    licenseKey
-                                                });
-                                                await open(portalUrl);
+                                                const portalUrl = await invoke<string>('create_customer_portal_session_cmd');
+                                                await openExternalUrl(portalUrl, ['billing.stripe.com', 'stripe.com']);
                                             } catch (error) {
                                                 console.error('Failed to open customer portal:', error);
                                                 alert(`Failed to open customer portal: ${error}`);

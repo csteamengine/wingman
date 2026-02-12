@@ -38,7 +38,7 @@ use hotkey::{get_default_hotkey, validate_hotkey};
 use license::{
     check_license_status, is_feature_enabled, load_license_cache, refresh_license,
     validate_license_online, deactivate_license_online, clear_license_cache,
-    get_cached_license_key, LicenseStatusInfo, ProFeature,
+    get_cached_license_key, get_device_id, LicenseStatusInfo, ProFeature,
 };
 use premium::{
     validate_premium_license, get_ai_usage, call_ai_feature, create_customer_portal_session,
@@ -989,8 +989,17 @@ async fn get_ai_usage_cmd(license_key: String) -> Result<UsageStats, String> {
 }
 
 #[tauri::command]
-async fn create_customer_portal_session_cmd(license_key: String) -> Result<String, String> {
-    create_customer_portal_session(&license_key)
+async fn create_customer_portal_session_cmd() -> Result<String, String> {
+    let cache = load_license_cache().map_err(|e| e.to_string())?;
+    let license_key = cache
+        .license_key
+        .ok_or_else(|| "No active license key found".to_string())?;
+    let email = cache
+        .email
+        .ok_or_else(|| "No active license email found".to_string())?;
+    let device_id = get_device_id().map_err(|e| e.to_string())?;
+
+    create_customer_portal_session(&license_key, &email, &device_id)
         .await
         .map_err(|e| e.to_string())
 }
@@ -1048,13 +1057,13 @@ fn add_to_obsidian(content: String) -> Result<ObsidianResult, String> {
     })
 }
 
-/// Open a URL (used for opening Obsidian notes from toast notification)
-#[tauri::command]
-fn open_url(url: String) -> Result<(), String> {
+fn open_with_system_handler(url: &str) -> Result<(), String> {
+    let trimmed = url.trim();
+
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open")
-            .arg(&url)
+            .arg(trimmed)
             .spawn()
             .map_err(|e| format!("Failed to open URL: {}", e))?;
     }
@@ -1062,7 +1071,7 @@ fn open_url(url: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("cmd")
-            .args(["/C", "start", "", &url])
+            .args(["/C", "start", "", trimmed])
             .spawn()
             .map_err(|e| format!("Failed to open URL: {}", e))?;
     }
@@ -1070,12 +1079,45 @@ fn open_url(url: String) -> Result<(), String> {
     #[cfg(target_os = "linux")]
     {
         std::process::Command::new("xdg-open")
-            .arg(&url)
+            .arg(trimmed)
             .spawn()
             .map_err(|e| format!("Failed to open URL: {}", e))?;
     }
 
     Ok(())
+}
+
+fn is_allowed_https_host(url: &str, allowed_hosts: &[&str]) -> bool {
+    let trimmed = url.trim();
+    if !trimmed.to_ascii_lowercase().starts_with("https://") {
+        return false;
+    }
+
+    let rest = &trimmed[8..];
+    let host_port = rest
+        .split('/')
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let host = host_port.split(':').next().unwrap_or("");
+
+    allowed_hosts.iter().any(|allowed| host == *allowed)
+}
+
+#[tauri::command]
+fn open_github_url(url: String) -> Result<(), String> {
+    if !is_allowed_https_host(&url, &["github.com", "gist.github.com"]) {
+        return Err("Blocked URL host for GitHub open operation.".to_string());
+    }
+    open_with_system_handler(&url)
+}
+
+#[tauri::command]
+fn open_obsidian_url(url: String) -> Result<(), String> {
+    if !url.trim().to_ascii_lowercase().starts_with("obsidian://") {
+        return Err("Blocked URL scheme for Obsidian open operation.".to_string());
+    }
+    open_with_system_handler(&url)
 }
 
 // AI commands
@@ -1817,7 +1859,8 @@ pub fn run() {
             configure_obsidian,
             validate_obsidian_vault_cmd,
             add_to_obsidian,
-            open_url,
+            open_obsidian_url,
+            open_github_url,
             // GitHub
             start_github_device_flow,
             poll_github_device_flow,

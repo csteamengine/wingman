@@ -4,13 +4,55 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://wingman-dev.app",
+  "https://www.wingman-dev.app",
+  "http://localhost:5173",
+  "tauri://localhost",
+  "https://tauri.localhost",
+];
 
-// Generate a license key in format: XXXX-XXXX-XXXX-XXXX
+function getAllowedOrigins(): string[] {
+  const envOrigins = Deno.env.get("CORS_ORIGINS");
+  if (!envOrigins) return DEFAULT_ALLOWED_ORIGINS;
+  const parsed = envOrigins.split(",").map((o) => o.trim()).filter(Boolean);
+  return parsed.length > 0 ? parsed : DEFAULT_ALLOWED_ORIGINS;
+}
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin");
+  const allowedOrigins = getAllowedOrigins();
+  const isAllowed = !origin || allowedOrigins.includes(origin);
+  const resolvedOrigin = origin && isAllowed ? origin : allowedOrigins[0];
+  return {
+    "Access-Control-Allow-Origin": resolvedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
+
+function timingSafeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function secureRandomInt(max: number): number {
+  if (max <= 0) throw new Error("max must be > 0");
+  const limit = Math.floor(0x1_0000_0000 / max) * max;
+  const bytes = new Uint32Array(1);
+  while (true) {
+    crypto.getRandomValues(bytes);
+    const value = bytes[0];
+    if (value < limit) return value % max;
+  }
+}
+
+// Generate a license key in format: XXXX-XXXX-XXXX-XXXX using CSPRNG
 function generateLicenseKey(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   const segments: string[] = [];
@@ -18,7 +60,7 @@ function generateLicenseKey(): string {
   for (let i = 0; i < 4; i++) {
     let segment = "";
     for (let j = 0; j < 4; j++) {
-      const randomIndex = Math.floor(Math.random() * chars.length);
+      const randomIndex = secureRandomInt(chars.length);
       segment += chars[randomIndex];
     }
     segments.push(segment);
@@ -30,10 +72,6 @@ function generateLicenseKey(): string {
 // Send license key email via Resend
 async function sendLicenseEmail(email: string, licenseKey: string): Promise<boolean> {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
-
-  console.log("sendLicenseEmail called for:", email);
-  console.log("RESEND_API_KEY present:", !!resendApiKey);
-  console.log("RESEND_API_KEY length:", resendApiKey?.length || 0);
 
   if (!resendApiKey) {
     console.error("RESEND_API_KEY not configured");
@@ -80,8 +118,6 @@ async function sendLicenseEmail(email: string, licenseKey: string): Promise<bool
       `,
     };
 
-    console.log("Sending email to Resend API...");
-
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -92,15 +128,13 @@ async function sendLicenseEmail(email: string, licenseKey: string): Promise<bool
     });
 
     const responseText = await response.text();
-    console.log("Resend API response status:", response.status);
-    console.log("Resend API response body:", responseText);
 
     if (!response.ok) {
       console.error("Resend API error:", responseText);
       return false;
     }
 
-    console.log("License email sent successfully to:", email);
+    console.log("License email sent successfully");
     return true;
   } catch (error) {
     console.error("Failed to send email, error:", error);
@@ -119,15 +153,15 @@ async function verifyStripeSignature(
     const parts = signature.split(",");
 
     let timestamp = "";
-    let v1Signature = "";
+    const v1Signatures: string[] = [];
 
     for (const part of parts) {
       const [key, value] = part.split("=");
       if (key === "t") timestamp = value;
-      if (key === "v1") v1Signature = value;
+      if (key === "v1" && value) v1Signatures.push(value);
     }
 
-    if (!timestamp || !v1Signature) {
+    if (!timestamp || v1Signatures.length === 0) {
       console.error("Invalid signature format");
       return false;
     }
@@ -160,7 +194,7 @@ async function verifyStripeSignature(
       .map(b => b.toString(16).padStart(2, "0"))
       .join("");
 
-    return expectedSignature === v1Signature;
+    return v1Signatures.some((sig) => timingSafeEqualHex(expectedSignature, sig));
   } catch (error) {
     console.error("Signature verification error:", error);
     return false;
@@ -168,6 +202,7 @@ async function verifyStripeSignature(
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -231,7 +266,7 @@ serve(async (req) => {
       const sessionId = session.id;
       const customerId = session.customer;
 
-      console.log("Checkout completed (one-time payment):", { email, sessionId, customerId, mode });
+      console.log("Checkout completed (one-time payment)");
 
       if (!email) {
         console.error("No email in checkout session");
@@ -280,7 +315,7 @@ serve(async (req) => {
         .single();
 
       if (existingPremiumLicense) {
-        console.log("User already has Premium license, skipping Pro email:", email);
+        console.log("User already has Premium license, skipping Pro email");
         return new Response(
           JSON.stringify({
             success: true,
@@ -323,11 +358,7 @@ serve(async (req) => {
         );
       }
 
-      console.log("License created:", {
-        license_key: licenseKey,
-        email,
-        session_id: sessionId,
-      });
+      console.log("License created successfully");
 
       // Send license key email
       const emailSent = await sendLicenseEmail(email, licenseKey);
