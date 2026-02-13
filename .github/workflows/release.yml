@@ -417,6 +417,7 @@ jobs:
         with:
           tag_name: ${{ steps.get_version.outputs.TAG }}
           name: Wingman ${{ steps.get_version.outputs.TAG }}
+          generate_release_notes: true
           body: |
             ## Wingman ${{ steps.get_version.outputs.TAG }}
 
@@ -440,6 +441,9 @@ jobs:
             - History and snippets
             - Multiple themes (Dark, Light, Solarized, Dracula, Nord)
             - In-app auto-updates
+            
+            ---
+            ## Changes Since Last Release
           draft: false
           prerelease: false
           files: release-files/*
