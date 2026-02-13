@@ -943,6 +943,17 @@ export function EditorWindow() {
         }
     }, [hasImageSupport, addImage]);
 
+    const handleEditorPaneMouseDownCapture = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+        if (event.button !== 0) return;
+        const view = viewRef.current;
+        if (!view) return;
+
+        // Clicking empty editor space can target non-editable DOM nodes. Keep editor focus stable.
+        requestAnimationFrame(() => {
+            view.focus();
+        });
+    }, []);
+
     // Focus editor when window becomes visible
     useEffect(() => {
         const shouldFocusEditor = isVisible && activePanel === 'editor';
@@ -1179,6 +1190,7 @@ export function EditorWindow() {
                     fontFamily: settings?.font_family || 'monospace',
                     fontSize: `${settings?.font_size || 14}px`,
                 }}
+                onMouseDownCapture={handleEditorPaneMouseDownCapture}
             />
 
             <AttachmentsBar
