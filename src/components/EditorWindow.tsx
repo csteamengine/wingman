@@ -89,6 +89,22 @@ function parseErrorPosition(errorMsg: string): { line: number; column: number } 
     return null;
 }
 
+const NON_EDITABLE_ANNOUNCEMENTS = new Set([
+    'selection deleted',
+    'selected deleted',
+    'selection removed',
+    'text deleted',
+    'text added',
+    'text formatted',
+    'content formatted',
+]);
+
+function isNonEditableAnnouncement(text: string | null | undefined): boolean {
+    if (!text) return false;
+    const normalized = text.toLowerCase().replace(/[^a-z]+/g, ' ').trim();
+    return NON_EDITABLE_ANNOUNCEMENTS.has(normalized);
+}
+
 // Show an error diagnostic at a specific position in the editor, auto-clears after timeout
 function showErrorDiagnostic(
     view: EditorView,
@@ -984,14 +1000,12 @@ export function EditorWindow() {
     useEffect(() => {
         if (!editorRef.current) return;
 
-        const preventSelectionDeletedTextInsertion = EditorView.domEventHandlers({
+        const preventAnnouncementTextInsertion = EditorView.domEventHandlers({
             beforeinput(event, view) {
                 const inputEvent = event as InputEvent;
-                const insertedText = inputEvent.data?.trim().toLowerCase();
-                const isDeletionAnnouncement =
-                    insertedText === 'selection deleted' || insertedText === 'selected deleted';
+                const isBlockedAnnouncement = isNonEditableAnnouncement(inputEvent.data);
 
-                if (!isDeletionAnnouncement) return false;
+                if (!isBlockedAnnouncement) return false;
 
                 event.preventDefault();
                 const selection = view.state.selection.main;
@@ -1010,7 +1024,7 @@ export function EditorWindow() {
             EditorState.allowMultipleSelections.of(true),
             drawSelection(),
             dropCursor(),
-            preventSelectionDeletedTextInsertion,
+            preventAnnouncementTextInsertion,
             editorKeymap,
             keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
             searchPanelExtension,
