@@ -382,6 +382,15 @@ body {
   outline: none;
 }
 
+/* Prevent global :focus-visible box-shadow (red accent ring) from
+   applying to the contenteditable .cm-content and other inner elements.
+   Without this, the 1px --ui-accent box-shadow renders as a visible
+   red underline beneath the active line. */
+.cm-editor *:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
 .cm-editor .cm-gutters {
   background: transparent;
   border-right: 1px solid var(--ui-border);
