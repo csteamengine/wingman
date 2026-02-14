@@ -30,7 +30,13 @@ function SnippetsPanelContent() {
     disconnectSnippetFromGitHub,
   } = useSnippets();
   const { setActivePanel, content } = useEditorStore();
-  const { isAuthenticated: isGitHubAuthenticated, loadAuthStatus, gistLoading } = useGitHubStore();
+  const {
+    isAuthenticated: isGitHubAuthenticated,
+    config,
+    loadAuthStatus,
+    loadConfig,
+    gistLoading,
+  } = useGitHubStore();
 
   const [isCreating, setIsCreating] = useState(false);
   const [newSnippetName, setNewSnippetName] = useState('');
@@ -42,11 +48,13 @@ function SnippetsPanelContent() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    loadConfig();
     loadAuthStatus();
-  }, [loadAuthStatus]);
+  }, [loadConfig, loadAuthStatus]);
 
   const safeSelectedIndex = snippets.length > 0 ? Math.min(selectedIndex, snippets.length - 1) : 0;
   const selectedSnippet = snippets[safeSelectedIndex] || null;
+  const canUseGitHubActions = (isGitHubAuthenticated || !!config?.is_authenticated) && !gistLoading;
 
   useEffect(() => {
     if (isCreating) return;
@@ -128,6 +136,15 @@ function SnippetsPanelContent() {
     }
   };
 
+  const handleDeleteSnippet = async (snippet: Snippet, e: React.MouseEvent) => {
+    const warning = snippet.github_gist_id
+      ? `Delete snippet "${snippet.name}"?\n\nThis snippet is linked to GitHub and this will also permanently delete the linked GitHub Gist.`
+      : `Delete snippet "${snippet.name}"?`;
+    const confirmed = window.confirm(warning);
+    if (!confirmed) return;
+    await handleDelete(snippet.id, e);
+  };
+
   return (
     <div className="flex flex-col h-full animate-fade-in">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--ui-border)]">
@@ -150,7 +167,7 @@ function SnippetsPanelContent() {
         />
         <button
           onClick={handleImportGists}
-          disabled={!isGitHubAuthenticated || importingGists}
+          disabled={!canUseGitHubActions || importingGists}
           className="text-xs px-2 py-1 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-all disabled:opacity-50 flex items-center gap-1"
           title="Import Wingman gists from GitHub"
         >
@@ -292,7 +309,7 @@ function SnippetsPanelContent() {
                     <>
                       <button
                         onClick={() => syncSnippetToGitHub(selectedSnippet.id)}
-                        disabled={!isGitHubAuthenticated || gistLoading}
+                        disabled={!canUseGitHubActions}
                         className="text-xs px-3 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] disabled:opacity-50 flex items-center justify-center gap-1"
                       >
                         <CloudUpload size={12} />
@@ -300,7 +317,7 @@ function SnippetsPanelContent() {
                       </button>
                       <button
                         onClick={() => disconnectSnippetFromGitHub(selectedSnippet.id)}
-                        disabled={!isGitHubAuthenticated || gistLoading}
+                        disabled={!canUseGitHubActions}
                         className="text-xs px-3 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] disabled:opacity-50 flex items-center justify-center gap-1"
                       >
                         <Link2Off size={12} />
@@ -310,7 +327,7 @@ function SnippetsPanelContent() {
                   ) : (
                     <button
                       onClick={() => createGistFromSnippet(selectedSnippet.id)}
-                      disabled={!isGitHubAuthenticated || gistLoading}
+                      disabled={!canUseGitHubActions}
                       className="col-span-2 text-xs px-3 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] disabled:opacity-50 flex items-center justify-center gap-1"
                     >
                       <Github size={12} />
@@ -320,7 +337,7 @@ function SnippetsPanelContent() {
                 </div>
 
                 <button
-                  onClick={(e) => handleDelete(selectedSnippet.id, e)}
+                  onClick={(e) => handleDeleteSnippet(selectedSnippet, e)}
                   className="w-full text-xs px-3 py-1.5 rounded-md text-[var(--ui-text-muted)] hover:text-red-400 hover:bg-[var(--ui-hover)] transition-colors"
                 >
                   Delete Snippet {selectedSnippet.github_gist_id ? '(also deletes GitHub gist)' : ''}

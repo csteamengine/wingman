@@ -558,6 +558,16 @@ async fn check_auth_status_internal() -> Result<GitHubAuthStatus, GitHubError> {
                 scopes: vec![],
             })
         }
+        Err(GitHubError::Network(_)) | Err(GitHubError::ApiError(_)) => {
+            // Treat transient connectivity/API failures as "unknown but still authenticated"
+            // if we have a saved token, so users don't need to re-auth every restart.
+            let config = load_config().unwrap_or_default();
+            Ok(GitHubAuthStatus {
+                is_authenticated: true,
+                username: config.username,
+                scopes: vec!["gist".to_string()],
+            })
+        }
         Err(e) => Err(e),
     }
 }

@@ -121,7 +121,6 @@ export const useGitHubStore = create<GitHubState>((set, get) => ({
       }
 
       set({
-        ...defaultState,
         loading: false,
         error: friendlyError,
       });
