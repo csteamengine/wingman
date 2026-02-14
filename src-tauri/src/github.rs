@@ -123,12 +123,12 @@ struct GitHubToken {
 // ============================================================================
 
 fn get_app_data_dir() -> Result<PathBuf, GitHubError> {
-    let app_data_dir = dirs::config_dir()
+    let app_data_dir = dirs::data_dir()
         .ok_or_else(|| GitHubError::Io(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            "Could not find config directory"
+            "Could not find app data directory"
         )))?
-        .join("com.wingman.app");
+        .join("Wingman");
 
     // Create directory if it doesn't exist
     if !app_data_dir.exists() {
@@ -146,6 +146,18 @@ fn get_config_path() -> Result<PathBuf, GitHubError> {
     Ok(get_app_data_dir()?.join("github_config.json"))
 }
 
+fn get_legacy_app_data_dir() -> Option<PathBuf> {
+    dirs::config_dir().map(|p| p.join("com.wingman.app"))
+}
+
+fn get_legacy_token_path() -> Option<PathBuf> {
+    get_legacy_app_data_dir().map(|dir| dir.join("github_token.json"))
+}
+
+fn get_legacy_config_path() -> Option<PathBuf> {
+    get_legacy_app_data_dir().map(|dir| dir.join("github_config.json"))
+}
+
 // ============================================================================
 // Token Storage
 // ============================================================================
@@ -161,21 +173,37 @@ fn save_token_to_file(access_token: &str) -> Result<(), GitHubError> {
         created_at: chrono::Utc::now().to_rfc3339(),
     };
 
-    let token_path = get_token_path()?;
     let json = serde_json::to_string_pretty(&token)?;
-    fs::write(&token_path, json).map_err(|e| GitHubError::TokenSave(e.to_string()))
+    let primary_path = get_token_path()?;
+    fs::write(&primary_path, &json).map_err(|e| GitHubError::TokenSave(e.to_string()))?;
+
+    // Best-effort write to legacy config directory for compatibility with older builds.
+    if let Some(legacy_dir) = get_legacy_app_data_dir() {
+        let _ = fs::create_dir_all(&legacy_dir);
+        let _ = fs::write(legacy_dir.join("github_token.json"), &json);
+    }
+
+    Ok(())
 }
 
 fn load_token_from_file() -> Result<String, GitHubError> {
-    let token_path = get_token_path()?;
-
-    if !token_path.exists() {
-        return Err(GitHubError::NotAuthenticated);
+    let mut candidate_paths = vec![get_token_path()?];
+    if let Some(legacy) = get_legacy_token_path() {
+        if !candidate_paths.contains(&legacy) {
+            candidate_paths.push(legacy);
+        }
     }
 
-    let json = fs::read_to_string(&token_path).map_err(|e| GitHubError::TokenLoad(e.to_string()))?;
-    let token: GitHubToken = serde_json::from_str(&json)?;
-    Ok(token.access_token)
+    for token_path in candidate_paths {
+        if !token_path.exists() {
+            continue;
+        }
+        let json = fs::read_to_string(&token_path).map_err(|e| GitHubError::TokenLoad(e.to_string()))?;
+        let token: GitHubToken = serde_json::from_str(&json)?;
+        return Ok(token.access_token);
+    }
+
+    Err(GitHubError::NotAuthenticated)
 }
 
 pub fn save_token(access_token: &str) -> Result<(), GitHubError> {
@@ -227,6 +255,11 @@ pub fn delete_token() -> Result<(), GitHubError> {
     if token_path.exists() {
         fs::remove_file(&token_path)?;
     }
+    if let Some(legacy_token_path) = get_legacy_token_path() {
+        if legacy_token_path.exists() {
+            let _ = fs::remove_file(legacy_token_path);
+        }
+    }
 
     Ok(())
 }
@@ -236,22 +269,37 @@ pub fn delete_token() -> Result<(), GitHubError> {
 // ============================================================================
 
 pub fn save_config(config: &GitHubConfig) -> Result<(), GitHubError> {
-    let config_path = get_config_path()?;
     let json = serde_json::to_string_pretty(config)?;
-    fs::write(&config_path, json)?;
+    let config_path = get_config_path()?;
+    fs::write(&config_path, &json)?;
+
+    // Best-effort write to legacy config directory for compatibility.
+    if let Some(legacy_dir) = get_legacy_app_data_dir() {
+        let _ = fs::create_dir_all(&legacy_dir);
+        let _ = fs::write(legacy_dir.join("github_config.json"), &json);
+    }
+
     Ok(())
 }
 
 pub fn load_config() -> Result<GitHubConfig, GitHubError> {
-    let config_path = get_config_path()?;
-
-    if !config_path.exists() {
-        return Ok(GitHubConfig::default());
+    let mut candidate_paths = vec![get_config_path()?];
+    if let Some(legacy) = get_legacy_config_path() {
+        if !candidate_paths.contains(&legacy) {
+            candidate_paths.push(legacy);
+        }
     }
 
-    let json = fs::read_to_string(&config_path)?;
-    let config: GitHubConfig = serde_json::from_str(&json)?;
-    Ok(config)
+    for config_path in candidate_paths {
+        if !config_path.exists() {
+            continue;
+        }
+        let json = fs::read_to_string(&config_path)?;
+        let config: GitHubConfig = serde_json::from_str(&json)?;
+        return Ok(config);
+    }
+
+    Ok(GitHubConfig::default())
 }
 
 // ============================================================================
