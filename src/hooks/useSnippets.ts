@@ -10,6 +10,7 @@ export function useSnippets() {
     searchQuery,
     loadSnippets,
     addSnippet,
+    renameSnippet,
     updateSnippet,
     deleteSnippet,
     createGistFromSnippet,
@@ -57,6 +58,13 @@ export function useSnippets() {
     [updateSnippet]
   );
 
+  const handleRename = useCallback(
+    async (id: string, name: string) => {
+      return await renameSnippet(id, name);
+    },
+    [renameSnippet]
+  );
+
   const handleDelete = useCallback(
     async (id: string, e?: React.MouseEvent) => {
       if (e) {
@@ -85,6 +93,7 @@ export function useSnippets() {
     handleInsert,
     handleEditInEditor,
     handleSaveCurrentAsSnippet,
+    handleRename,
     handleUpdate,
     handleDelete,
     createGistFromSnippet,

@@ -24,6 +24,7 @@ function SnippetsPanelContent() {
     handleInsert,
     handleEditInEditor,
     handleSaveCurrentAsSnippet,
+    handleRename,
     handleDelete,
     createGistFromSnippet,
     syncSnippetToGitHub,
@@ -44,6 +45,9 @@ function SnippetsPanelContent() {
   const [newSnippetContent, setNewSnippetContent] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [importingGists, setImportingGists] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const [gistAction, setGistAction] = useState<{ id: string; type: 'create' | 'disconnect' } | null>(null);
 
   const listRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +60,16 @@ function SnippetsPanelContent() {
   const safeSelectedIndex = snippets.length > 0 ? Math.min(selectedIndex, snippets.length - 1) : 0;
   const selectedSnippet = snippets[safeSelectedIndex] || null;
   const canUseGitHubActions = (isGitHubAuthenticated || !!config?.is_authenticated) && !gistLoading;
+  const creatingSelectedGist = !!(
+    selectedSnippet &&
+    gistAction?.id === selectedSnippet.id &&
+    gistAction.type === 'create'
+  );
+  const disconnectingSelectedGist = !!(
+    selectedSnippet &&
+    gistAction?.id === selectedSnippet.id &&
+    gistAction.type === 'disconnect'
+  );
 
   useEffect(() => {
     if (isCreating) return;
@@ -109,6 +123,10 @@ function SnippetsPanelContent() {
     }
   }, [selectedIndex]);
 
+  useEffect(() => {
+    setRenameValue(selectedSnippet?.name ?? '');
+  }, [selectedSnippet?.id, selectedSnippet?.name]);
+
   const startCreating = () => {
     setNewSnippetContent(content);
     setIsCreating(true);
@@ -139,16 +157,41 @@ function SnippetsPanelContent() {
   };
 
   const handleCreateSnippetGist = async (snippet: Snippet) => {
-    const created = await createGistFromSnippet(snippet.id);
-    if (created) {
-      await loadSnippets();
+    if (gistAction) return;
+    setGistAction({ id: snippet.id, type: 'create' });
+    try {
+      const created = await createGistFromSnippet(snippet.id);
+      if (created) {
+        await loadSnippets();
+      }
+    } finally {
+      setGistAction(null);
     }
   };
 
   const handleRemoveSnippetGist = async (snippet: Snippet) => {
-    const removed = await disconnectSnippetFromGitHub(snippet.id);
-    if (removed) {
-      await loadSnippets();
+    if (gistAction) return;
+    setGistAction({ id: snippet.id, type: 'disconnect' });
+    try {
+      const removed = await disconnectSnippetFromGitHub(snippet.id);
+      if (removed) {
+        await loadSnippets();
+      }
+    } finally {
+      setGistAction(null);
+    }
+  };
+
+  const handleRenameSelectedSnippet = async () => {
+    if (!selectedSnippet || !renameValue.trim() || renaming) return;
+    setRenaming(true);
+    try {
+      const renamed = await handleRename(selectedSnippet.id, renameValue.trim());
+      if (renamed) {
+        await loadSnippets();
+      }
+    } finally {
+      setRenaming(false);
     }
   };
 
@@ -270,7 +313,22 @@ function SnippetsPanelContent() {
             <>
               <div className="flex-1 overflow-auto p-4">
                 <div className="mb-3">
-                  <h3 className="text-sm font-medium text-[var(--ui-text)]">{selectedSnippet.name}</h3>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      className="flex-1 bg-[var(--ui-surface)] text-sm px-2 py-1.5 rounded-md border border-[var(--ui-border)] outline-none focus:border-[var(--ui-accent)]"
+                      placeholder="Snippet name"
+                    />
+                    <button
+                      onClick={handleRenameSelectedSnippet}
+                      disabled={renaming || !renameValue.trim() || renameValue.trim() === selectedSnippet.name}
+                      className="text-xs px-2.5 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] disabled:opacity-50"
+                    >
+                      {renaming ? 'Saving...' : 'Rename'}
+                    </button>
+                  </div>
                   {selectedSnippet.tags.length > 0 && (
                     <div className="flex gap-1 mt-2">
                       {selectedSnippet.tags.map((tag) => (
@@ -333,21 +391,21 @@ function SnippetsPanelContent() {
                       </button>
                       <button
                         onClick={() => handleRemoveSnippetGist(selectedSnippet)}
-                        disabled={!canUseGitHubActions}
+                        disabled={!canUseGitHubActions || !!gistAction}
                         className="text-xs px-3 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] disabled:opacity-50 flex items-center justify-center gap-1"
                       >
-                        <Link2Off size={12} />
-                        <span>Remove from GitHub</span>
+                        {disconnectingSelectedGist ? <RefreshCw size={12} className="animate-spin" /> : <Link2Off size={12} />}
+                        <span>{disconnectingSelectedGist ? 'Removing...' : 'Remove from GitHub'}</span>
                       </button>
                     </>
                   ) : (
                     <button
                       onClick={() => handleCreateSnippetGist(selectedSnippet)}
-                      disabled={!canUseGitHubActions}
+                      disabled={!canUseGitHubActions || !!gistAction}
                       className="col-span-2 text-xs px-3 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] disabled:opacity-50 flex items-center justify-center gap-1"
                     >
-                      <Github size={12} />
-                      <span>Create GitHub Gist</span>
+                      {creatingSelectedGist ? <RefreshCw size={12} className="animate-spin" /> : <Github size={12} />}
+                      <span>{creatingSelectedGist ? 'Creating...' : 'Create GitHub Gist'}</span>
                     </button>
                   )}
                 </div>

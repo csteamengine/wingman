@@ -19,6 +19,7 @@ interface SnippetsState {
     githubSource?: string
   ) => Promise<Snippet | null>;
   updateSnippet: (id: string, name: string, content: string, tags: string[]) => Promise<void>;
+  renameSnippet: (id: string, name: string) => Promise<boolean>;
   deleteSnippet: (id: string) => Promise<void>;
   createGistFromSnippet: (id: string) => Promise<boolean>;
   syncSnippetToGitHub: (id: string) => Promise<boolean>;
@@ -124,6 +125,68 @@ export const useSnippetsStore = create<SnippetsState>((set, get) => ({
     } catch (error) {
       console.error('Failed to update snippet:', error);
       set({ error: String(error) });
+    }
+  },
+
+  renameSnippet: async (id: string, name: string) => {
+    const snippet = get().snippets.find((s) => s.id === id);
+    const trimmedName = name.trim();
+    if (!snippet || !trimmedName) return false;
+
+    const nextFilename = sanitizeFilename(trimmedName);
+
+    try {
+      await invoke('update_snippet', {
+        id,
+        name: trimmedName,
+        content: snippet.content,
+        tags: snippet.tags,
+      });
+
+      if (snippet.github_gist_id) {
+        const gistResult = await invoke<{ html_url: string }>('update_github_gist', {
+          gistId: snippet.github_gist_id,
+          content: snippet.content,
+          filename: nextFilename,
+          description: `Wingman snippet: ${trimmedName}`,
+        });
+
+        await invoke('set_snippet_github_info', {
+          id: snippet.id,
+          gistId: snippet.github_gist_id,
+          gistUrl: gistResult.html_url,
+          gistFilename: nextFilename,
+          githubSource: snippet.github_source || 'wingman',
+        });
+
+        const syncedAt = nowIso();
+        set((state) => ({
+          snippets: state.snippets.map((s) =>
+            s.id === id
+              ? {
+                  ...s,
+                  name: trimmedName,
+                  github_gist_url: gistResult.html_url,
+                  github_gist_filename: nextFilename,
+                  github_synced_at: syncedAt,
+                  updated_at: syncedAt,
+                }
+              : s
+          ),
+        }));
+      } else {
+        set((state) => ({
+          snippets: state.snippets.map((s) =>
+            s.id === id ? { ...s, name: trimmedName, updated_at: nowIso() } : s
+          ),
+        }));
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Failed to rename snippet:', error);
+      set({ error: String(error) });
+      return false;
     }
   },
 
