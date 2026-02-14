@@ -18,7 +18,7 @@ import type {Diagnostic} from '@codemirror/lint';
 import {oneDark} from '@codemirror/theme-one-dark';
 import {listen} from '@tauri-apps/api/event';
 import {invoke} from '@tauri-apps/api/core';
-import {Check, X} from 'lucide-react';
+import {Check, CloudUpload, X} from 'lucide-react';
 import {formatCode} from '../lib/formatters';
 import {getLicenseKey} from '../lib/secureStorage';
 
@@ -188,7 +188,7 @@ export function EditorWindow() {
         snippetEditSession,
         clearSnippetEditSession,
     } = useEditorStore();
-    const { snippets, updateSnippet, addSnippetLinkedToGist } = useSnippetsStore();
+    const { snippets, updateSnippet, syncSnippetToGitHub, addSnippetLinkedToGist } = useSnippetsStore();
 
     const {settings, updateSettings} = useSettingsStore();
     const {tier, devTierOverride} = useLicenseStore();
@@ -576,7 +576,7 @@ export function EditorWindow() {
         }
     }, [gistToast, hideWindow]);
 
-    const handleSaveSnippetEdit = useCallback(async () => {
+    const handleSaveSnippetEdit = useCallback(async (syncToGitHub = false) => {
         if (!snippetEditSession) return;
         const existingSnippet = snippets.find(s => s.id === snippetEditSession.snippetId);
         await updateSnippet(
@@ -585,9 +585,20 @@ export function EditorWindow() {
             content,
             existingSnippet?.tags || []
         );
+        if (syncToGitHub && existingSnippet?.github_gist_id) {
+            await syncSnippetToGitHub(snippetEditSession.snippetId);
+        }
         setValidationToast({ type: 'success', message: 'Snippet updated' });
         clearSnippetEditSession();
-    }, [snippetEditSession, snippets, updateSnippet, content, setValidationToast, clearSnippetEditSession]);
+    }, [
+        snippetEditSession,
+        snippets,
+        updateSnippet,
+        syncSnippetToGitHub,
+        content,
+        setValidationToast,
+        clearSnippetEditSession,
+    ]);
 
     // Format handler
     const handleFormat = useCallback(async () => {
@@ -1221,12 +1232,21 @@ export function EditorWindow() {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                         <button
-                            onClick={handleSaveSnippetEdit}
+                            onClick={() => handleSaveSnippetEdit(false)}
                             className="text-xs px-2.5 py-1.5 rounded-md bg-[var(--ui-accent)] text-white hover:brightness-110 flex items-center gap-1"
                         >
                             <Check size={12} />
                             Save
                         </button>
+                        {snippets.find(s => s.id === snippetEditSession.snippetId)?.github_gist_id && (
+                            <button
+                                onClick={() => handleSaveSnippetEdit(true)}
+                                className="text-xs px-2.5 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-1"
+                            >
+                                <CloudUpload size={12} />
+                                Save + Sync GitHub
+                            </button>
+                        )}
                         <button
                             onClick={clearSnippetEditSession}
                             className="text-xs px-2.5 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-1"
