@@ -1,6 +1,6 @@
 [package]
 name = "wingman"
-version = "0.7.12"
+version = "0.7.13"
 description = "Wingman - Cross-Platform Text Composition Tool"
 authors = ["Wingman Contributors"]
 license = "MIT"
