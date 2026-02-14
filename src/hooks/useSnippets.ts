@@ -80,6 +80,7 @@ export function useSnippets() {
     allSnippets: snippets,
     loading,
     searchQuery,
+    loadSnippets,
     handleSearch,
     handleInsert,
     handleEditInEditor,

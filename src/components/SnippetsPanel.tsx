@@ -19,6 +19,7 @@ function SnippetsPanelContent() {
     snippets,
     loading,
     searchQuery,
+    loadSnippets,
     handleSearch,
     handleInsert,
     handleEditInEditor,
@@ -131,8 +132,23 @@ function SnippetsPanelContent() {
     setImportingGists(true);
     try {
       await importWingmanGists();
+      await loadSnippets();
     } finally {
       setImportingGists(false);
+    }
+  };
+
+  const handleCreateSnippetGist = async (snippet: Snippet) => {
+    const created = await createGistFromSnippet(snippet.id);
+    if (created) {
+      await loadSnippets();
+    }
+  };
+
+  const handleRemoveSnippetGist = async (snippet: Snippet) => {
+    const removed = await disconnectSnippetFromGitHub(snippet.id);
+    if (removed) {
+      await loadSnippets();
     }
   };
 
@@ -316,17 +332,17 @@ function SnippetsPanelContent() {
                         <span>Sync</span>
                       </button>
                       <button
-                        onClick={() => disconnectSnippetFromGitHub(selectedSnippet.id)}
+                        onClick={() => handleRemoveSnippetGist(selectedSnippet)}
                         disabled={!canUseGitHubActions}
                         className="text-xs px-3 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] disabled:opacity-50 flex items-center justify-center gap-1"
                       >
                         <Link2Off size={12} />
-                        <span>Disconnect</span>
+                        <span>Remove from GitHub</span>
                       </button>
                     </>
                   ) : (
                     <button
-                      onClick={() => createGistFromSnippet(selectedSnippet.id)}
+                      onClick={() => handleCreateSnippetGist(selectedSnippet)}
                       disabled={!canUseGitHubActions}
                       className="col-span-2 text-xs px-3 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] disabled:opacity-50 flex items-center justify-center gap-1"
                     >
