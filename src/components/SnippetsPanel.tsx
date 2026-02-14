@@ -75,10 +75,24 @@ function SnippetsPanelContent() {
     if (isCreating) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement as HTMLElement | null;
+      const isEditableElement =
+        !!activeElement &&
+        (activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.tagName === 'SELECT' ||
+          activeElement.isContentEditable);
+      const isSearchFocused = activeElement === searchInputRef.current;
+
+      // Don't hijack typing/navigation while user is editing any input other than search.
+      if (isEditableElement && !isSearchFocused) {
+        return;
+      }
+
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         e.stopPropagation();
-        if (document.activeElement === searchInputRef.current) {
+        if (isSearchFocused) {
           searchInputRef.current?.blur();
         }
         setSelectedIndex((prev) => Math.min(prev + 1, snippets.length - 1));
@@ -88,7 +102,7 @@ function SnippetsPanelContent() {
       if (e.key === 'ArrowUp') {
         e.preventDefault();
         e.stopPropagation();
-        if (document.activeElement === searchInputRef.current) {
+        if (isSearchFocused) {
           searchInputRef.current?.blur();
         }
         setSelectedIndex((prev) => Math.max(prev - 1, 0));
@@ -98,7 +112,7 @@ function SnippetsPanelContent() {
       if (e.key === 'Enter') {
         e.preventDefault();
         e.stopPropagation();
-        if (document.activeElement === searchInputRef.current) {
+        if (isSearchFocused) {
           searchInputRef.current?.blur();
         }
         if (snippets[selectedIndex]) {
@@ -107,7 +121,7 @@ function SnippetsPanelContent() {
         return;
       }
 
-      if (document.activeElement !== searchInputRef.current && e.key.length === 1 && !e.metaKey && !e.ctrlKey) {
+      if (!isEditableElement && e.key.length === 1 && !e.metaKey && !e.ctrlKey) {
         searchInputRef.current?.focus();
       }
     };
