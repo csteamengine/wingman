@@ -182,10 +182,8 @@ pub fn save_token(access_token: &str) -> Result<(), GitHubError> {
     // Primary: OS keychain
     if let Ok(entry) = get_keyring_entry() {
         if entry.set_password(access_token).is_ok() {
-            // Best effort cleanup of legacy plaintext token file
-            if let Ok(token_path) = get_token_path() {
-                let _ = fs::remove_file(token_path);
-            }
+            // Also persist fallback file in case keychain access fails on future launches.
+            save_token_to_file(access_token)?;
             return Ok(());
         }
     }
@@ -209,11 +207,7 @@ pub fn load_token() -> Result<String, GitHubError> {
 
     // Best-effort migration back into keychain when possible
     if let Ok(entry) = get_keyring_entry() {
-        if entry.set_password(&token).is_ok() {
-            if let Ok(token_path) = get_token_path() {
-                let _ = fs::remove_file(token_path);
-            }
-        }
+        let _ = entry.set_password(&token);
     }
 
     Ok(token)

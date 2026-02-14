@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
-import type { GitHubConfig, Snippet, SnippetsData, WingmanGist } from '../types';
+import type { GitHubAuthStatus, GitHubConfig, Snippet, SnippetsData, WingmanGist } from '../types';
 
 interface SnippetsState {
   snippets: Snippet[];
@@ -150,6 +150,12 @@ export const useSnippetsStore = create<SnippetsState>((set, get) => ({
     if (!snippet) return false;
 
     try {
+      const authStatus = await invoke<GitHubAuthStatus>('check_github_auth_status');
+      if (!authStatus.is_authenticated) {
+        set({ error: 'Not authenticated with GitHub. Please authorize in Settings.' });
+        return false;
+      }
+
       const config = await invoke<GitHubConfig>('get_github_config');
       const filename = snippet.github_gist_filename || sanitizeFilename(snippet.name);
       const result = await invoke<{ gist_id: string; html_url: string }>('create_github_gist', {
@@ -186,7 +192,12 @@ export const useSnippetsStore = create<SnippetsState>((set, get) => ({
       return true;
     } catch (error) {
       console.error('Failed to create gist from snippet:', error);
-      set({ error: String(error) });
+      const message = String(error);
+      set({
+        error: message.includes('Not authenticated')
+          ? 'Not authenticated with GitHub. Please authorize in Settings.'
+          : message,
+      });
       return false;
     }
   },
