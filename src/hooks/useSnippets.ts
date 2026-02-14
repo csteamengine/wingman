@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useSnippetsStore } from '../stores/snippetsStore';
 import { useEditorStore } from '../stores/editorStore';
 import type { Snippet } from '../types';
@@ -12,11 +12,15 @@ export function useSnippets() {
     addSnippet,
     updateSnippet,
     deleteSnippet,
+    createGistFromSnippet,
+    syncSnippetToGitHub,
+    importWingmanGists,
+    disconnectSnippetFromGitHub,
+    addSnippetLinkedToGist,
     setSearchQuery,
     getFilteredSnippets,
   } = useSnippetsStore();
-  const { content, setContent, setActivePanel } = useEditorStore();
-  const [editingSnippet, setEditingSnippet] = useState<Snippet | null>(null);
+  const { content, setContent, setActivePanel, startSnippetEditSession } = useEditorStore();
 
   useEffect(() => {
     loadSnippets();
@@ -49,7 +53,6 @@ export function useSnippets() {
   const handleUpdate = useCallback(
     async (id: string, name: string, snippetContent: string, tags: string[]) => {
       await updateSnippet(id, name, snippetContent, tags);
-      setEditingSnippet(null);
     },
     [updateSnippet]
   );
@@ -64,17 +67,29 @@ export function useSnippets() {
     [deleteSnippet]
   );
 
+  const handleEditInEditor = useCallback(
+    (snippet: Snippet) => {
+      startSnippetEditSession(snippet);
+      setActivePanel('editor');
+    },
+    [setActivePanel, startSnippetEditSession]
+  );
+
   return {
     snippets: getFilteredSnippets(),
     allSnippets: snippets,
     loading,
     searchQuery,
-    editingSnippet,
-    setEditingSnippet,
     handleSearch,
     handleInsert,
+    handleEditInEditor,
     handleSaveCurrentAsSnippet,
     handleUpdate,
     handleDelete,
+    createGistFromSnippet,
+    syncSnippetToGitHub,
+    importWingmanGists,
+    disconnectSnippetFromGitHub,
+    addSnippetLinkedToGist,
   };
 }

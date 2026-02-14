@@ -6,6 +6,7 @@ import type {
   GitHubAuthStatus,
   DeviceFlowStart,
   GistResult,
+  WingmanGist,
 } from '../types';
 
 interface GitHubState {
@@ -31,6 +32,9 @@ interface GitHubState {
   pollDeviceFlow: (deviceCode: string) => Promise<boolean>;
   logout: () => Promise<void>;
   createGist: (content: string, language: string, description?: string) => Promise<GistResult | null>;
+  listWingmanGists: () => Promise<WingmanGist[]>;
+  updateGist: (gistId: string, content: string, filename?: string, description?: string) => Promise<GistResult | null>;
+  deleteGist: (gistId: string) => Promise<boolean>;
   loadConfig: () => Promise<void>;
   saveConfig: (config: Partial<GitHubConfig>) => Promise<boolean>;
   clearGistResult: () => void;
@@ -310,6 +314,55 @@ export const useGitHubStore = create<GitHubState>((set, get) => ({
         lastGistResult: null,
       });
       return null;
+    }
+  },
+
+  listWingmanGists: async () => {
+    set({ loading: true, error: null });
+    try {
+      const gists = await invoke<WingmanGist[]>('list_wingman_gists');
+      set({ loading: false, error: null });
+      return gists;
+    } catch (error) {
+      const errorMessage = String(error);
+      set({ loading: false, error: `Failed to load gists: ${errorMessage}` });
+      return [];
+    }
+  },
+
+  updateGist: async (gistId: string, content: string, filename?: string, description?: string) => {
+    if (!content.trim()) {
+      set({ error: 'Cannot sync gist: content is empty' });
+      return null;
+    }
+
+    set({ gistLoading: true, error: null });
+    try {
+      const result = await invoke<GistResult>('update_github_gist', {
+        gistId,
+        content,
+        filename: filename ?? null,
+        description: description ?? null,
+      });
+      set({ gistLoading: false, error: null, lastGistResult: result });
+      return result;
+    } catch (error) {
+      const errorMessage = String(error);
+      set({ gistLoading: false, error: `Failed to sync gist: ${errorMessage}` });
+      return null;
+    }
+  },
+
+  deleteGist: async (gistId: string) => {
+    set({ gistLoading: true, error: null });
+    try {
+      await invoke('delete_github_gist', { gistId });
+      set({ gistLoading: false, error: null });
+      return true;
+    } catch (error) {
+      const errorMessage = String(error);
+      set({ gistLoading: false, error: `Failed to delete gist: ${errorMessage}` });
+      return false;
     }
   },
 

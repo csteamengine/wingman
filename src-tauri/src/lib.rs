@@ -27,8 +27,9 @@ use window::{start_workspace_monitor, set_window_blur, update_vibrancy_material,
 use clipboard::{calculate_text_stats, transform_text, TextStats, TextTransform};
 use credentials::{store_credential, get_credential, delete_credential};
 use github::{
-    check_github_auth_status, create_github_gist, get_github_config, logout_github,
-    poll_github_device_flow, save_github_config, start_github_device_flow,
+    check_github_auth_status, create_github_gist, delete_github_gist, get_github_config,
+    list_wingman_gists, logout_github, poll_github_device_flow, save_github_config,
+    start_github_device_flow, update_github_gist,
 };
 use history::{
     add_entry, cleanup_old_entries, clear_history, delete_entry, export_history, get_entries,
@@ -164,6 +165,11 @@ fn add_snippet(
         tags,
         created_at: now.clone(),
         updated_at: now,
+        github_gist_id: None,
+        github_gist_url: None,
+        github_gist_filename: None,
+        github_synced_at: None,
+        github_source: None,
     };
     data.snippets.push(snippet.clone());
     save_snippets(&data).map_err(|e| e.to_string())?;
@@ -191,6 +197,40 @@ fn update_snippet(
 fn delete_snippet(id: String) -> Result<(), String> {
     let mut data = load_snippets().map_err(|e| e.to_string())?;
     data.snippets.retain(|s| s.id != id);
+    save_snippets(&data).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn set_snippet_github_info(
+    id: String,
+    gist_id: String,
+    gist_url: String,
+    gist_filename: Option<String>,
+    github_source: Option<String>,
+) -> Result<(), String> {
+    let mut data = load_snippets().map_err(|e| e.to_string())?;
+    if let Some(snippet) = data.snippets.iter_mut().find(|s| s.id == id) {
+        snippet.github_gist_id = Some(gist_id);
+        snippet.github_gist_url = Some(gist_url);
+        snippet.github_gist_filename = gist_filename;
+        snippet.github_synced_at = Some(chrono::Utc::now().to_rfc3339());
+        snippet.github_source = github_source;
+        snippet.updated_at = chrono::Utc::now().to_rfc3339();
+    }
+    save_snippets(&data).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn clear_snippet_github_info(id: String) -> Result<(), String> {
+    let mut data = load_snippets().map_err(|e| e.to_string())?;
+    if let Some(snippet) = data.snippets.iter_mut().find(|s| s.id == id) {
+        snippet.github_gist_id = None;
+        snippet.github_gist_url = None;
+        snippet.github_gist_filename = None;
+        snippet.github_synced_at = None;
+        snippet.github_source = None;
+        snippet.updated_at = chrono::Utc::now().to_rfc3339();
+    }
     save_snippets(&data).map_err(|e| e.to_string())
 }
 
@@ -1787,6 +1827,8 @@ pub fn run() {
             add_snippet,
             update_snippet,
             delete_snippet,
+            set_snippet_github_info,
+            clear_snippet_github_info,
             // Custom AI Prompts
             get_custom_ai_prompts,
             save_custom_ai_prompts_data,
@@ -1866,6 +1908,9 @@ pub fn run() {
             poll_github_device_flow,
             check_github_auth_status,
             create_github_gist,
+            list_wingman_gists,
+            update_github_gist,
+            delete_github_gist,
             logout_github,
             get_github_config,
             save_github_config,

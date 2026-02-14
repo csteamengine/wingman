@@ -18,6 +18,7 @@ import type {Diagnostic} from '@codemirror/lint';
 import {oneDark} from '@codemirror/theme-one-dark';
 import {listen} from '@tauri-apps/api/event';
 import {invoke} from '@tauri-apps/api/core';
+import {Check, X} from 'lucide-react';
 import {formatCode} from '../lib/formatters';
 import {getLicenseKey} from '../lib/secureStorage';
 
@@ -30,6 +31,7 @@ import {useDragStore} from '../stores/dragStore';
 import {useCustomAIPromptsStore} from '../stores/customAIPromptsStore';
 import {useDiffStore} from '../stores/diffStore';
 import {useCustomTransformationsStore} from '../stores/customTransformationsStore';
+import {useSnippetsStore} from '../stores/snippetsStore';
 
 import {DiffPreviewModal} from './DiffPreviewModal';
 import {DiffReviewModal} from './DiffReviewModal';
@@ -183,7 +185,10 @@ export function EditorWindow() {
         saveToFile,
         validationToast,
         setValidationToast,
+        snippetEditSession,
+        clearSnippetEditSession,
     } = useEditorStore();
+    const { snippets, updateSnippet, addSnippetLinkedToGist } = useSnippetsStore();
 
     const {settings, updateSettings} = useSettingsStore();
     const {tier, devTierOverride} = useLicenseStore();
@@ -535,9 +540,19 @@ export function EditorWindow() {
 
         const result = await createGist(content, language || 'plaintext');
         if (result) {
+            const snippetName = `Gist ${new Date().toLocaleString()}`;
+            await addSnippetLinkedToGist(
+                snippetName,
+                content,
+                result.gist_id,
+                result.html_url,
+                null,
+                ['github', 'wingman'],
+                'wingman'
+            );
             setGistToast(result);
         }
-    }, [content, language, createGist, isGitHubAuthenticated, setValidationToast]);
+    }, [content, language, createGist, isGitHubAuthenticated, setValidationToast, addSnippetLinkedToGist]);
 
     // Copy as File handler
     const handleCopyAsFile = useCallback(async () => {
@@ -560,6 +575,19 @@ export function EditorWindow() {
             await hideWindow();
         }
     }, [gistToast, hideWindow]);
+
+    const handleSaveSnippetEdit = useCallback(async () => {
+        if (!snippetEditSession) return;
+        const existingSnippet = snippets.find(s => s.id === snippetEditSession.snippetId);
+        await updateSnippet(
+            snippetEditSession.snippetId,
+            snippetEditSession.snippetName,
+            content,
+            existingSnippet?.tags || []
+        );
+        setValidationToast({ type: 'success', message: 'Snippet updated' });
+        clearSnippetEditSession();
+    }, [snippetEditSession, snippets, updateSnippet, content, setValidationToast, clearSnippetEditSession]);
 
     // Format handler
     const handleFormat = useCallback(async () => {
@@ -1180,6 +1208,35 @@ export function EditorWindow() {
                 toolbarOrder={settings?.toolbar_order}
                 onToolbarOrderChange={(newOrder) => updateSettings({ toolbar_order: newOrder })}
             />
+
+            {snippetEditSession && (
+                <div className="mx-3 mt-2 mb-1 px-3 py-2 rounded-md border border-[var(--ui-border)] bg-[var(--ui-surface)] flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-xs font-medium text-[var(--ui-text)] truncate">
+                            Editing snippet: {snippetEditSession.snippetName}
+                        </p>
+                        <p className="text-[10px] text-[var(--ui-text-muted)]">
+                            Save updates to apply changes, or cancel to keep text in the editor without snippet mode.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                            onClick={handleSaveSnippetEdit}
+                            className="text-xs px-2.5 py-1.5 rounded-md bg-[var(--ui-accent)] text-white hover:brightness-110 flex items-center gap-1"
+                        >
+                            <Check size={12} />
+                            Save
+                        </button>
+                        <button
+                            onClick={clearSnippetEditSession}
+                            className="text-xs px-2.5 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-1"
+                        >
+                            <X size={12} />
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <FileDragOverlay isDragging={isDragging} />
 

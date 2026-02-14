@@ -1,5 +1,5 @@
-import { keymap } from '@codemirror/view';
-import type { EditorView } from '@codemirror/view';
+import { EditorView, keymap } from '@codemirror/view';
+import { insertNewlineAndIndent } from '@codemirror/commands';
 
 // Helper to wrap selected text with brackets/quotes
 export function wrapSelection(view: EditorView, open: string, close: string): boolean {
@@ -32,6 +32,12 @@ function deleteSelection(view: EditorView): boolean {
         selection: { anchor: selection.from },
     });
     return true;
+}
+
+function scrollCaretIntoView(view: EditorView): void {
+    view.dispatch({
+        effects: EditorView.scrollIntoView(view.state.selection.main.head, { y: 'nearest' }),
+    });
 }
 
 // Editor keymaps: line operations, auto-list continuation, and bracket wrapping
@@ -184,6 +190,7 @@ export const editorKeymap = keymap.of([
                     },
                     selection: { anchor: state.selection.main.head + nextPrefix.length },
                 });
+                scrollCaretIntoView(view);
                 return true;
             }
 
@@ -212,11 +219,16 @@ export const editorKeymap = keymap.of([
                     },
                     selection: { anchor: state.selection.main.head + nextPrefix.length },
                 });
+                scrollCaretIntoView(view);
                 return true;
             }
 
-            // Not a list line, let default Enter behavior handle it
-            return false;
+            // Match default Enter behavior, then ensure caret is visible immediately.
+            const handled = insertNewlineAndIndent(view);
+            if (handled) {
+                scrollCaretIntoView(view);
+            }
+            return handled;
         },
     },
 ]);

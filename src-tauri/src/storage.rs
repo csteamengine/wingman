@@ -185,6 +185,16 @@ pub struct Snippet {
     pub tags: Vec<String>,
     pub created_at: String,
     pub updated_at: String,
+    #[serde(default)]
+    pub github_gist_id: Option<String>,
+    #[serde(default)]
+    pub github_gist_url: Option<String>,
+    #[serde(default)]
+    pub github_gist_filename: Option<String>,
+    #[serde(default)]
+    pub github_synced_at: Option<String>,
+    #[serde(default)]
+    pub github_source: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

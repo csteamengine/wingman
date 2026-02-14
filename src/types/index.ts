@@ -63,6 +63,11 @@ export interface Snippet {
   tags: string[];
   created_at: string;
   updated_at: string;
+  github_gist_id?: string | null;
+  github_gist_url?: string | null;
+  github_gist_filename?: string | null;
+  github_synced_at?: string | null;
+  github_source?: string | null;
 }
 
 export interface SnippetsData {
@@ -209,6 +214,17 @@ export interface GistResult {
   gist_id: string;
   url: string;
   html_url: string;
+}
+
+export interface WingmanGist {
+  gist_id: string;
+  url: string;
+  html_url: string;
+  description: string;
+  filename: string;
+  content: string;
+  updated_at: string;
+  is_public: boolean;
 }
 
 export interface AIConfig {

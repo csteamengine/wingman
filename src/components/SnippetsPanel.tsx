@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { AlignLeft } from 'lucide-react';
+import { AlignLeft, Github, RefreshCw, Link2Off, CloudUpload } from 'lucide-react';
 import { useSnippets } from '../hooks/useSnippets';
 import { useEditorStore } from '../stores/editorStore';
+import { useGitHubStore } from '../stores/githubStore';
 import { ProFeatureGate } from './ProFeatureGate';
 import type { Snippet } from '../types';
 
@@ -13,35 +14,42 @@ export function SnippetsPanel() {
   );
 }
 
-
 function SnippetsPanelContent() {
   const {
     snippets,
     loading,
     searchQuery,
-    editingSnippet,
-    setEditingSnippet,
     handleSearch,
     handleInsert,
+    handleEditInEditor,
     handleSaveCurrentAsSnippet,
-    handleUpdate,
     handleDelete,
+    createGistFromSnippet,
+    syncSnippetToGitHub,
+    importWingmanGists,
+    disconnectSnippetFromGitHub,
   } = useSnippets();
   const { setActivePanel, content } = useEditorStore();
+  const { isAuthenticated: isGitHubAuthenticated, loadAuthStatus, gistLoading } = useGitHubStore();
+
   const [isCreating, setIsCreating] = useState(false);
   const [newSnippetName, setNewSnippetName] = useState('');
   const [newSnippetContent, setNewSnippetContent] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [importingGists, setImportingGists] = useState(false);
+
   const listRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Compute safe index to avoid out-of-bounds when snippets change
+  useEffect(() => {
+    loadAuthStatus();
+  }, [loadAuthStatus]);
+
   const safeSelectedIndex = snippets.length > 0 ? Math.min(selectedIndex, snippets.length - 1) : 0;
   const selectedSnippet = snippets[safeSelectedIndex] || null;
 
-  // Handle keyboard navigation
   useEffect(() => {
-    if (isCreating || editingSnippet) return;
+    if (isCreating) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
@@ -83,9 +91,8 @@ function SnippetsPanelContent() {
 
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [snippets, selectedIndex, handleInsert, isCreating, editingSnippet]);
+  }, [snippets, selectedIndex, handleInsert, isCreating]);
 
-  // Scroll selected item into view
   useEffect(() => {
     if (listRef.current) {
       const selectedElement = listRef.current.querySelector(`[data-index="${selectedIndex}"]`);
@@ -112,9 +119,17 @@ function SnippetsPanelContent() {
     setIsCreating(false);
   };
 
+  const handleImportGists = async () => {
+    setImportingGists(true);
+    try {
+      await importWingmanGists();
+    } finally {
+      setImportingGists(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full animate-fade-in">
-      {/* Search bar - full width at top */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--ui-border)]">
         <button
           onClick={() => setActivePanel('editor')}
@@ -134,6 +149,15 @@ function SnippetsPanelContent() {
           className="flex-1 bg-transparent text-sm text-[var(--ui-text)] placeholder-[var(--ui-text-muted)] outline-none"
         />
         <button
+          onClick={handleImportGists}
+          disabled={!isGitHubAuthenticated || importingGists}
+          className="text-xs px-2 py-1 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-all disabled:opacity-50 flex items-center gap-1"
+          title="Import Wingman gists from GitHub"
+        >
+          {importingGists ? <RefreshCw size={12} className="animate-spin" /> : <Github size={12} />}
+          <span>Import Gists</span>
+        </button>
+        <button
           onClick={startCreating}
           className="text-xs px-2 py-1 rounded-md bg-[var(--ui-accent)] text-white hover:brightness-110 transition-all flex-shrink-0"
         >
@@ -141,7 +165,6 @@ function SnippetsPanelContent() {
         </button>
       </div>
 
-      {/* Create form */}
       {isCreating && (
         <div className="px-4 py-3 border-b border-[var(--ui-border)] bg-[var(--ui-surface)]">
           <input
@@ -179,15 +202,11 @@ function SnippetsPanelContent() {
         </div>
       )}
 
-      {/* Main content area - two columns */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left column - list */}
         <div className="w-1/2 flex flex-col border-r border-[var(--ui-border)]">
           <div className="flex-1 overflow-auto" ref={listRef}>
             {loading ? (
-              <div className="flex items-center justify-center h-32 text-[var(--ui-text-muted)]">
-                Loading...
-              </div>
+              <div className="flex items-center justify-center h-32 text-[var(--ui-text-muted)]">Loading...</div>
             ) : snippets.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-32 text-[var(--ui-text-muted)]">
                 <p className="text-sm">No snippets yet</p>
@@ -195,11 +214,9 @@ function SnippetsPanelContent() {
               </div>
             ) : (
               <div className="py-1">
-                {/* Section header */}
                 <div className="px-4 py-2">
                   <span className="text-xs font-medium text-[var(--ui-text-muted)] uppercase tracking-wide">Saved</span>
                 </div>
-                {/* List items */}
                 {snippets.map((snippet, index) => (
                   <SnippetItem
                     key={snippet.id}
@@ -215,11 +232,9 @@ function SnippetsPanelContent() {
           </div>
         </div>
 
-        {/* Right column - preview */}
         <div className="w-1/2 flex flex-col">
-          {selectedSnippet && !editingSnippet ? (
+          {selectedSnippet ? (
             <>
-              {/* Preview content */}
               <div className="flex-1 overflow-auto p-4">
                 <div className="mb-3">
                   <h3 className="text-sm font-medium text-[var(--ui-text)]">{selectedSnippet.name}</h3>
@@ -244,17 +259,19 @@ function SnippetsPanelContent() {
                   </pre>
                 </div>
 
-                {/* Metadata */}
                 <div className="space-y-0.5">
                   <div className="text-xs font-medium text-[var(--ui-text-muted)] uppercase tracking-wide mb-2">
                     Information
                   </div>
                   <MetadataRow label="Lines" value={String(selectedSnippet.content.split('\n').length)} />
                   <MetadataRow label="Characters" value={String(selectedSnippet.content.length)} />
+                  <MetadataRow
+                    label="GitHub"
+                    value={selectedSnippet.github_gist_id ? `Linked (${selectedSnippet.github_gist_id.slice(0, 8)}...)` : 'Not linked'}
+                  />
                 </div>
               </div>
 
-              {/* Action buttons */}
               <div className="p-3 border-t border-[var(--ui-border)] space-y-2">
                 <button
                   onClick={() => handleInsert(selectedSnippet)}
@@ -263,28 +280,53 @@ function SnippetsPanelContent() {
                   <span>Insert to Editor</span>
                   <span className="kbd">↵</span>
                 </button>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setEditingSnippet(selectedSnippet)}
-                    className="flex-1 text-xs px-3 py-1.5 rounded-md text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={(e) => handleDelete(selectedSnippet.id, e)}
-                    className="flex-1 text-xs px-3 py-1.5 rounded-md text-[var(--ui-text-muted)] hover:text-red-400 hover:bg-[var(--ui-hover)] transition-colors"
-                  >
-                    Delete
-                  </button>
+                <button
+                  onClick={() => handleEditInEditor(selectedSnippet)}
+                  className="w-full text-xs px-3 py-1.5 rounded-md text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
+                >
+                  Edit in Editor
+                </button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedSnippet.github_gist_id ? (
+                    <>
+                      <button
+                        onClick={() => syncSnippetToGitHub(selectedSnippet.id)}
+                        disabled={!isGitHubAuthenticated || gistLoading}
+                        className="text-xs px-3 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] disabled:opacity-50 flex items-center justify-center gap-1"
+                      >
+                        <CloudUpload size={12} />
+                        <span>Sync</span>
+                      </button>
+                      <button
+                        onClick={() => disconnectSnippetFromGitHub(selectedSnippet.id)}
+                        disabled={!isGitHubAuthenticated || gistLoading}
+                        className="text-xs px-3 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] disabled:opacity-50 flex items-center justify-center gap-1"
+                      >
+                        <Link2Off size={12} />
+                        <span>Disconnect</span>
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => createGistFromSnippet(selectedSnippet.id)}
+                      disabled={!isGitHubAuthenticated || gistLoading}
+                      className="col-span-2 text-xs px-3 py-1.5 rounded-md bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] disabled:opacity-50 flex items-center justify-center gap-1"
+                    >
+                      <Github size={12} />
+                      <span>Create GitHub Gist</span>
+                    </button>
+                  )}
                 </div>
+
+                <button
+                  onClick={(e) => handleDelete(selectedSnippet.id, e)}
+                  className="w-full text-xs px-3 py-1.5 rounded-md text-[var(--ui-text-muted)] hover:text-red-400 hover:bg-[var(--ui-hover)] transition-colors"
+                >
+                  Delete Snippet {selectedSnippet.github_gist_id ? '(also deletes GitHub gist)' : ''}
+                </button>
               </div>
             </>
-          ) : editingSnippet ? (
-            <EditSnippetForm
-              snippet={editingSnippet}
-              onUpdate={handleUpdate}
-              onCancel={() => setEditingSnippet(null)}
-            />
           ) : (
             <div className="flex-1 flex items-center justify-center text-[var(--ui-text-muted)]">
               <p className="text-sm">Select a snippet to preview</p>
@@ -293,7 +335,6 @@ function SnippetsPanelContent() {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="px-4 py-2 border-t border-[var(--ui-border)] rounded-b-[10px] text-xs text-[var(--ui-text-muted)] flex justify-between">
         <span>{snippets.length} snippets</span>
         <span className="opacity-50">↑↓ navigate · ↵ insert</span>
@@ -307,50 +348,6 @@ function MetadataRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between py-1.5 text-xs border-b border-[var(--ui-border)] last:border-0">
       <span className="text-[var(--ui-text-muted)]">{label}</span>
       <span className="text-[var(--ui-text)]">{value}</span>
-    </div>
-  );
-}
-
-interface EditSnippetFormProps {
-  snippet: Snippet;
-  onUpdate: (id: string, name: string, content: string, tags: string[]) => void;
-  onCancel: () => void;
-}
-
-function EditSnippetForm({ snippet, onUpdate, onCancel }: EditSnippetFormProps) {
-  const [editName, setEditName] = useState(snippet.name);
-  const [editContent, setEditContent] = useState(snippet.content);
-
-  return (
-    <div className="flex-1 flex flex-col p-4">
-      <div className="text-xs font-medium text-[var(--ui-text-muted)] uppercase tracking-wide mb-3">
-        Edit Snippet
-      </div>
-      <input
-        type="text"
-        value={editName}
-        onChange={(e) => setEditName(e.target.value)}
-        placeholder="Snippet name..."
-        className="w-full bg-[var(--ui-surface)] text-sm px-3 py-2 rounded-md border border-[var(--ui-border)] outline-none focus:border-[var(--ui-accent)] mb-2"
-        autoFocus
-      />
-      <textarea
-        value={editContent}
-        onChange={(e) => setEditContent(e.target.value)}
-        className="flex-1 w-full bg-[var(--ui-surface)] text-sm px-3 py-2 rounded-md border border-[var(--ui-border)] outline-none focus:border-[var(--ui-accent)] resize-none font-mono"
-        placeholder="Snippet content..."
-      />
-      <div className="flex gap-2 mt-3">
-        <button
-          onClick={() => onUpdate(snippet.id, editName, editContent, snippet.tags)}
-          className="text-xs px-3 py-1.5 rounded-md bg-[var(--ui-accent)] text-white"
-        >
-          Save
-        </button>
-        <button onClick={onCancel} className="text-xs px-3 py-1.5 rounded-md hover:bg-[var(--ui-hover)]">
-          Cancel
-        </button>
-      </div>
     </div>
   );
 }
@@ -377,15 +374,15 @@ function SnippetItem({ snippet, index, isSelected, onPreview, onInsert }: Snippe
       role="button"
       tabIndex={-1}
     >
-      {/* Icon */}
       <div className={`flex-shrink-0 ${isSelected ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text-muted)]'}`}>
         <AlignLeft size={16} />
       </div>
-
-      {/* Content */}
       <div className="flex-1 min-w-0">
         <p className="text-sm truncate">{snippet.name}</p>
       </div>
+      {snippet.github_gist_id && (
+        <Github size={12} className="text-[var(--ui-text-muted)] flex-shrink-0" />
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import type { EditorView } from '@codemirror/view';
-import type { TextStats, PanelType } from '../types';
+import type { Snippet, TextStats, PanelType } from '../types';
 import { useDiffStore } from './diffStore';
 import { useSettingsStore } from './settingsStore';
 import { useLicenseStore } from './licenseStore';
@@ -30,6 +30,12 @@ export interface ValidationToast {
   message: string;
 }
 
+export interface SnippetEditSession {
+  snippetId: string;
+  snippetName: string;
+  originalContent: string;
+}
+
 interface EditorState {
   content: string;
   language: string;
@@ -43,12 +49,15 @@ interface EditorState {
   images: EditorAttachment[]; // Keep as 'images' for compatibility
   nextImageId: number;
   validationToast: ValidationToast | null;
+  snippetEditSession: SnippetEditSession | null;
   // Settings panel navigation state
   initialSettingsTab: SettingsTab | null;
   shouldCheckUpdates: boolean;
   setContent: (content: string) => void;
   setLanguage: (language: string) => void;
   setValidationToast: (toast: ValidationToast | null) => void;
+  startSnippetEditSession: (snippet: Snippet) => void;
+  clearSnippetEditSession: () => void;
   setActivePanel: (panel: PanelType) => void;
   setEditorView: (view: EditorView | null) => void;
   addFile: (file: File) => Promise<number>;
@@ -108,6 +117,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   images: [],
   nextImageId: 1,
   validationToast: null,
+  snippetEditSession: null,
   initialSettingsTab: null,
   shouldCheckUpdates: false,
 
@@ -151,6 +161,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setValidationToast: (toast: ValidationToast | null) => {
     set({ validationToast: toast });
+  },
+
+  startSnippetEditSession: (snippet: Snippet) => {
+    set({
+      content: snippet.content,
+      activePanel: 'editor',
+      snippetEditSession: {
+        snippetId: snippet.id,
+        snippetName: snippet.name,
+        originalContent: snippet.content,
+      },
+    });
+    get().updateStats();
+  },
+
+  clearSnippetEditSession: () => {
+    set({ snippetEditSession: null });
   },
 
   setActivePanel: (panel: PanelType) => {

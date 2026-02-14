@@ -251,16 +251,16 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
             decorations.push({ from: lineFrom, to: lineFrom, decoration: mdListItem });
 
             if (!cursorInLine) {
-                // Hide the `- ` or `* ` marker and replace with bullet widget
+                // Replace the raw `- ` / `* ` marker with a visual bullet.
+                // Using a single replace decoration avoids mixed marker artifacts.
                 const markerStart = lineFrom + indentLen;
                 const markerEnd = markerStart + 2; // `- ` or `* `
-                decorations.push({ from: markerStart, to: markerEnd, decoration: mdHidden });
-                widgets.push({
-                    pos: markerStart,
-                    widget: Decoration.widget({
+                decorations.push({
+                    from: markerStart,
+                    to: markerEnd,
+                    decoration: Decoration.replace({
                         widget: new BulletWidget(indentLen),
-                        side: 1,
-                    })
+                    }),
                 });
             }
         }

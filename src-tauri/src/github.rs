@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use keyring::Entry;
@@ -8,6 +9,7 @@ use keyring::Entry;
 const GITHUB_CLIENT_ID: &str = "Iv23liEWBm84xdG4FROh";
 const KEYRING_SERVICE_NAME: &str = "com.wingman.app";
 const KEYRING_GITHUB_ACCOUNT: &str = "github_access_token";
+const WINGMAN_GIST_MARKER: &str = "[Wingman]";
 
 // ============================================================================
 // Error Types
@@ -96,6 +98,18 @@ pub struct GistResult {
     pub gist_id: String,
     pub url: String,
     pub html_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WingmanGist {
+    pub gist_id: String,
+    pub url: String,
+    pub html_url: String,
+    pub description: String,
+    pub filename: String,
+    pub content: String,
+    pub updated_at: String,
+    pub is_public: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -281,6 +295,30 @@ struct GistResponse {
     id: String,
     url: String,
     html_url: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GistSummaryResponse {
+    id: String,
+    description: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GistDetailResponse {
+    id: String,
+    url: String,
+    html_url: String,
+    description: Option<String>,
+    updated_at: String,
+    #[serde(rename = "public")]
+    is_public: bool,
+    files: HashMap<String, GistFileDetail>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GistFileDetail {
+    filename: Option<String>,
+    content: Option<String>,
 }
 
 // ============================================================================
@@ -524,6 +562,60 @@ async fn check_auth_status_internal() -> Result<GitHubAuthStatus, GitHubError> {
     }
 }
 
+fn has_wingman_marker(description: &str) -> bool {
+    description.to_lowercase().contains(&WINGMAN_GIST_MARKER.to_lowercase())
+}
+
+fn ensure_wingman_marker(description: &str) -> String {
+    let trimmed = description.trim();
+    if has_wingman_marker(trimmed) {
+        return trimmed.to_string();
+    }
+    if trimmed.is_empty() {
+        return format!("{} Created with Wingman", WINGMAN_GIST_MARKER);
+    }
+    format!("{} {}", WINGMAN_GIST_MARKER, trimmed)
+}
+
+fn github_authed_client() -> Result<(reqwest::Client, String), GitHubError> {
+    let token = load_token()?;
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()?;
+    Ok((client, token))
+}
+
+async fn get_gist_detail_internal(gist_id: &str) -> Result<GistDetailResponse, GitHubError> {
+    let (client, token) = github_authed_client()?;
+    let response = client
+        .get(format!("https://api.github.com/gists/{}", gist_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "Wingman-Desktop")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(GitHubError::TokenRevoked);
+        }
+        let body = response.text().await.unwrap_or_default();
+        return Err(GitHubError::ApiError(format!(
+            "Failed to load gist {} ({}): {}",
+            gist_id,
+            status.as_u16(),
+            body
+        )));
+    }
+
+    response
+        .json::<GistDetailResponse>()
+        .await
+        .map_err(|e| GitHubError::ApiError(format!("Failed to parse gist response: {}", e)))
+}
+
 // ============================================================================
 // Tauri Commands
 // ============================================================================
@@ -584,6 +676,8 @@ async fn create_gist_internal(
     // Load token
     let token = load_token()?;
 
+    let marked_description = ensure_wingman_marker(description);
+
     // Create gist payload
     let mut files = serde_json::Map::new();
     files.insert(
@@ -594,7 +688,7 @@ async fn create_gist_internal(
     );
 
     let payload = serde_json::json!({
-        "description": description,
+        "description": marked_description,
         "public": is_public,
         "files": files
     });
@@ -688,6 +782,206 @@ pub async fn create_github_gist(
     is_public: bool,
 ) -> Result<GistResult, String> {
     create_gist_internal(&content, &filename, &description, is_public)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+async fn list_wingman_gists_internal() -> Result<Vec<WingmanGist>, GitHubError> {
+    let (client, token) = github_authed_client()?;
+    let response = client
+        .get("https://api.github.com/gists?per_page=100")
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "Wingman-Desktop")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(GitHubError::TokenRevoked);
+        }
+        let body = response.text().await.unwrap_or_default();
+        return Err(GitHubError::ApiError(format!(
+            "Failed to list gists ({}): {}",
+            status.as_u16(),
+            body
+        )));
+    }
+
+    let summaries = response
+        .json::<Vec<GistSummaryResponse>>()
+        .await
+        .map_err(|e| GitHubError::ApiError(format!("Failed to parse gists response: {}", e)))?;
+
+    let mut wingman_gists = Vec::new();
+    for summary in summaries {
+        let description = summary.description.unwrap_or_default();
+        if !has_wingman_marker(&description) {
+            continue;
+        }
+
+        let detail = get_gist_detail_internal(&summary.id).await?;
+        let Some((fallback_filename, file)) = detail.files.iter().next() else {
+            continue;
+        };
+
+        let filename = file
+            .filename
+            .as_ref()
+            .filter(|name| !name.trim().is_empty())
+            .cloned()
+            .unwrap_or_else(|| fallback_filename.to_string());
+
+        let content = file.content.clone().unwrap_or_default();
+
+        wingman_gists.push(WingmanGist {
+            gist_id: detail.id,
+            url: detail.url,
+            html_url: detail.html_url,
+            description: detail.description.unwrap_or_default(),
+            filename,
+            content,
+            updated_at: detail.updated_at,
+            is_public: detail.is_public,
+        });
+    }
+
+    Ok(wingman_gists)
+}
+
+async fn update_gist_internal(
+    gist_id: &str,
+    content: &str,
+    filename: Option<&str>,
+    description: Option<&str>,
+) -> Result<GistResult, GitHubError> {
+    let content = content.trim();
+    if content.is_empty() {
+        return Err(GitHubError::InvalidContent("Content cannot be empty".to_string()));
+    }
+
+    let existing = get_gist_detail_internal(gist_id).await?;
+    let existing_description = existing.description.clone().unwrap_or_default();
+    let updated_description = ensure_wingman_marker(description.unwrap_or(&existing_description));
+
+    let resolved_filename = if let Some(name) = filename {
+        name.trim().to_string()
+    } else if let Some((existing_name, file)) = existing.files.iter().next() {
+        file.filename
+            .as_ref()
+            .filter(|name| !name.trim().is_empty())
+            .cloned()
+            .unwrap_or_else(|| existing_name.to_string())
+    } else {
+        "wingman_gist.txt".to_string()
+    };
+
+    let mut files = serde_json::Map::new();
+    files.insert(
+        resolved_filename,
+        serde_json::json!({
+            "content": content
+        }),
+    );
+
+    let payload = serde_json::json!({
+        "description": updated_description,
+        "files": files
+    });
+
+    let (client, token) = github_authed_client()?;
+    let response = client
+        .patch(format!("https://api.github.com/gists/{}", gist_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "Wingman-Desktop")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .json(&payload)
+        .send()
+        .await?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(GitHubError::TokenRevoked);
+        }
+        let body = response.text().await.unwrap_or_default();
+        return Err(GitHubError::ApiError(format!(
+            "Failed to update gist {} ({}): {}",
+            gist_id,
+            status.as_u16(),
+            body
+        )));
+    }
+
+    let gist_response: GistResponse = response.json().await.map_err(|e| {
+        GitHubError::ApiError(format!("Failed to parse GitHub response: {}", e))
+    })?;
+
+    Ok(GistResult {
+        gist_id: gist_response.id,
+        url: gist_response.url,
+        html_url: gist_response.html_url,
+    })
+}
+
+async fn delete_gist_internal(gist_id: &str) -> Result<(), GitHubError> {
+    let (client, token) = github_authed_client()?;
+    let response = client
+        .delete(format!("https://api.github.com/gists/{}", gist_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "Wingman-Desktop")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .send()
+        .await?;
+
+    if response.status().is_success() || response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(());
+    }
+
+    let status = response.status();
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+        return Err(GitHubError::TokenRevoked);
+    }
+    let body = response.text().await.unwrap_or_default();
+    Err(GitHubError::ApiError(format!(
+        "Failed to delete gist {} ({}): {}",
+        gist_id,
+        status.as_u16(),
+        body
+    )))
+}
+
+#[tauri::command]
+pub async fn list_wingman_gists() -> Result<Vec<WingmanGist>, String> {
+    list_wingman_gists_internal()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_github_gist(
+    gist_id: String,
+    content: String,
+    filename: Option<String>,
+    description: Option<String>,
+) -> Result<GistResult, String> {
+    update_gist_internal(
+        &gist_id,
+        &content,
+        filename.as_deref(),
+        description.as_deref(),
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_github_gist(gist_id: String) -> Result<(), String> {
+    delete_gist_internal(&gist_id)
         .await
         .map_err(|e| e.to_string())
 }
