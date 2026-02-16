@@ -1225,16 +1225,22 @@ fn get_app_version() -> String {
 #[cfg(target_os = "macos")]
 #[tauri::command]
 #[allow(deprecated)]
-fn start_dictation() -> Result<(), String> {
+fn start_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
     use objc::{msg_send, sel, sel_impl, class};
-    unsafe {
-        let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
-        // sendAction:to:from: with nil target routes through the responder chain
-        // starting from the key window's first responder (the WKWebView text input)
-        let sent: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
-        if !sent {
-            return Err("No responder handled dictation. Make sure Dictation is enabled in System Settings.".to_string());
+    use std::sync::mpsc;
+    let (tx, rx) = mpsc::channel();
+    app_handle.run_on_main_thread(move || {
+        unsafe {
+            let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
+            // sendAction:to:from: with nil target routes through the responder chain
+            // starting from the key window's first responder (the WKWebView text input)
+            let sent: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
+            let _ = tx.send(sent);
         }
+    }).map_err(|e| e.to_string())?;
+    let sent = rx.recv().map_err(|e| e.to_string())?;
+    if !sent {
+        return Err("No responder handled dictation. Make sure Dictation is enabled in System Settings.".to_string());
     }
     Ok(())
 }
@@ -1242,22 +1248,29 @@ fn start_dictation() -> Result<(), String> {
 #[cfg(target_os = "macos")]
 #[tauri::command]
 #[allow(deprecated)]
-fn stop_dictation() -> Result<(), String> {
+fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
     use objc::{msg_send, sel, sel_impl, class};
-    unsafe {
-        let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
-        let key_window: cocoa::base::id = msg_send![app, keyWindow];
-        if key_window.is_null() {
-            return Err("No key window".to_string());
+    app_handle.run_on_main_thread(move || {
+        unsafe {
+            let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
+            let key_window: cocoa::base::id = msg_send![app, keyWindow];
+            if key_window.is_null() {
+                return;
+            }
+            let first_responder: cocoa::base::id = msg_send![key_window, firstResponder];
+            // Resign first responder to commit dictated text and stop dictation
+            let _: bool = msg_send![key_window, makeFirstResponder: cocoa::base::nil];
+            // Restore first responder after a brief delay so dictation fully tears down
+            // before the text input regains focus
+            if !first_responder.is_null() {
+                let _: () = msg_send![key_window,
+                    performSelector: sel!(makeFirstResponder:)
+                    withObject: first_responder
+                    afterDelay: 0.1f64
+                ];
+            }
         }
-        let first_responder: cocoa::base::id = msg_send![key_window, firstResponder];
-        // Resigning first responder during dictation commits the text and stops it
-        let _: bool = msg_send![key_window, makeFirstResponder: cocoa::base::nil];
-        // Restore first responder so the user can continue typing
-        if !first_responder.is_null() {
-            let _: bool = msg_send![key_window, makeFirstResponder: first_responder];
-        }
-    }
+    }).map_err(|e| e.to_string())?;
     Ok(())
 }
 
