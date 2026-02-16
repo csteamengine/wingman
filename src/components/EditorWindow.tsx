@@ -1272,7 +1272,7 @@ export function EditorWindow() {
 
             <AILoadingOverlay isLoading={aiLoading} />
 
-            <div className="flex-1 overflow-hidden relative">
+            <div className="flex-1 min-h-0 relative">
                 <div
                     ref={(el) => {
                         editorRef.current = el;
