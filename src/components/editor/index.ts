@@ -33,3 +33,6 @@ export { preserveCase } from './casePreservation';
 
 // Tips bar
 export { TipsBar } from './TipsBar';
+
+// Dictation
+export { DictationButton } from './DictationButton';

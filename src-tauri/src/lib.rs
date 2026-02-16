@@ -1221,6 +1221,24 @@ fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
+// Dictation command
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn start_dictation() -> Result<(), String> {
+    use objc::{msg_send, sel, sel_impl, class};
+    unsafe {
+        let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
+        let _: () = msg_send![app, performSelector: sel!(startDictation:) withObject: cocoa::base::nil];
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+fn start_dictation() -> Result<(), String> {
+    Err("Dictation is only available on macOS".to_string())
+}
+
 // Window commands
 #[tauri::command]
 async fn toggle_fullscreen(window: tauri::Window) -> Result<(), String> {
@@ -1919,6 +1937,8 @@ pub fn run() {
             configure_ai,
             get_ai_presets,
             save_ai_presets_cmd,
+            // Dictation
+            start_dictation,
             // Window
             show_window,
             hide_window,

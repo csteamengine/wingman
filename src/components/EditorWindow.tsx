@@ -60,6 +60,7 @@ import {
     AILoadingOverlay,
     searchPanelExtension,
     TipsBar,
+    DictationButton,
 } from './editor';
 
 import type {ObsidianResult, GistResult, AIPreset} from '../types';
@@ -1348,6 +1349,7 @@ export function EditorWindow() {
             />
 
             <TransformationFloatingButton />
+            <DictationButton />
             <DiffPreviewModal />
             <DiffReviewModal />
         </div>

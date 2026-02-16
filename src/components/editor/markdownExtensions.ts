@@ -42,6 +42,8 @@ const mdCodeBlockFirst = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblo
 const mdCodeBlockMiddle = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-middle' });
 const mdCodeBlockLast = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-last' });
 const mdCodeBlockSingle = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-single' });
+// Line decoration that completely hides a fence line (``` opener/closer)
+const mdFenceLineHidden = Decoration.line({ class: 'cm-md-fence-hidden' });
 
 // Image widget for rendering inline images
 class ImageWidget extends WidgetType {
@@ -138,8 +140,6 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
     while ((codeBlockMatch = codeBlockRegex.exec(text)) !== null) {
         const blockStart = codeBlockMatch.index;
         const blockEnd = blockStart + codeBlockMatch[0].length;
-        const openingFence = text.indexOf('\n', blockStart);
-        const closingFenceStart = blockEnd - 3;
 
         // Check if cursor is inside this code block (including the ``` lines)
         const cursorInside = isCursorInRange(selections, blockStart, blockEnd);
@@ -154,10 +154,9 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
         }
 
         if (!cursorInside) {
-            // Hide opening ``` line
-            decorations.push({ from: blockStart, to: openingFence + 1, decoration: mdHidden });
-            // Hide closing ``` line
-            decorations.push({ from: closingFenceStart, to: blockEnd, decoration: mdHidden });
+            // Hide fence lines entirely (the .cm-line div gets display:none)
+            decorations.push({ from: startLine.from, to: startLine.from, decoration: mdFenceLineHidden });
+            decorations.push({ from: endLine.from, to: endLine.from, decoration: mdFenceLineHidden });
         }
 
         // Apply code block styling to content lines (not the ``` lines)
@@ -469,6 +468,10 @@ export const markdownPlugin = ViewPlugin.fromClass(
 export const markdownTheme = EditorView.baseTheme({
     // Hidden syntax
     '.cm-md-hidden': {
+        display: 'none',
+    },
+    // Hidden fence lines (``` opener/closer) — uses line decoration on .cm-line
+    '.cm-line.cm-md-fence-hidden': {
         display: 'none',
     },
     // Inline elements
