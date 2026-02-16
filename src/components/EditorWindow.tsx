@@ -1272,18 +1272,21 @@ export function EditorWindow() {
 
             <AILoadingOverlay isLoading={aiLoading} />
 
-            <div
-                ref={(el) => {
-                    editorRef.current = el;
-                    editorContainerRef.current = el;
-                }}
-                className={`flex-1 overflow-hidden editor-pane${settings?.colorblind_mode ? ' colorblind-editor' : ''}`}
-                style={{
-                    fontFamily: settings?.font_family || 'monospace',
-                    fontSize: `${settings?.font_size || 14}px`,
-                }}
-                onMouseDownCapture={handleEditorPaneMouseDownCapture}
-            />
+            <div className="flex-1 overflow-hidden relative">
+                <div
+                    ref={(el) => {
+                        editorRef.current = el;
+                        editorContainerRef.current = el;
+                    }}
+                    className={`h-full overflow-hidden editor-pane${settings?.colorblind_mode ? ' colorblind-editor' : ''}`}
+                    style={{
+                        fontFamily: settings?.font_family || 'monospace',
+                        fontSize: `${settings?.font_size || 14}px`,
+                    }}
+                    onMouseDownCapture={handleEditorPaneMouseDownCapture}
+                />
+                <DictationButton />
+            </div>
 
             <AttachmentsBar
                 images={images}
@@ -1349,7 +1352,6 @@ export function EditorWindow() {
             />
 
             <TransformationFloatingButton />
-            <DictationButton />
             <DiffPreviewModal />
             <DiffReviewModal />
         </div>

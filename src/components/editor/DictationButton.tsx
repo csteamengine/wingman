@@ -15,7 +15,7 @@ export function DictationButton() {
   };
 
   return (
-    <div className="absolute bottom-14 right-3 z-40">
+    <div className="absolute bottom-3 right-3 z-40">
       <button
         onClick={handleClick}
         className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] shadow-lg text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
