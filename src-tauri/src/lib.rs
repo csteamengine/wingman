@@ -1239,9 +1239,37 @@ fn start_dictation() -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
+#[tauri::command]
+#[allow(deprecated)]
+fn stop_dictation() -> Result<(), String> {
+    use objc::{msg_send, sel, sel_impl, class};
+    unsafe {
+        let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
+        let key_window: cocoa::base::id = msg_send![app, keyWindow];
+        if key_window.is_null() {
+            return Err("No key window".to_string());
+        }
+        let first_responder: cocoa::base::id = msg_send![key_window, firstResponder];
+        // Resigning first responder during dictation commits the text and stops it
+        let _: bool = msg_send![key_window, makeFirstResponder: cocoa::base::nil];
+        // Restore first responder so the user can continue typing
+        if !first_responder.is_null() {
+            let _: bool = msg_send![key_window, makeFirstResponder: first_responder];
+        }
+    }
+    Ok(())
+}
+
 #[cfg(not(target_os = "macos"))]
 #[tauri::command]
 fn start_dictation() -> Result<(), String> {
+    Err("Dictation is only available on macOS".to_string())
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+fn stop_dictation() -> Result<(), String> {
     Err("Dictation is only available on macOS".to_string())
 }
 
@@ -1945,6 +1973,7 @@ pub fn run() {
             save_ai_presets_cmd,
             // Dictation
             start_dictation,
+            stop_dictation,
             // Window
             show_window,
             hide_window,
