@@ -636,7 +636,7 @@ pub fn disable_webview_spellcheck(window: &WebviewWindow<impl Runtime>) -> Resul
         // document-level spellcheck attribute is forced off.
         fn find_wkwebview(view: cocoa::base::id) -> Option<cocoa::base::id> {
             use objc::{class, msg_send, sel, sel_impl};
-            let wk_class = unsafe { class!(WKWebView) };
+            let wk_class = class!(WKWebView);
             let is_wk: bool = unsafe { msg_send![view, isKindOfClass: wk_class] };
             if is_wk {
                 return Some(view);

@@ -1224,6 +1224,7 @@ fn get_app_version() -> String {
 // Dictation command
 #[cfg(target_os = "macos")]
 #[tauri::command]
+#[allow(deprecated)]
 fn start_dictation() -> Result<(), String> {
     use objc::{msg_send, sel, sel_impl, class};
     unsafe {
