@@ -1229,7 +1229,12 @@ fn start_dictation() -> Result<(), String> {
     use objc::{msg_send, sel, sel_impl, class};
     unsafe {
         let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
-        let _: () = msg_send![app, performSelector: sel!(startDictation:) withObject: cocoa::base::nil];
+        // sendAction:to:from: with nil target routes through the responder chain
+        // starting from the key window's first responder (the WKWebView text input)
+        let sent: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
+        if !sent {
+            return Err("No responder handled dictation. Make sure Dictation is enabled in System Settings.".to_string());
+        }
     }
     Ok(())
 }
