@@ -502,7 +502,7 @@ export const markdownTheme = EditorView.baseTheme({
     '.cm-md-bullet': {
         display: 'inline-block',
         width: '1ch',
-        marginRight: '0.35ch',
+        marginRight: '1ch',
         whiteSpace: 'nowrap',
         textAlign: 'center',
         opacity: '0.8',
