@@ -1285,8 +1285,10 @@ fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
                 }
             }
 
-            // 3. Responder-chain broadcast.
+            // 3. Responder-chain broadcast for stop, plus toggle fallback.
+            // Some packaged WKWebView contexts only expose startDictation:.
             let _: bool = msg_send![app, sendAction: sel!(stopDictation:) to: cocoa::base::nil from: cocoa::base::nil];
+            let _: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
 
             // 4. Discard in-progress marked (composition) text.
             let input_context: cocoa::base::id = msg_send![class!(NSTextInputContext), currentInputContext];

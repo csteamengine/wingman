@@ -28,8 +28,9 @@ export function DictationButton({ isComposing = false, onStopFallback }: Dictati
     try {
       if (isActive) {
         // --- STOP ---
-        // Fire-and-forget the native stop (non-blocking on Rust side).
-        invoke('stop_dictation').catch(() => {});
+        // Rust stop is non-blocking but we still await command dispatch and
+        // surface errors instead of silently swallowing them.
+        await invoke('stop_dictation');
         // DOM-level fallback: toggle contentEditable off/on to tear down the
         // composition session in WKWebView.
         onStopFallback?.();
@@ -49,6 +50,10 @@ export function DictationButton({ isComposing = false, onStopFallback }: Dictati
           setTimeout(() => setError(null), 3000);
         });
       }
+    } catch (e) {
+      setIsRecording(false);
+      setError(String(e));
+      setTimeout(() => setError(null), 3000);
     } finally {
       clearTimeout(safety);
       toggling.current = false;
