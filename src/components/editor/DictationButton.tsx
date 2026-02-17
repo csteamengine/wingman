@@ -28,12 +28,12 @@ export function DictationButton({ isComposing = false, onStopFallback }: Dictati
     try {
       if (isActive) {
         // --- STOP ---
+        // DOM-level fallback first so composition teardown is attempted even if
+        // the native stop command fails.
+        onStopFallback?.();
         // Rust stop is non-blocking but we still await command dispatch and
         // surface errors instead of silently swallowing them.
         await invoke('stop_dictation');
-        // DOM-level fallback: toggle contentEditable off/on to tear down the
-        // composition session in WKWebView.
-        onStopFallback?.();
         setIsRecording(false);
         // Brief cooldown covering the Rust-side afterDelay restore window.
         await new Promise((r) => setTimeout(r, 300));

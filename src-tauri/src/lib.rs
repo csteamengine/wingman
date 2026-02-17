@@ -1256,20 +1256,36 @@ fn start_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
 #[cfg(target_os = "macos")]
 #[tauri::command]
 #[allow(deprecated)]
-fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
+fn stop_dictation(window: tauri::WebviewWindow, app_handle: tauri::AppHandle) -> Result<(), String> {
     use objc::{msg_send, sel, sel_impl, class};
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    let (tx, rx) = mpsc::channel();
     app_handle.run_on_main_thread(move || {
         unsafe {
             let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
+            let target_window: cocoa::base::id = match window.ns_window() {
+                Ok(w) => w as cocoa::base::id,
+                Err(_) => cocoa::base::nil,
+            };
 
             let key_window: cocoa::base::id = msg_send![app, keyWindow];
             let main_window: cocoa::base::id = msg_send![app, mainWindow];
-            let active_window = if !key_window.is_null() { key_window } else { main_window };
+            let active_window = if !target_window.is_null() {
+                target_window
+            } else if !key_window.is_null() {
+                key_window
+            } else {
+                main_window
+            };
+            let mut sent_any_stop = false;
 
             // 1. Send cancelOperation: (the semantic Escape action) through the
             //    responder chain.  The system dictation handler responds to this
             //    the same way it responds to a physical Escape press.
-            let _: bool = msg_send![app, sendAction: sel!(cancelOperation:) to: cocoa::base::nil from: cocoa::base::nil];
+            let sent_cancel: bool = msg_send![app, sendAction: sel!(cancelOperation:) to: cocoa::base::nil from: cocoa::base::nil];
+            sent_any_stop |= sent_cancel;
 
             // 2. Walk the responder chain and call stopDictation: on every
             //    responder that supports it.
@@ -1280,6 +1296,7 @@ fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
                     let responds: bool = msg_send![responder, respondsToSelector: sel!(stopDictation:)];
                     if responds {
                         let _: () = msg_send![responder, stopDictation: cocoa::base::nil];
+                        sent_any_stop = true;
                     }
                     responder = msg_send![responder, nextResponder];
                 }
@@ -1287,8 +1304,9 @@ fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
 
             // 3. Responder-chain broadcast for stop, plus toggle fallback.
             // Some packaged WKWebView contexts only expose startDictation:.
-            let _: bool = msg_send![app, sendAction: sel!(stopDictation:) to: cocoa::base::nil from: cocoa::base::nil];
-            let _: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
+            let sent_stop_action: bool = msg_send![app, sendAction: sel!(stopDictation:) to: cocoa::base::nil from: cocoa::base::nil];
+            let sent_toggle_action: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
+            sent_any_stop |= sent_stop_action || sent_toggle_action;
 
             // 4. Discard in-progress marked (composition) text.
             let input_context: cocoa::base::id = msg_send![class!(NSTextInputContext), currentInputContext];
@@ -1313,8 +1331,22 @@ fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
                     ];
                 }
             }
+
+            log::info!(
+                "stop_dictation: target_window_null={}, active_window_null={}, sent_any_stop={}",
+                target_window.is_null(),
+                active_window.is_null(),
+                sent_any_stop
+            );
+            let _ = tx.send(sent_any_stop || !active_window.is_null());
         }
     }).map_err(|e| e.to_string())?;
+
+    let stopped = rx.recv_timeout(Duration::from_secs(2)).map_err(|e| e.to_string())?;
+    if !stopped {
+        return Err("Unable to route dictation stop action to active responder.".to_string());
+    }
+
     Ok(())
 }
 
