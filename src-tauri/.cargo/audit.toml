@@ -1,0 +1,9 @@
+# Cargo audit configuration
+# See: https://docs.rs/cargo-audit/latest/cargo_audit/config/
+
+[advisories]
+# Ignore advisories for transitive dependencies we cannot directly fix.
+
+# rsa 0.9.10 - Marvin Attack timing sidechannel (RUSTSEC-2023-0071)
+# Pulled in by tauri-plugin-updater. No fix available upstream yet.
+ignore = ["RUSTSEC-2023-0071"]
