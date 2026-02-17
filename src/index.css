@@ -375,6 +375,7 @@ body {
 
 .cm-editor .cm-placeholder {
   line-height: inherit;
+  color: var(--ui-text-muted) !important;
 }
 
 /* Suppress native WKWebView spellcheck/grammar underlines in packaged builds */
