@@ -1135,7 +1135,6 @@ export function EditorWindow() {
             '&': { backgroundColor: 'transparent' },
             '.cm-scroller': { backgroundColor: 'transparent' },
             '.cm-content': { backgroundColor: 'transparent' },
-            '.cm-line': { paddingLeft: '4px' },
             '.cm-gutters': { backgroundColor: 'transparent' },
             '.cm-activeLine': {
                 backgroundColor: 'rgba(127, 127, 127, 0.10)',

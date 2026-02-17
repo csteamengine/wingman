@@ -369,6 +369,10 @@ body {
   background: transparent !important;
 }
 
+.cm-editor .cm-content .cm-line {
+  padding-left: 4px;
+}
+
 /* Suppress native WKWebView spellcheck/grammar underlines in packaged builds */
 .cm-editor .cm-content ::spelling-error {
   text-decoration: none;
