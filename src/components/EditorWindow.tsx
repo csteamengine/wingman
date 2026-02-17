@@ -155,6 +155,7 @@ export function EditorWindow() {
     const [contextDetection, setContextDetection] = useState<DetectorResult | null>(null);
     const contextDismissedRef = useRef<string | null>(null); // tracks dismissed detector id
     const pasteOrDropRef = useRef(false); // tracks if content change came from paste/drag
+    const [isComposing, setIsComposing] = useState(false);
 
     // Get drag store state and functions
     const {
@@ -1044,6 +1045,25 @@ export function EditorWindow() {
         const preventAnnouncementTextInsertion = EditorView.domEventHandlers({
             beforeinput(event, view) {
                 const inputEvent = event as InputEvent;
+
+                // Prevent macOS WKWebView "smart delete" behaviour in release builds.
+                // Our custom keymap handlers already perform single-character deletion
+                // on keydown, so the subsequent beforeinput is redundant. WKWebView's
+                // native handling can silently widen the deletion range (e.g. removing a
+                // preceding space when a word is fully back-spaced).
+                if (!view.composing) {
+                    const t = inputEvent.inputType;
+                    if (
+                        t === 'deleteContentBackward' ||
+                        t === 'deleteContentForward' ||
+                        t === 'deleteWordBackward' ||
+                        t === 'deleteWordForward'
+                    ) {
+                        event.preventDefault();
+                        return true;
+                    }
+                }
+
                 const isBlockedAnnouncement = isNonEditableAnnouncement(inputEvent.data);
 
                 if (!isBlockedAnnouncement) return false;
@@ -1060,12 +1080,26 @@ export function EditorWindow() {
             },
         });
 
+        // Track composition state so the DictationButton can reflect
+        // system-initiated dictation (e.g. double-tap ⌘).
+        const compositionTracker = EditorView.domEventHandlers({
+            compositionstart() {
+                setIsComposing(true);
+                return false;
+            },
+            compositionend() {
+                setIsComposing(false);
+                return false;
+            },
+        });
+
         const extensions = [
             history(),
             EditorState.allowMultipleSelections.of(true),
             drawSelection(),
             dropCursor(),
             preventAnnouncementTextInsertion,
+            compositionTracker,
             editorKeymap,
             tripleBacktickHandler,
             keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
@@ -1287,7 +1321,7 @@ export function EditorWindow() {
                     }}
                     onMouseDownCapture={handleEditorPaneMouseDownCapture}
                 />
-                <DictationButton />
+                <DictationButton isComposing={isComposing} />
             </div>
 
             <AttachmentsBar

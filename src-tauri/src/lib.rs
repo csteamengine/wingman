@@ -1255,33 +1255,51 @@ fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
     app_handle.run_on_main_thread(move || {
         unsafe {
             let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
-            // Try explicit stop action first. This is more reliable in release builds
-            // when responder focus differs from dev mode.
-            let sent_stop_action: bool = msg_send![app, sendAction: sel!(stopDictation:) to: cocoa::base::nil from: cocoa::base::nil];
 
-            // Fall back to key/main window responder manipulation.
+            // 1. Try stopDictation: directly on the first responder. In WKWebView
+            //    release builds the sendAction routing may miss the web text-input
+            //    responder, so calling the selector directly is more reliable.
             let key_window: cocoa::base::id = msg_send![app, keyWindow];
             let main_window: cocoa::base::id = msg_send![app, mainWindow];
             let active_window = if !key_window.is_null() { key_window } else { main_window };
 
-            if active_window.is_null() {
-                let _ = tx.send(sent_stop_action);
-                return;
+            let mut stopped_directly = false;
+            if !active_window.is_null() {
+                let first_responder: cocoa::base::id = msg_send![active_window, firstResponder];
+                if !first_responder.is_null() {
+                    let responds: bool = msg_send![first_responder, respondsToSelector: sel!(stopDictation:)];
+                    if responds {
+                        let _: () = msg_send![first_responder, stopDictation: cocoa::base::nil];
+                        stopped_directly = true;
+                    }
+                }
             }
 
-            let first_responder: cocoa::base::id = msg_send![active_window, firstResponder];
-            // Resign first responder to commit dictated text and stop dictation
-            let _: bool = msg_send![active_window, makeFirstResponder: cocoa::base::nil];
-            // Restore first responder after a brief delay so dictation fully tears down
-            // before the text input regains focus
-            if !first_responder.is_null() {
-                let _: () = msg_send![active_window,
-                    performSelector: sel!(makeFirstResponder:)
-                    withObject: first_responder
-                    afterDelay: 0.25f64
-                ];
+            // 2. Also try the responder-chain broadcast (original approach).
+            let _: bool = msg_send![app, sendAction: sel!(stopDictation:) to: cocoa::base::nil from: cocoa::base::nil];
+
+            // 3. Discard any in-progress marked (composition) text via the current
+            //    input context. This commits dictated text and tears down the
+            //    dictation session even when the selectors above are ignored.
+            let input_context: cocoa::base::id = msg_send![class!(NSTextInputContext), currentInputContext];
+            if !input_context.is_null() {
+                let _: () = msg_send![input_context, discardMarkedText];
             }
-            let _ = tx.send(true);
+
+            // 4. Resign and restore first responder as a last-resort fallback.
+            if !active_window.is_null() {
+                let first_responder: cocoa::base::id = msg_send![active_window, firstResponder];
+                let _: bool = msg_send![active_window, makeFirstResponder: cocoa::base::nil];
+                if !first_responder.is_null() {
+                    let _: () = msg_send![active_window,
+                        performSelector: sel!(makeFirstResponder:)
+                        withObject: first_responder
+                        afterDelay: 0.25f64
+                    ];
+                }
+            }
+
+            let _ = tx.send(stopped_directly || !active_window.is_null());
         }
     }).map_err(|e| e.to_string())?;
     let stopped = rx.recv().map_err(|e| e.to_string())?;
