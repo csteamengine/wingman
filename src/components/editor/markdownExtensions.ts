@@ -245,10 +245,9 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
         const listMatch = lineText.match(/^(\s*)([-*])\s/);
         if (listMatch) {
             const cursorInLine = isCursorInRange(selections, lineFrom, line.to);
-            const indentLen = listMatch[1].length;
-            decorations.push({ from: lineFrom, to: lineFrom, decoration: mdListItem });
-
             if (!cursorInLine) {
+                const indentLen = listMatch[1].length;
+                decorations.push({ from: lineFrom, to: lineFrom, decoration: mdListItem });
                 const markerStart = lineFrom + indentLen;
                 const markerEnd = markerStart + 2; // `- ` or `* `
                 decorations.push({
