@@ -20,6 +20,18 @@ const mdH4 = Decoration.line({ class: 'cm-md-h4' });
 const mdBlockquote = Decoration.line({ class: 'cm-md-blockquote' });
 const mdHr = Decoration.line({ class: 'cm-md-hr' });
 const mdListItem = Decoration.line({ class: 'cm-md-list-item' });
+
+// Bullet widget that replaces `- ` / `* ` when cursor is not on the line
+class BulletWidget extends WidgetType {
+    eq() { return true; }
+    toDOM() {
+        const span = document.createElement('span');
+        span.className = 'cm-md-bullet';
+        span.textContent = '• ';
+        return span;
+    }
+    ignoreEvent() { return false; }
+}
 // Zero-width space widget to maintain line height when fence text is replaced
 class EmptyFenceWidget extends WidgetType {
     eq() { return true; }
@@ -232,7 +244,21 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
         // Unordered list items: - item or * item (with optional indentation)
         const listMatch = lineText.match(/^(\s*)([-*])\s/);
         if (listMatch) {
+            const cursorInLine = isCursorInRange(selections, lineFrom, line.to);
+            const indentLen = listMatch[1].length;
             decorations.push({ from: lineFrom, to: lineFrom, decoration: mdListItem });
+
+            if (!cursorInLine) {
+                const markerStart = lineFrom + indentLen;
+                const markerEnd = markerStart + 2; // `- ` or `* `
+                decorations.push({
+                    from: markerStart,
+                    to: markerEnd,
+                    decoration: Decoration.replace({
+                        widget: new BulletWidget(),
+                    }),
+                });
+            }
         }
 
         // === INLINE ELEMENTS ===
@@ -466,8 +492,14 @@ export const markdownTheme = EditorView.baseTheme({
     },
     // List items
     '.cm-md-list-item': {
-        // Keep indentation/layout managed by raw text to avoid cursor drift.
-        paddingLeft: '0',
+        // Use a hanging indent so wrapped content stays aligned with list text.
+        paddingLeft: '1.25em',
+        textIndent: '-1.25em',
+        overflowWrap: 'anywhere',
+        wordBreak: 'break-word',
+    },
+    '.cm-md-bullet': {
+        opacity: '0.8',
     },
     // Image preview
     '.cm-md-image-preview': {
