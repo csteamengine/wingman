@@ -737,27 +737,20 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Fenced code block - base styles */
-.cm-md-codeblock {
+/* Fenced code block - base styles (needs .cm-editor prefix to beat .cm-line specificity) */
+.cm-editor .cm-content .cm-md-codeblock {
   background-color: var(--ui-surface);
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', monospace;
-  padding: 6px 16px;
-  margin-left: 12px;
-  margin-right: 12px;
-}
-
-/* Single line code block - all corners rounded */
-.cm-md-codeblock-single {
-  border-radius: 8px;
-  padding-top: 12px;
-  padding-bottom: 12px;
+  padding: 2px 16px;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 
 /* First line of multi-line block - top corners rounded */
 .cm-md-codeblock-first {
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
-  padding-top: 12px;
+  padding-top: 6px;
 }
 
 /* Middle lines - no border radius */
@@ -769,7 +762,7 @@ body {
 .cm-md-codeblock-last {
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
-  padding-bottom: 12px;
+  padding-bottom: 6px;
 }
 
 .theme-light .cm-md-codeblock,

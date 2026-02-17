@@ -16,7 +16,7 @@ export {
 } from './markdownExtensions';
 
 // Editor keymap
-export { editorKeymap, wrapSelection } from './editorKeymap';
+export { editorKeymap, wrapSelection, tripleBacktickHandler } from './editorKeymap';
 
 // UI Components
 export { StatusBar } from './StatusBar';

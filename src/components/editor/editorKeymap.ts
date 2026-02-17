@@ -34,6 +34,24 @@ function deleteSelection(view: EditorView): boolean {
     return true;
 }
 
+// Delete exactly one document character backward for collapsed cursors.
+// Prevents hidden markdown decorations (display:none) from causing
+// CodeMirror's visual coordinate mapping to skip over adjacent visible
+// characters (e.g. eating the space before a deleted word).
+function singleCharBackspace(view: EditorView): boolean {
+    const selection = view.state.selection.main;
+    if (!selection.empty) return false;
+
+    const pos = selection.head;
+    if (pos === 0) return true;
+
+    view.dispatch({
+        changes: { from: pos - 1, to: pos, insert: '' },
+        selection: { anchor: pos - 1 },
+    });
+    return true;
+}
+
 function scrollCaretIntoView(view: EditorView): void {
     view.dispatch({
         effects: EditorView.scrollIntoView(view.state.selection.main.head, { y: 'nearest' }),
@@ -43,6 +61,7 @@ function scrollCaretIntoView(view: EditorView): void {
 // Editor keymaps: line operations, auto-list continuation, and bracket wrapping
 export const editorKeymap = keymap.of([
     { key: 'Backspace', run: deleteSelection },
+    { key: 'Backspace', run: singleCharBackspace },
     { key: 'Delete', run: deleteSelection },
 
     // Auto-wrap selection with quotes and brackets
@@ -232,3 +251,24 @@ export const editorKeymap = keymap.of([
         },
     },
 ]);
+
+// Auto-close triple backticks into a fenced code block.
+// When the user types ` and the line already has `` (completing ```),
+// insert a closing fence and place the cursor on the empty line between.
+export const tripleBacktickHandler = EditorView.inputHandler.of((view, from, to, text) => {
+    if (text !== '`') return false;
+
+    const line = view.state.doc.lineAt(from);
+    const before = view.state.sliceDoc(line.from, from);
+
+    // Check if this backtick completes ``` at the start of the line
+    if (before !== '``') return false;
+
+    // Don't auto-close if we're already inside a code block
+    // (i.e. there's already an unclosed ``` above)
+    view.dispatch({
+        changes: { from, to, insert: '`\n\n```' },
+        selection: { anchor: from + 2 }, // cursor on the empty line
+    });
+    return true;
+});

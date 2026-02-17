@@ -37,13 +37,20 @@ class BulletWidget extends WidgetType {
     }
     ignoreEvent() { return false; }
 }
+// Zero-width space widget to maintain line height when fence text is replaced
+class EmptyFenceWidget extends WidgetType {
+    eq() { return true; }
+    toDOM() {
+        const span = document.createElement('span');
+        span.textContent = '\u200B';
+        return span;
+    }
+    ignoreEvent() { return false; }
+}
 // Code block line decorations - separate for first, middle, last to create unified block
 const mdCodeBlockFirst = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-first' });
 const mdCodeBlockMiddle = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-middle' });
 const mdCodeBlockLast = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-last' });
-const mdCodeBlockSingle = Decoration.line({ class: 'cm-md-codeblock cm-md-codeblock-single' });
-// Line decoration that completely hides a fence line (``` opener/closer)
-const mdFenceLineHidden = Decoration.line({ class: 'cm-md-fence-hidden' });
 
 // Image widget for rendering inline images
 class ImageWidget extends WidgetType {
@@ -135,7 +142,7 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
 
     // === FENCED CODE BLOCKS ===
     // Process fenced code blocks first (``` ... ```)
-    const codeBlockRegex = /^```(\w*)\n([\s\S]*?)^```$/gm;
+    const codeBlockRegex = /^```(\w*)[ \t]*\n([\s\S]*?)^```[ \t]*$/gm;
     let codeBlockMatch;
     while ((codeBlockMatch = codeBlockRegex.exec(text)) !== null) {
         const blockStart = codeBlockMatch.index;
@@ -153,36 +160,33 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
             codeBlockLines.add(lineNum);
         }
 
-        if (!cursorInside) {
-            // Hide fence lines entirely (the .cm-line div gets display:none)
-            decorations.push({ from: startLine.from, to: startLine.from, decoration: mdFenceLineHidden });
-            decorations.push({ from: endLine.from, to: endLine.from, decoration: mdFenceLineHidden });
+        // Always style fence lines as part of the code block (top/bottom padding)
+        decorations.push({ from: startLine.from, to: startLine.from, decoration: mdCodeBlockFirst });
+        decorations.push({ from: endLine.from, to: endLine.from, decoration: mdCodeBlockLast });
+
+        // All content lines get middle styling
+        for (let lineNum = startLine.number + 1; lineNum <= endLine.number - 1; lineNum++) {
+            const codeLine = doc.line(lineNum);
+            decorations.push({ from: codeLine.from, to: codeLine.from, decoration: mdCodeBlockMiddle });
         }
 
-        // Apply code block styling to content lines (not the ``` lines)
-        const firstContentLine = startLine.number + 1;
-        const lastContentLine = endLine.number - 1;
-        const contentLineCount = lastContentLine - firstContentLine + 1;
-
-        for (let lineNum = firstContentLine; lineNum <= lastContentLine; lineNum++) {
-            const codeLine = doc.line(lineNum);
-            let decoration;
-
-            if (contentLineCount === 1) {
-                // Single line code block
-                decoration = mdCodeBlockSingle;
-            } else if (lineNum === firstContentLine) {
-                // First line of multi-line block
-                decoration = mdCodeBlockFirst;
-            } else if (lineNum === lastContentLine) {
-                // Last line of multi-line block
-                decoration = mdCodeBlockLast;
-            } else {
-                // Middle line
-                decoration = mdCodeBlockMiddle;
+        if (!cursorInside) {
+            // Replace fence text with zero-width space to hide backticks/language
+            // while keeping the line rendered with code block background
+            if (startLine.from < startLine.to) {
+                decorations.push({
+                    from: startLine.from,
+                    to: startLine.to,
+                    decoration: Decoration.replace({ widget: new EmptyFenceWidget() }),
+                });
             }
-
-            decorations.push({ from: codeLine.from, to: codeLine.from, decoration });
+            if (endLine.from < endLine.to) {
+                decorations.push({
+                    from: endLine.from,
+                    to: endLine.to,
+                    decoration: Decoration.replace({ widget: new EmptyFenceWidget() }),
+                });
+            }
         }
     }
 
@@ -470,10 +474,6 @@ export const markdownTheme = EditorView.baseTheme({
     '.cm-md-hidden': {
         display: 'none',
     },
-    // Hidden fence lines (``` opener/closer) — uses line decoration on .cm-line
-    '.cm-line.cm-md-fence-hidden': {
-        display: 'none',
-    },
     // Inline elements
     '.cm-md-bold': {
         fontWeight: 'bold',
@@ -516,30 +516,6 @@ export const markdownTheme = EditorView.baseTheme({
         maxWidth: '100%',
         borderRadius: '4px',
         border: '1px solid var(--ui-border)',
-    },
-    // Fenced code block - base styles
-    '.cm-md-codeblock': {
-        backgroundColor: 'var(--ui-surface, rgba(0, 0, 0, 0.15))',
-        fontFamily: "'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace",
-        padding: '4px 16px',
-        marginLeft: '12px',
-        marginRight: '12px',
-    },
-    '.cm-md-codeblock-single': {
-        borderRadius: '8px',
-    },
-    '.cm-md-codeblock-first': {
-        borderTopLeftRadius: '8px',
-        borderTopRightRadius: '8px',
-        paddingTop: '8px',
-    },
-    '.cm-md-codeblock-middle': {
-        borderRadius: '0',
-    },
-    '.cm-md-codeblock-last': {
-        borderBottomLeftRadius: '8px',
-        borderBottomRightRadius: '8px',
-        paddingBottom: '8px',
     },
 });
 
