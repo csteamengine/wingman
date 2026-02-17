@@ -373,6 +373,10 @@ body {
   padding-left: 4px;
 }
 
+.cm-editor .cm-placeholder {
+  line-height: inherit;
+}
+
 /* Suppress native WKWebView spellcheck/grammar underlines in packaged builds */
 .cm-editor .cm-content ::spelling-error {
   text-decoration: none;
