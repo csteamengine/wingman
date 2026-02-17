@@ -116,6 +116,9 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
     const doc = view.state.doc;
     const text = doc.toString();
     const selections = view.state.selection.ranges;
+    const activeLineNumbers = new Set(
+        selections.map((sel) => doc.lineAt(sel.head).number)
+    );
 
     // Track ranges that have been decorated to avoid overlaps
     const decoratedRanges: {from: number, to: number}[] = [];
@@ -244,8 +247,8 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
         // Unordered list items: - item, * item, or legacy • item (with optional indentation)
         const listMatch = lineText.match(/^(\s*)([-*•])\s/);
         if (listMatch) {
-            const cursorInLine = isCursorInRange(selections, lineFrom, line.to);
-            if (!cursorInLine) {
+            const cursorOnLine = activeLineNumbers.has(i);
+            if (!cursorOnLine) {
                 const indentLen = listMatch[1].length;
                 decorations.push({ from: lineFrom, to: lineFrom, decoration: mdListItem });
                 const markerStart = lineFrom + indentLen;
