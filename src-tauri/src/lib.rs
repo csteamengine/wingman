@@ -1250,11 +1250,14 @@ fn start_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
 #[allow(deprecated)]
 fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
     use objc::{msg_send, sel, sel_impl, class};
+    use std::sync::mpsc;
+    let (tx, rx) = mpsc::channel();
     app_handle.run_on_main_thread(move || {
         unsafe {
             let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
             let key_window: cocoa::base::id = msg_send![app, keyWindow];
             if key_window.is_null() {
+                let _ = tx.send(false);
                 return;
             }
             let first_responder: cocoa::base::id = msg_send![key_window, firstResponder];
@@ -1266,11 +1269,16 @@ fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
                 let _: () = msg_send![key_window,
                     performSelector: sel!(makeFirstResponder:)
                     withObject: first_responder
-                    afterDelay: 0.1f64
+                    afterDelay: 0.25f64
                 ];
             }
+            let _ = tx.send(true);
         }
     }).map_err(|e| e.to_string())?;
+    let stopped = rx.recv().map_err(|e| e.to_string())?;
+    if !stopped {
+        return Err("No key window found to stop dictation.".to_string());
+    }
     Ok(())
 }
 

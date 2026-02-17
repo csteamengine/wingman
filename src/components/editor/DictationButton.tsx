@@ -1,16 +1,21 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Mic, Square } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
 export function DictationButton() {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const toggling = useRef(false);
 
   const handleClick = async () => {
+    if (toggling.current) return;
+    toggling.current = true;
     try {
       if (isRecording) {
         await invoke('stop_dictation');
         setIsRecording(false);
+        // Brief cooldown covering the Rust-side afterDelay restore window
+        await new Promise((r) => setTimeout(r, 300));
       } else {
         await invoke('start_dictation');
         setIsRecording(true);
@@ -19,6 +24,8 @@ export function DictationButton() {
       setIsRecording(false);
       setError(String(e));
       setTimeout(() => setError(null), 3000);
+    } finally {
+      toggling.current = false;
     }
   };
 
