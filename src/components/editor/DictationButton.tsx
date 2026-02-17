@@ -1,24 +1,18 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Mic, Square } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
 interface DictationButtonProps {
   /** True while the editor is in a composition session (dictation or IME). */
   isComposing?: boolean;
+  /** DOM-level fallback to end an active composition (blur/refocus the editor). */
+  onStopFallback?: () => void;
 }
 
-export function DictationButton({ isComposing = false }: DictationButtonProps) {
+export function DictationButton({ isComposing = false, onStopFallback }: DictationButtonProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toggling = useRef(false);
-
-  // If composition ends externally (e.g. system dictation timeout) while we
-  // thought we were recording, reset our local state.
-  useEffect(() => {
-    if (!isComposing && isRecording) {
-      setIsRecording(false);
-    }
-  }, [isComposing, isRecording]);
 
   // Dictation is active if we started it via the button OR if the editor
   // entered a composition session from another source (e.g. system hotkey).
@@ -27,21 +21,36 @@ export function DictationButton({ isComposing = false }: DictationButtonProps) {
   const handleClick = async () => {
     if (toggling.current) return;
     toggling.current = true;
+
+    // Safety: never leave the toggle guard stuck for more than 2 s.
+    const safety = setTimeout(() => { toggling.current = false; }, 2000);
+
     try {
       if (isActive) {
-        await invoke('stop_dictation');
+        // --- STOP ---
+        // Fire-and-forget the native stop (non-blocking on Rust side).
+        invoke('stop_dictation').catch(() => {});
+        // DOM-level fallback: toggle contentEditable off/on to tear down the
+        // composition session in WKWebView.
+        onStopFallback?.();
         setIsRecording(false);
-        // Brief cooldown covering the Rust-side afterDelay restore window
+        // Brief cooldown covering the Rust-side afterDelay restore window.
         await new Promise((r) => setTimeout(r, 300));
       } else {
-        await invoke('start_dictation');
+        // --- START ---
+        // Update the icon immediately, then fire-and-forget the Tauri command.
+        // The Rust side blocks up to 500 ms waiting for the main-thread action
+        // to execute, so we must NOT await it or the icon won't update and the
+        // toggle guard will be held.
         setIsRecording(true);
+        invoke('start_dictation').catch((e) => {
+          setIsRecording(false);
+          setError(String(e));
+          setTimeout(() => setError(null), 3000);
+        });
       }
-    } catch (e) {
-      setIsRecording(false);
-      setError(String(e));
-      setTimeout(() => setError(null), 3000);
     } finally {
+      clearTimeout(safety);
       toggling.current = false;
     }
   };

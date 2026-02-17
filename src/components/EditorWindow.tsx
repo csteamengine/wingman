@@ -1321,7 +1321,25 @@ export function EditorWindow() {
                     }}
                     onMouseDownCapture={handleEditorPaneMouseDownCapture}
                 />
-                <DictationButton isComposing={isComposing} />
+                <DictationButton
+                    isComposing={isComposing}
+                    onStopFallback={() => {
+                        // Toggling contentEditable off forces the browser to
+                        // commit and tear down any active composition session
+                        // (including dictation).  A plain blur() is not enough
+                        // in WKWebView because the system dictation service
+                        // keeps running even when the element loses focus.
+                        const dom = viewRef.current?.contentDOM;
+                        if (dom) {
+                            dom.setAttribute('contenteditable', 'false');
+                            dom.blur();
+                            setTimeout(() => {
+                                dom.setAttribute('contenteditable', 'true');
+                                viewRef.current?.focus();
+                            }, 250);
+                        }
+                    }}
+                />
             </div>
 
             <AttachmentsBar

@@ -1221,27 +1221,35 @@ fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
-// Dictation command
+// Dictation commands.
+//
+// start_dictation blocks with a short timeout so the sendAction has time to
+// execute on the main thread (fully non-blocking caused the action to fire
+// too late in dev mode), but won't deadlock if the dictation UI initialisation
+// holds the main thread.
+//
+// stop_dictation is non-blocking: it schedules all stop approaches on the
+// main thread and returns immediately.
 #[cfg(target_os = "macos")]
 #[tauri::command]
 #[allow(deprecated)]
 fn start_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
     use objc::{msg_send, sel, sel_impl, class};
     use std::sync::mpsc;
+    use std::time::Duration;
     let (tx, rx) = mpsc::channel();
     app_handle.run_on_main_thread(move || {
         unsafe {
             let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
-            // sendAction:to:from: with nil target routes through the responder chain
-            // starting from the key window's first responder (the WKWebView text input)
-            let sent: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
-            let _ = tx.send(sent);
+            let _: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
         }
+        let _ = tx.send(());
     }).map_err(|e| e.to_string())?;
-    let sent = rx.recv().map_err(|e| e.to_string())?;
-    if !sent {
-        return Err("No responder handled dictation. Make sure Dictation is enabled in System Settings.".to_string());
-    }
+    // Wait up to 500 ms for the action to run.  If the main thread is blocked
+    // (e.g. dictation UI init) the timeout prevents a permanent deadlock.
+    // We return Ok either way — composition events on the JS side are the
+    // real source of truth for whether dictation started.
+    let _ = rx.recv_timeout(Duration::from_millis(500));
     Ok(())
 }
 
@@ -1250,43 +1258,48 @@ fn start_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
 #[allow(deprecated)]
 fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
     use objc::{msg_send, sel, sel_impl, class};
-    use std::sync::mpsc;
-    let (tx, rx) = mpsc::channel();
     app_handle.run_on_main_thread(move || {
         unsafe {
             let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
 
-            // 1. Try stopDictation: directly on the first responder. In WKWebView
-            //    release builds the sendAction routing may miss the web text-input
-            //    responder, so calling the selector directly is more reliable.
             let key_window: cocoa::base::id = msg_send![app, keyWindow];
             let main_window: cocoa::base::id = msg_send![app, mainWindow];
             let active_window = if !key_window.is_null() { key_window } else { main_window };
 
-            let mut stopped_directly = false;
+            // 1. Send cancelOperation: (the semantic Escape action) through the
+            //    responder chain.  The system dictation handler responds to this
+            //    the same way it responds to a physical Escape press.
+            let _: bool = msg_send![app, sendAction: sel!(cancelOperation:) to: cocoa::base::nil from: cocoa::base::nil];
+
+            // 2. Walk the responder chain and call stopDictation: on every
+            //    responder that supports it.
             if !active_window.is_null() {
                 let first_responder: cocoa::base::id = msg_send![active_window, firstResponder];
-                if !first_responder.is_null() {
-                    let responds: bool = msg_send![first_responder, respondsToSelector: sel!(stopDictation:)];
+                let mut responder: cocoa::base::id = first_responder;
+                while !responder.is_null() {
+                    let responds: bool = msg_send![responder, respondsToSelector: sel!(stopDictation:)];
                     if responds {
-                        let _: () = msg_send![first_responder, stopDictation: cocoa::base::nil];
-                        stopped_directly = true;
+                        let _: () = msg_send![responder, stopDictation: cocoa::base::nil];
                     }
+                    responder = msg_send![responder, nextResponder];
                 }
             }
 
-            // 2. Also try the responder-chain broadcast (original approach).
+            // 3. Responder-chain broadcast.
             let _: bool = msg_send![app, sendAction: sel!(stopDictation:) to: cocoa::base::nil from: cocoa::base::nil];
 
-            // 3. Discard any in-progress marked (composition) text via the current
-            //    input context. This commits dictated text and tears down the
-            //    dictation session even when the selectors above are ignored.
+            // 4. Discard in-progress marked (composition) text.
             let input_context: cocoa::base::id = msg_send![class!(NSTextInputContext), currentInputContext];
             if !input_context.is_null() {
                 let _: () = msg_send![input_context, discardMarkedText];
             }
 
-            // 4. Resign and restore first responder as a last-resort fallback.
+            // 5. Force-end editing on the window.
+            if !active_window.is_null() {
+                let _: bool = msg_send![active_window, endEditingFor: cocoa::base::nil];
+            }
+
+            // 6. Resign and restore first responder as a last-resort fallback.
             if !active_window.is_null() {
                 let first_responder: cocoa::base::id = msg_send![active_window, firstResponder];
                 let _: bool = msg_send![active_window, makeFirstResponder: cocoa::base::nil];
@@ -1298,14 +1311,8 @@ fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
                     ];
                 }
             }
-
-            let _ = tx.send(stopped_directly || !active_window.is_null());
         }
     }).map_err(|e| e.to_string())?;
-    let stopped = rx.recv().map_err(|e| e.to_string())?;
-    if !stopped {
-        return Err("Unable to stop dictation via responder chain.".to_string());
-    }
     Ok(())
 }
 
