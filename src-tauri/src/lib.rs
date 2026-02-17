@@ -1318,6 +1318,18 @@ fn stop_dictation(window: tauri::WebviewWindow, app_handle: tauri::AppHandle) ->
             if !input_context.is_null() {
                 let _: () = msg_send![input_context, discardMarkedText];
             }
+            // Explicitly unmark text on the active first responder. In some
+            // WKWebView dictation flows, marked-text highlight can linger even
+            // after dictation is cancelled unless unmarkText is invoked.
+            if !active_window.is_null() {
+                let first_responder: cocoa::base::id = msg_send![active_window, firstResponder];
+                if !first_responder.is_null() {
+                    let responds_unmark: bool = msg_send![first_responder, respondsToSelector: sel!(unmarkText)];
+                    if responds_unmark {
+                        let _: () = msg_send![first_responder, unmarkText];
+                    }
+                }
+            }
 
             // 5. Force-end editing on the window.
             if !active_window.is_null() {

@@ -1324,6 +1324,7 @@ export function EditorWindow() {
                 <DictationButton
                     isComposing={isComposing}
                     onStopFallback={() => {
+                        setIsComposing(false);
                         // Toggling contentEditable off forces the browser to
                         // commit and tear down any active composition session
                         // (including dictation).  A plain blur() is not enough
@@ -1336,6 +1337,13 @@ export function EditorWindow() {
                             setTimeout(() => {
                                 dom.setAttribute('contenteditable', 'true');
                                 viewRef.current?.focus();
+                                const sel = window.getSelection();
+                                if (sel && sel.rangeCount > 0) {
+                                    const range = sel.getRangeAt(0);
+                                    range.collapse(false);
+                                    sel.removeAllRanges();
+                                    sel.addRange(range);
+                                }
                             }, 250);
                         }
                     }}
