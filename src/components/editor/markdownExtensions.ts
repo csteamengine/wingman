@@ -19,7 +19,6 @@ const mdH3 = Decoration.line({ class: 'cm-md-h3' });
 const mdH4 = Decoration.line({ class: 'cm-md-h4' });
 const mdBlockquote = Decoration.line({ class: 'cm-md-blockquote' });
 const mdHr = Decoration.line({ class: 'cm-md-hr' });
-const mdListItem = Decoration.line({ class: 'cm-md-list-item' });
 
 // Bullet widget that replaces markdown list markers when cursor is not on the line
 class BulletWidget extends WidgetType {
@@ -251,7 +250,6 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
             const lineSelected = isCursorInRange(selections, lineFrom, line.to);
             if (!cursorOnLine && !lineSelected) {
                 const indentLen = listMatch[1].length;
-                decorations.push({ from: lineFrom, to: lineFrom, decoration: mdListItem });
                 const markerStart = lineFrom + indentLen;
                 const markerEnd = markerStart + 2; // marker + following space
                 decorations.push({
