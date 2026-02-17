@@ -26,7 +26,7 @@ class BulletWidget extends WidgetType {
     toDOM() {
         const span = document.createElement('span');
         span.className = 'cm-md-bullet';
-        span.textContent = '• ';
+        span.textContent = '•';
         return span;
     }
     ignoreEvent() { return false; }
@@ -502,6 +502,8 @@ export const markdownTheme = EditorView.baseTheme({
     '.cm-md-bullet': {
         display: 'inline-block',
         width: '1ch',
+        marginRight: '0.35ch',
+        whiteSpace: 'nowrap',
         textAlign: 'center',
         opacity: '0.8',
     },
