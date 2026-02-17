@@ -737,13 +737,16 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Fenced code block - base styles (needs .cm-editor prefix to beat .cm-line specificity) */
+/* Fenced code block - base styles
+   Negative margins extend the background to the full editor width;
+   padding compensates so text stays indented 8px beyond normal lines. */
 .cm-editor .cm-content .cm-md-codeblock {
   background-color: var(--ui-surface);
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', monospace;
-  padding: 2px 16px;
-  padding-left: 12px;
-  padding-right: 12px;
+  margin-left: -100px;
+  margin-right: -100px;
+  padding: 2px 100px;
+  padding-left: 108px;
 }
 
 /* First line of multi-line block - top corners rounded */
