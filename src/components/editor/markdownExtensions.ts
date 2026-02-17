@@ -256,8 +256,13 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
                 decorations.push({
                     from: markerStart,
                     to: markerEnd,
-                    decoration: Decoration.replace({
+                    decoration: mdHidden,
+                });
+                widgets.push({
+                    pos: markerStart,
+                    widget: Decoration.widget({
                         widget: new BulletWidget(),
+                        side: 1,
                     }),
                 });
             }
