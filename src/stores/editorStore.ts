@@ -546,7 +546,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   applyBulletList: () => {
     const storeState = get();
-    const { editorView, language } = storeState;
+    const { editorView } = storeState;
 
     // Always store markdown list markers as '-' and render preview dot via markdown decorations.
     const bullet = '-';
