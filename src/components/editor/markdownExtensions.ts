@@ -21,13 +21,13 @@ const mdBlockquote = Decoration.line({ class: 'cm-md-blockquote' });
 const mdHr = Decoration.line({ class: 'cm-md-hr' });
 const mdListItem = Decoration.line({ class: 'cm-md-list-item' });
 
-// Bullet widget that replaces `- ` / `* ` when cursor is not on the line
+// Bullet widget that replaces markdown list markers when cursor is not on the line
 class BulletWidget extends WidgetType {
     eq() { return true; }
     toDOM() {
         const span = document.createElement('span');
         span.className = 'cm-md-bullet';
-        span.textContent = '• ';
+        span.textContent = '•';
         return span;
     }
     ignoreEvent() { return false; }
@@ -241,15 +241,15 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
             continue;
         }
 
-        // Unordered list items: - item or * item (with optional indentation)
-        const listMatch = lineText.match(/^(\s*)([-*])\s/);
+        // Unordered list items: - item, * item, or legacy • item (with optional indentation)
+        const listMatch = lineText.match(/^(\s*)([-*•])\s/);
         if (listMatch) {
             const cursorInLine = isCursorInRange(selections, lineFrom, line.to);
             if (!cursorInLine) {
                 const indentLen = listMatch[1].length;
                 decorations.push({ from: lineFrom, to: lineFrom, decoration: mdListItem });
                 const markerStart = lineFrom + indentLen;
-                const markerEnd = markerStart + 2; // `- ` or `* `
+                const markerEnd = markerStart + 1; // marker only, keep original space char
                 decorations.push({
                     from: markerStart,
                     to: markerEnd,
@@ -498,6 +498,9 @@ export const markdownTheme = EditorView.baseTheme({
         wordBreak: 'break-word',
     },
     '.cm-md-bullet': {
+        display: 'inline-block',
+        width: '1ch',
+        textAlign: 'center',
         opacity: '0.8',
     },
     // Image preview

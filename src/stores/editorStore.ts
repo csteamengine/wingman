@@ -548,8 +548,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const storeState = get();
     const { editorView, language } = storeState;
 
-    // Use • for markdown, - for other languages
-    const bullet = language === 'markdown' ? '•' : '-';
+    // Always store markdown list markers as '-' and render preview dot via markdown decorations.
+    const bullet = '-';
 
     // Regex patterns for list detection
     const bulletPattern = /^(\s*)[•\-\*]\s/;
