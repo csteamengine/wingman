@@ -1134,7 +1134,7 @@ export function EditorWindow() {
         extensions.push(EditorView.theme({
             '&': { backgroundColor: 'transparent' },
             '.cm-scroller': { backgroundColor: 'transparent' },
-            '.cm-content': { backgroundColor: 'transparent' },
+            '.cm-content': { backgroundColor: 'transparent', paddingLeft: '8px' },
             '.cm-gutters': { backgroundColor: 'transparent' },
             '.cm-activeLine': {
                 backgroundColor: 'rgba(127, 127, 127, 0.10)',
