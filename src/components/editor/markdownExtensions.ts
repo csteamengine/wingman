@@ -27,7 +27,7 @@ class BulletWidget extends WidgetType {
     toDOM() {
         const span = document.createElement('span');
         span.className = 'cm-md-bullet';
-        span.textContent = '•';
+        span.textContent = '• ';
         return span;
     }
     ignoreEvent() { return false; }
@@ -248,21 +248,17 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
         const listMatch = lineText.match(/^(\s*)([-*•])\s/);
         if (listMatch) {
             const cursorOnLine = activeLineNumbers.has(i);
-            if (!cursorOnLine) {
+            const lineSelected = isCursorInRange(selections, lineFrom, line.to);
+            if (!cursorOnLine && !lineSelected) {
                 const indentLen = listMatch[1].length;
                 decorations.push({ from: lineFrom, to: lineFrom, decoration: mdListItem });
                 const markerStart = lineFrom + indentLen;
-                const markerEnd = markerStart + 1; // marker only, keep original space char
+                const markerEnd = markerStart + 2; // marker + following space
                 decorations.push({
                     from: markerStart,
                     to: markerEnd,
-                    decoration: mdHidden,
-                });
-                widgets.push({
-                    pos: markerStart,
-                    widget: Decoration.widget({
+                    decoration: Decoration.replace({
                         widget: new BulletWidget(),
-                        side: 1,
                     }),
                 });
             }
