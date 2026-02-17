@@ -34,20 +34,48 @@ function deleteSelection(view: EditorView): boolean {
     return true;
 }
 
-// Delete exactly one document character backward for collapsed cursors.
-// Prevents hidden markdown decorations (display:none) from causing
-// CodeMirror's visual coordinate mapping to skip over adjacent visible
-// characters (e.g. eating the space before a deleted word).
-function singleCharBackspace(view: EditorView): boolean {
+function deleteBackwardSingleChar(view: EditorView): boolean {
     const selection = view.state.selection.main;
     if (!selection.empty) return false;
 
-    const pos = selection.head;
-    if (pos === 0) return true;
+    const pos = selection.from;
+    if (pos === 0) return false;
+
+    const line = view.state.doc.lineAt(pos);
+    // Keep default behavior for line joins at start of line.
+    if (pos === line.from) return false;
+
+    const before = view.state.doc.sliceString(pos - 2, pos);
+    const code = before.codePointAt(before.length - 1);
+    const charLen = code !== undefined && code > 0xffff ? 2 : 1;
+    const from = pos - charLen;
 
     view.dispatch({
-        changes: { from: pos - 1, to: pos, insert: '' },
-        selection: { anchor: pos - 1 },
+        changes: { from, to: pos, insert: '' },
+        selection: { anchor: from },
+    });
+    return true;
+}
+
+function deleteForwardSingleChar(view: EditorView): boolean {
+    const selection = view.state.selection.main;
+    if (!selection.empty) return false;
+
+    const pos = selection.from;
+    if (pos >= view.state.doc.length) return false;
+
+    const line = view.state.doc.lineAt(pos);
+    // Keep default behavior at end-of-line (line joins).
+    if (pos === line.to) return false;
+
+    const after = view.state.doc.sliceString(pos, pos + 2);
+    const code = after.codePointAt(0);
+    const charLen = code !== undefined && code > 0xffff ? 2 : 1;
+    const to = pos + charLen;
+
+    view.dispatch({
+        changes: { from: pos, to, insert: '' },
+        selection: { anchor: pos },
     });
     return true;
 }
@@ -61,8 +89,9 @@ function scrollCaretIntoView(view: EditorView): void {
 // Editor keymaps: line operations, auto-list continuation, and bracket wrapping
 export const editorKeymap = keymap.of([
     { key: 'Backspace', run: deleteSelection },
-    { key: 'Backspace', run: singleCharBackspace },
     { key: 'Delete', run: deleteSelection },
+    { key: 'Backspace', run: deleteBackwardSingleChar },
+    { key: 'Delete', run: deleteForwardSingleChar },
 
     // Auto-wrap selection with quotes and brackets
     { key: '"', run: (view) => wrapSelection(view, '"', '"') },
@@ -196,7 +225,9 @@ export const editorKeymap = keymap.of([
                 if (contentAfterBullet === '') {
                     view.dispatch({
                         changes: { from: line.from, to: line.to, insert: '' },
+                        selection: { anchor: line.from },
                     });
+                    scrollCaretIntoView(view);
                     return true;
                 }
 
@@ -225,7 +256,9 @@ export const editorKeymap = keymap.of([
                 if (contentAfterNumber === '') {
                     view.dispatch({
                         changes: { from: line.from, to: line.to, insert: '' },
+                        selection: { anchor: line.from },
                     });
+                    scrollCaretIntoView(view);
                     return true;
                 }
 

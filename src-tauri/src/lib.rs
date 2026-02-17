@@ -1255,18 +1255,27 @@ fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
     app_handle.run_on_main_thread(move || {
         unsafe {
             let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
+            // Try explicit stop action first. This is more reliable in release builds
+            // when responder focus differs from dev mode.
+            let sent_stop_action: bool = msg_send![app, sendAction: sel!(stopDictation:) to: cocoa::base::nil from: cocoa::base::nil];
+
+            // Fall back to key/main window responder manipulation.
             let key_window: cocoa::base::id = msg_send![app, keyWindow];
-            if key_window.is_null() {
-                let _ = tx.send(false);
+            let main_window: cocoa::base::id = msg_send![app, mainWindow];
+            let active_window = if !key_window.is_null() { key_window } else { main_window };
+
+            if active_window.is_null() {
+                let _ = tx.send(sent_stop_action);
                 return;
             }
-            let first_responder: cocoa::base::id = msg_send![key_window, firstResponder];
+
+            let first_responder: cocoa::base::id = msg_send![active_window, firstResponder];
             // Resign first responder to commit dictated text and stop dictation
-            let _: bool = msg_send![key_window, makeFirstResponder: cocoa::base::nil];
+            let _: bool = msg_send![active_window, makeFirstResponder: cocoa::base::nil];
             // Restore first responder after a brief delay so dictation fully tears down
             // before the text input regains focus
             if !first_responder.is_null() {
-                let _: () = msg_send![key_window,
+                let _: () = msg_send![active_window,
                     performSelector: sel!(makeFirstResponder:)
                     withObject: first_responder
                     afterDelay: 0.25f64
@@ -1277,7 +1286,7 @@ fn stop_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
     }).map_err(|e| e.to_string())?;
     let stopped = rx.recv().map_err(|e| e.to_string())?;
     if !stopped {
-        return Err("No key window found to stop dictation.".to_string());
+        return Err("Unable to stop dictation via responder chain.".to_string());
     }
     Ok(())
 }

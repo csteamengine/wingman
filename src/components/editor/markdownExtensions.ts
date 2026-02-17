@@ -20,23 +20,6 @@ const mdH4 = Decoration.line({ class: 'cm-md-h4' });
 const mdBlockquote = Decoration.line({ class: 'cm-md-blockquote' });
 const mdHr = Decoration.line({ class: 'cm-md-hr' });
 const mdListItem = Decoration.line({ class: 'cm-md-list-item' });
-
-// Bullet widget that replaces `- ` or `* ` with a bullet dot
-class BulletWidget extends WidgetType {
-    indent: number;
-    constructor(indent: number) {
-        super();
-        this.indent = indent;
-    }
-    eq(other: BulletWidget) { return other.indent === this.indent; }
-    toDOM() {
-        const span = document.createElement('span');
-        span.className = 'cm-md-bullet';
-        span.textContent = '•';
-        return span;
-    }
-    ignoreEvent() { return false; }
-}
 // Zero-width space widget to maintain line height when fence text is replaced
 class EmptyFenceWidget extends WidgetType {
     eq() { return true; }
@@ -249,23 +232,7 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
         // Unordered list items: - item or * item (with optional indentation)
         const listMatch = lineText.match(/^(\s*)([-*])\s/);
         if (listMatch) {
-            const cursorInLine = isCursorInRange(selections, lineFrom, line.to);
-            const indentLen = listMatch[1].length;
             decorations.push({ from: lineFrom, to: lineFrom, decoration: mdListItem });
-
-            if (!cursorInLine) {
-                // Replace the raw `- ` / `* ` marker with a visual bullet.
-                // Using a single replace decoration avoids mixed marker artifacts.
-                const markerStart = lineFrom + indentLen;
-                const markerEnd = markerStart + 2; // `- ` or `* `
-                decorations.push({
-                    from: markerStart,
-                    to: markerEnd,
-                    decoration: Decoration.replace({
-                        widget: new BulletWidget(indentLen),
-                    }),
-                });
-            }
         }
 
         // === INLINE ELEMENTS ===
@@ -419,6 +386,7 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
         // Inline code: `code`
         const codeRegex = /`([^`]+)`/g;
         let codeMatch;
+        const cursorInLine = isCursorInRange(selections, lineFrom, line.to);
         while ((codeMatch = codeRegex.exec(lineText)) !== null) {
             const matchStart = lineFrom + codeMatch.index;
             const matchEnd = matchStart + codeMatch[0].length;
@@ -428,10 +396,9 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
 
             const contentStart = matchStart + 1;
             const contentEnd = matchEnd - 1;
-            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
             markDecorated(matchStart, matchEnd);
 
-            if (cursorInside) {
+            if (cursorInLine) {
                 decorations.push({ from: contentStart, to: contentEnd, decoration: mdCode });
             } else {
                 decorations.push({ from: matchStart, to: contentStart, decoration: mdHidden });
@@ -499,12 +466,8 @@ export const markdownTheme = EditorView.baseTheme({
     },
     // List items
     '.cm-md-list-item': {
-        paddingLeft: '4px',
-    },
-    '.cm-md-bullet': {
-        color: 'currentColor',
-        opacity: '0.7',
-        marginRight: '4px',
+        // Keep indentation/layout managed by raw text to avoid cursor drift.
+        paddingLeft: '0',
     },
     // Image preview
     '.cm-md-image-preview': {
