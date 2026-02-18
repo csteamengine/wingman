@@ -1281,66 +1281,48 @@ fn stop_dictation(window: tauri::WebviewWindow, app_handle: tauri::AppHandle) ->
             };
             let mut sent_any_stop = false;
 
-            // 1. Send cancelOperation: (the semantic Escape action) through the
-            //    responder chain.  The system dictation handler responds to this
-            //    the same way it responds to a physical Escape press.
-            let sent_cancel: bool = msg_send![app, sendAction: sel!(cancelOperation:) to: cocoa::base::nil from: cocoa::base::nil];
-            sent_any_stop |= sent_cancel;
-
-            // 2. Walk the responder chain and call stopDictation: on every
-            //    responder that supports it.
             if !active_window.is_null() {
                 let first_responder: cocoa::base::id = msg_send![active_window, firstResponder];
-                let mut responder: cocoa::base::id = first_responder;
-                while !responder.is_null() {
-                    let responds: bool = msg_send![responder, respondsToSelector: sel!(stopDictation:)];
-                    if responds {
-                        let _: () = msg_send![responder, stopDictation: cocoa::base::nil];
+                if !first_responder.is_null() {
+                    // Esc-equivalent path: send cancelOperation: to the exact
+                    // first responder for this window.
+                    let responds_cancel: bool = msg_send![first_responder, respondsToSelector: sel!(cancelOperation:)];
+                    if responds_cancel {
+                        let _: () = msg_send![first_responder, cancelOperation: cocoa::base::nil];
                         sent_any_stop = true;
                     }
-                    responder = msg_send![responder, nextResponder];
+
+                    // Fallback for responders that expose stopDictation: directly.
+                    let responds_stop: bool = msg_send![first_responder, respondsToSelector: sel!(stopDictation:)];
+                    if responds_stop {
+                        let _: () = msg_send![first_responder, stopDictation: cocoa::base::nil];
+                        sent_any_stop = true;
+                    }
                 }
             }
 
-            // 3. Responder-chain broadcast for stop.
+            // Broadcast through responder chain as additional fallback.
+            let sent_cancel_action: bool = msg_send![app, sendAction: sel!(cancelOperation:) to: cocoa::base::nil from: cocoa::base::nil];
             let sent_stop_action: bool = msg_send![app, sendAction: sel!(stopDictation:) to: cocoa::base::nil from: cocoa::base::nil];
-            sent_any_stop |= sent_stop_action;
+            sent_any_stop |= sent_cancel_action || sent_stop_action;
 
-            // 3b. Toggle fallback only if nothing above appears to have routed.
-            // Unconditionally sending startDictation: can re-trigger dictation.
-            if !sent_any_stop {
-                let sent_toggle_action: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
-                sent_any_stop |= sent_toggle_action;
-            }
-
-            // 4. Discard in-progress marked (composition) text.
+            // Clear in-progress marked (composition) text after stop/cancel.
             let input_context: cocoa::base::id = msg_send![class!(NSTextInputContext), currentInputContext];
             if !input_context.is_null() {
                 let _: () = msg_send![input_context, discardMarkedText];
             }
 
-            // 5. Force-end editing on the window.
+            // Force-end editing to commit/cancel any pending composition state.
             if !active_window.is_null() {
                 let _: bool = msg_send![active_window, endEditingFor: cocoa::base::nil];
             }
 
-            // 6. Resign and restore first responder as a last-resort fallback.
-            if !active_window.is_null() {
-                let first_responder: cocoa::base::id = msg_send![active_window, firstResponder];
-                let _: bool = msg_send![active_window, makeFirstResponder: cocoa::base::nil];
-                if !first_responder.is_null() {
-                    let _: () = msg_send![active_window,
-                        performSelector: sel!(makeFirstResponder:)
-                        withObject: first_responder
-                        afterDelay: 0.25f64
-                    ];
-                }
-            }
-
             log::info!(
-                "stop_dictation: target_window_null={}, active_window_null={}, sent_any_stop={}",
+                "stop_dictation: target_window_null={}, active_window_null={}, sent_cancel_action={}, sent_stop_action={}, sent_any_stop={}",
                 target_window.is_null(),
                 active_window.is_null(),
+                sent_cancel_action,
+                sent_stop_action,
                 sent_any_stop
             );
             let _ = tx.send(sent_any_stop || !active_window.is_null());
