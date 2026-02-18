@@ -5,11 +5,13 @@ import { invoke } from '@tauri-apps/api/core';
 interface DictationButtonProps {
   /** True while the editor is in a composition session (dictation or IME). */
   isComposing?: boolean;
+  /** Ensure editor is first responder before sending native stop action. */
+  onPrepareStop?: () => void;
   /** DOM-level fallback to end an active composition (blur/refocus the editor). */
   onStopFallback?: () => void;
 }
 
-export function DictationButton({ isComposing = false, onStopFallback }: DictationButtonProps) {
+export function DictationButton({ isComposing = false, onPrepareStop, onStopFallback }: DictationButtonProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toggling = useRef(false);
@@ -28,6 +30,7 @@ export function DictationButton({ isComposing = false, onStopFallback }: Dictati
     try {
       if (isActive) {
         // --- STOP ---
+        onPrepareStop?.();
         // Rust stop is non-blocking but we still await command dispatch and
         // surface errors instead of silently swallowing them.
         await invoke('stop_dictation');

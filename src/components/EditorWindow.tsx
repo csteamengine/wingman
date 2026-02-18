@@ -1323,6 +1323,9 @@ export function EditorWindow() {
                 />
                 <DictationButton
                     isComposing={isComposing}
+                    onPrepareStop={() => {
+                        viewRef.current?.focus();
+                    }}
                     onStopFallback={() => {
                         // Toggling contentEditable off forces the browser to
                         // commit and tear down any active composition session
