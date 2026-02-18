@@ -173,11 +173,13 @@ export function Toolbar({
 
         const handleMouseMove = (e: MouseEvent) => {
             let hoveredItem: string | null = null;
+            const itemRects: { itemId: string; rect: DOMRect }[] = [];
 
             itemRefs.current.forEach((el, itemId) => {
                 if (!el || itemId === draggedItem) return;
 
                 const rect = el.getBoundingClientRect();
+                itemRects.push({ itemId, rect });
                 if (
                     e.clientX >= rect.left &&
                     e.clientX <= rect.right &&
@@ -195,6 +197,34 @@ export function Toolbar({
 
             setDragOverItem(hoveredItem);
             if (!hoveredItem) {
+                if (itemRects.length === 0) {
+                    setDropIndicator(null);
+                    return;
+                }
+
+                // Allow dropping before the first item or after the last item.
+                itemRects.sort((a, b) => a.rect.left - b.rect.left);
+                const first = itemRects[0];
+                const last = itemRects[itemRects.length - 1];
+                const verticalInRange = e.clientY >= first.rect.top && e.clientY <= first.rect.bottom;
+
+                if (!verticalInRange) {
+                    setDropIndicator(null);
+                    return;
+                }
+
+                if (e.clientX < first.rect.left) {
+                    setDropIndicator({ targetId: first.itemId, position: 'before' });
+                    setDragOverItem(first.itemId);
+                    return;
+                }
+
+                if (e.clientX > last.rect.right) {
+                    setDropIndicator({ targetId: last.itemId, position: 'after' });
+                    setDragOverItem(last.itemId);
+                    return;
+                }
+
                 setDropIndicator(null);
             }
         };
