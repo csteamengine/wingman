@@ -1261,6 +1261,8 @@ fn stop_dictation(window: tauri::WebviewWindow, app_handle: tauri::AppHandle) ->
     use std::sync::mpsc;
     use std::time::Duration;
 
+    let _ = window.set_focus();
+
     let (tx, rx) = mpsc::channel();
     app_handle.run_on_main_thread(move || {
         unsafe {
@@ -1306,6 +1308,16 @@ fn stop_dictation(window: tauri::WebviewWindow, app_handle: tauri::AppHandle) ->
             let sent_stop_action: bool = msg_send![app, sendAction: sel!(stopDictation:) to: cocoa::base::nil from: cocoa::base::nil];
             sent_any_stop |= sent_cancel_action || sent_stop_action;
 
+            // Some responders only toggle via startDictation:. Try it as a
+            // last-resort fallback if explicit stop/cancel couldn't route.
+            let sent_toggle_action = if sent_any_stop {
+                false
+            } else {
+                let sent_start_action: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
+                sent_start_action
+            };
+            sent_any_stop |= sent_toggle_action;
+
             // Clear in-progress marked (composition) text after stop/cancel.
             let input_context: cocoa::base::id = msg_send![class!(NSTextInputContext), currentInputContext];
             if !input_context.is_null() {
@@ -1318,14 +1330,15 @@ fn stop_dictation(window: tauri::WebviewWindow, app_handle: tauri::AppHandle) ->
             }
 
             log::info!(
-                "stop_dictation: target_window_null={}, active_window_null={}, sent_cancel_action={}, sent_stop_action={}, sent_any_stop={}",
+                "stop_dictation: target_window_null={}, active_window_null={}, sent_cancel_action={}, sent_stop_action={}, sent_toggle_action={}, sent_any_stop={}",
                 target_window.is_null(),
                 active_window.is_null(),
                 sent_cancel_action,
                 sent_stop_action,
+                sent_toggle_action,
                 sent_any_stop
             );
-            let _ = tx.send(sent_any_stop || !active_window.is_null());
+            let _ = tx.send(sent_any_stop);
         }
     }).map_err(|e| e.to_string())?;
 
