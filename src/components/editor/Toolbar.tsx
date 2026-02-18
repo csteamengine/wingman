@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
     CaseUpper,
     CaseLower,
@@ -95,7 +95,7 @@ export function Toolbar({
 
     const [draggedItem, setDraggedItem] = useState<string | null>(null);
     const [dragOverItem, setDragOverItem] = useState<string | null>(null);
-    const dragCounter = useRef(0);
+    const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
     // Use provided order or default
     const order = toolbarOrder || Object.keys(TOOLBAR_ITEMS).filter(id => !id.startsWith('separator'));
@@ -134,72 +134,80 @@ export function Toolbar({
         return false;
     }, [formatDisabled, validateDisabled]);
 
-    const handleDragStart = useCallback((e: React.DragEvent, itemId: string) => {
+    const handleMouseDragStart = useCallback((e: React.MouseEvent, itemId: string) => {
+        if (!onToolbarOrderChange) return;
+        if (e.button !== 0) return; // Only left click
+        e.preventDefault();
         setDraggedItem(itemId);
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', itemId);
-        // Add a slight delay to allow the drag image to be set
-        setTimeout(() => {
-            (e.target as HTMLElement).style.opacity = '0.5';
-        }, 0);
-    }, []);
-
-    const handleDragEnd = useCallback((e: React.DragEvent) => {
-        (e.target as HTMLElement).style.opacity = '1';
-        setDraggedItem(null);
         setDragOverItem(null);
-        dragCounter.current = 0;
-    }, []);
+    }, [onToolbarOrderChange]);
 
-    const handleDragEnter = useCallback((e: React.DragEvent, itemId: string) => {
-        e.preventDefault();
-        dragCounter.current++;
-        if (draggedItem && draggedItem !== itemId) {
-            setDragOverItem(itemId);
-        }
-    }, [draggedItem]);
-
-    const handleDragLeave = useCallback((e: React.DragEvent) => {
-        e.preventDefault();
-        dragCounter.current--;
-        if (dragCounter.current === 0) {
-            setDragOverItem(null);
-        }
-    }, []);
-
-    const handleDragOver = useCallback((e: React.DragEvent) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-    }, []);
-
-    const handleDrop = useCallback((e: React.DragEvent, targetId: string) => {
-        e.preventDefault();
-        dragCounter.current = 0;
-
-        if (!draggedItem || draggedItem === targetId || !onToolbarOrderChange) {
-            setDraggedItem(null);
-            setDragOverItem(null);
-            return;
-        }
+    const handleDragReorder = useCallback((sourceId: string, targetId: string) => {
+        if (!onToolbarOrderChange || sourceId === targetId) return;
 
         const newOrder = [...order];
-        const draggedIndex = newOrder.indexOf(draggedItem);
+        const draggedIndex = newOrder.indexOf(sourceId);
         const targetIndex = newOrder.indexOf(targetId);
 
-        if (draggedIndex === -1 || targetIndex === -1) {
-            setDraggedItem(null);
-            setDragOverItem(null);
-            return;
-        }
+        if (draggedIndex === -1 || targetIndex === -1) return;
 
-        // Remove dragged item and insert at new position
         newOrder.splice(draggedIndex, 1);
-        newOrder.splice(targetIndex, 0, draggedItem);
+        newOrder.splice(targetIndex, 0, sourceId);
 
         onToolbarOrderChange(newOrder);
-        setDraggedItem(null);
-        setDragOverItem(null);
-    }, [draggedItem, order, onToolbarOrderChange]);
+    }, [order, onToolbarOrderChange]);
+
+    useEffect(() => {
+        if (!draggedItem) return;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            let hoveredItem: string | null = null;
+
+            itemRefs.current.forEach((el, itemId) => {
+                if (!el || itemId === draggedItem) return;
+
+                const rect = el.getBoundingClientRect();
+                if (
+                    e.clientX >= rect.left &&
+                    e.clientX <= rect.right &&
+                    e.clientY >= rect.top &&
+                    e.clientY <= rect.bottom
+                ) {
+                    hoveredItem = itemId;
+                }
+            });
+
+            setDragOverItem(hoveredItem);
+        };
+
+        const handleMouseUp = () => {
+            if (draggedItem && dragOverItem) {
+                handleDragReorder(draggedItem, dragOverItem);
+            }
+            setDraggedItem(null);
+            setDragOverItem(null);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none';
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+    }, [draggedItem, dragOverItem, handleDragReorder]);
+
+    const setItemRef = useCallback((itemId: string, element: HTMLDivElement | null) => {
+        if (element) {
+            itemRefs.current.set(itemId, element);
+        } else {
+            itemRefs.current.delete(itemId);
+        }
+    }, []);
 
     return (
         <div className="border-b border-[var(--ui-border)] px-2 py-2 overflow-x-auto">
@@ -212,16 +220,11 @@ export function Toolbar({
                         return (
                             <div
                                 key={itemId}
+                                ref={(el) => setItemRef(itemId, el)}
                                 className={`w-px h-6 bg-[var(--ui-border)] mx-1 transition-all ${
                                     dragOverItem === itemId ? 'bg-[var(--ui-accent)] w-1' : ''
                                 }`}
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, itemId)}
-                                onDragEnd={handleDragEnd}
-                                onDragEnter={(e) => handleDragEnter(e, itemId)}
-                                onDragLeave={handleDragLeave}
-                                onDragOver={handleDragOver}
-                                onDrop={(e) => handleDrop(e, itemId)}
+                                onMouseDown={(e) => handleMouseDragStart(e, itemId)}
                             />
                         );
                     }
@@ -234,14 +237,8 @@ export function Toolbar({
                     return (
                         <div
                             key={itemId}
+                            ref={(el) => setItemRef(itemId, el)}
                             className={`relative group ${isDragOver ? 'ring-2 ring-[var(--ui-accent)] ring-offset-1 ring-offset-[var(--ui-bg)] rounded' : ''}`}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, itemId)}
-                            onDragEnd={handleDragEnd}
-                            onDragEnter={(e) => handleDragEnter(e, itemId)}
-                            onDragLeave={handleDragLeave}
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, itemId)}
                         >
                             <button
                                 onClick={() => !disabled && handleClick(item)}
@@ -251,10 +248,16 @@ export function Toolbar({
                             >
                                 <Icon className="w-5 h-5" />
                             </button>
-                            {/* Drag handle indicator on hover */}
-                            <div className="absolute -left-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-30 pointer-events-none transition-opacity">
+                            {/* Mouse-based drag handle for Tauri (avoids HTML5 DnD issues). */}
+                            <button
+                                type="button"
+                                onMouseDown={(e) => handleMouseDragStart(e, itemId)}
+                                className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 transition-opacity cursor-grab active:cursor-grabbing text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]"
+                                aria-label={`Reorder ${item.title}`}
+                                title={`Reorder ${item.title}`}
+                            >
                                 <GripVertical className="w-3 h-3" />
-                            </div>
+                            </button>
                         </div>
                     );
                 })}
