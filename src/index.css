@@ -594,6 +594,15 @@ body {
   color: var(--ui-text-muted);
   border: none;
   cursor: pointer;
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+.toolbar-btn *,
+.toolbar-drag-handle,
+.toolbar-drag-handle * {
+  -webkit-user-drag: none;
+  user-drag: none;
 }
 
 .toolbar-btn:hover:not(:disabled) {

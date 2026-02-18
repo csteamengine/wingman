@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import type { DragEvent } from 'react';
 import {
     CaseUpper,
     CaseLower,
@@ -157,6 +158,10 @@ export function Toolbar({
         onToolbarOrderChange(newOrder);
     }, [order, onToolbarOrderChange]);
 
+    const preventNativeDrag = useCallback((e: DragEvent) => {
+        e.preventDefault();
+    }, []);
+
     useEffect(() => {
         if (!draggedItem) return;
 
@@ -224,7 +229,12 @@ export function Toolbar({
                                 className={`w-px h-6 bg-[var(--ui-border)] mx-1 transition-all ${
                                     dragOverItem === itemId ? 'bg-[var(--ui-accent)] w-1' : ''
                                 }`}
-                                onMouseDown={(e) => handleMouseDragStart(e, itemId)}
+                                onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    handleMouseDragStart(e, itemId);
+                                }}
+                                onDragStart={preventNativeDrag}
+                                draggable={false}
                             />
                         );
                     }
@@ -245,16 +255,23 @@ export function Toolbar({
                                 title={item.title}
                                 className={`toolbar-btn ${disabled ? 'opacity-40 cursor-not-allowed' : ''} ${isDragging ? 'opacity-50' : ''}`}
                                 disabled={disabled}
+                                onDragStart={preventNativeDrag}
+                                draggable={false}
                             >
                                 <Icon className="w-5 h-5" />
                             </button>
                             {/* Mouse-based drag handle for Tauri (avoids HTML5 DnD issues). */}
                             <button
                                 type="button"
-                                onMouseDown={(e) => handleMouseDragStart(e, itemId)}
-                                className="absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 transition-opacity cursor-grab active:cursor-grabbing text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]"
+                                onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    handleMouseDragStart(e, itemId);
+                                }}
+                                className="toolbar-drag-handle absolute -left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 transition-opacity cursor-grab active:cursor-grabbing text-[var(--ui-text-muted)] hover:text-[var(--ui-text)]"
                                 aria-label={`Reorder ${item.title}`}
                                 title={`Reorder ${item.title}`}
+                                onDragStart={preventNativeDrag}
+                                draggable={false}
                             >
                                 <GripVertical className="w-3 h-3" />
                             </button>
