@@ -1267,53 +1267,9 @@ fn stop_dictation(window: tauri::WebviewWindow, app_handle: tauri::AppHandle) ->
     app_handle.run_on_main_thread(move || {
         unsafe {
             let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
-            let target_window: cocoa::base::id = match window.ns_window() {
-                Ok(w) => w as cocoa::base::id,
-                Err(_) => cocoa::base::nil,
-            };
-
-            let key_window: cocoa::base::id = msg_send![app, keyWindow];
-            let main_window: cocoa::base::id = msg_send![app, mainWindow];
-            let active_window = if !target_window.is_null() {
-                target_window
-            } else if !key_window.is_null() {
-                key_window
-            } else {
-                main_window
-            };
-            let mut sent_any_stop = false;
-
-            if !active_window.is_null() {
-                let first_responder: cocoa::base::id = msg_send![active_window, firstResponder];
-                if !first_responder.is_null() {
-                    // Esc-equivalent path: send cancelOperation: to the exact
-                    // first responder for this window.
-                    let responds_cancel: bool = msg_send![first_responder, respondsToSelector: sel!(cancelOperation:)];
-                    if responds_cancel {
-                        let _: () = msg_send![first_responder, cancelOperation: cocoa::base::nil];
-                        sent_any_stop = true;
-                    }
-
-                    // Fallback for responders that expose stopDictation: directly.
-                    let responds_stop: bool = msg_send![first_responder, respondsToSelector: sel!(stopDictation:)];
-                    if responds_stop {
-                        let _: () = msg_send![first_responder, stopDictation: cocoa::base::nil];
-                        sent_any_stop = true;
-                    }
-                }
-            }
-
-            // Toggle dictation directly. In practice this route is often the
-            // most reliable in packaged builds because startDictation: is the
-            // standard menu action that flips start/stop.
+            // AppKit's dictation action is a toggle; using the same selector
+            // as start is the most reliable stop path in packaged builds.
             let sent_toggle_action: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
-            sent_any_stop |= sent_toggle_action;
-
-            // Broadcast cancel/stop through responder chain as additional stop
-            // reinforcement (and to cancel any stale composition state).
-            let sent_cancel_action: bool = msg_send![app, sendAction: sel!(cancelOperation:) to: cocoa::base::nil from: cocoa::base::nil];
-            let sent_stop_action: bool = msg_send![app, sendAction: sel!(stopDictation:) to: cocoa::base::nil from: cocoa::base::nil];
-            sent_any_stop |= sent_cancel_action || sent_stop_action;
 
             // Clear in-progress marked (composition) text after stop/cancel.
             let input_context: cocoa::base::id = msg_send![class!(NSTextInputContext), currentInputContext];
@@ -1321,28 +1277,17 @@ fn stop_dictation(window: tauri::WebviewWindow, app_handle: tauri::AppHandle) ->
                 let _: () = msg_send![input_context, discardMarkedText];
             }
 
-            // Force-end editing to commit/cancel any pending composition state.
-            if !active_window.is_null() {
-                let _: bool = msg_send![active_window, endEditingFor: cocoa::base::nil];
-            }
-
             log::info!(
-                "stop_dictation: target_window_null={}, active_window_null={}, sent_cancel_action={}, sent_stop_action={}, sent_toggle_action={}, sent_any_stop={}",
-                target_window.is_null(),
-                active_window.is_null(),
-                sent_cancel_action,
-                sent_stop_action,
-                sent_toggle_action,
-                sent_any_stop
+                "stop_dictation: sent_toggle_action={}",
+                sent_toggle_action
             );
-            let _ = tx.send(sent_any_stop);
+            let _ = tx.send(());
         }
     }).map_err(|e| e.to_string())?;
 
-    let stopped = rx.recv_timeout(Duration::from_secs(2)).map_err(|e| e.to_string())?;
-    if !stopped {
-        return Err("Unable to route dictation stop action to active responder.".to_string());
-    }
+    // Mirror start_dictation behavior: do not fail hard if the main thread is
+    // temporarily blocked by native dictation UI.
+    let _ = rx.recv_timeout(Duration::from_millis(500));
 
     Ok(())
 }

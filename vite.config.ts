@@ -23,6 +23,32 @@ export default defineConfig({
     minify: !process.env.TAURI_ENV_DEBUG ? 'esbuild' : false,
     // Produce sourcemaps for debug builds
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
+    // Keep large dependencies in stable, split vendor chunks.
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+
+          if (id.includes('/@codemirror/') || id.includes('/codemirror/')) {
+            return 'codemirror';
+          }
+
+          if (id.includes('/@tauri-apps/')) {
+            return 'tauri';
+          }
+
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/scheduler/')
+          ) {
+            return 'react-vendor';
+          }
+
+          return 'vendor';
+        },
+      },
+    },
   },
 
   // Environment variables
