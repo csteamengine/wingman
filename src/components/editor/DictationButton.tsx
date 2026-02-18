@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Mic } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -11,10 +11,19 @@ export function DictationButton({ isComposing = false }: DictationButtonProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toggling = useRef(false);
+  const prevIsComposing = useRef(isComposing);
 
   // Dictation is active if we started it via the button OR if the editor
   // entered a composition session from another source (e.g. system hotkey).
   const isActive = isRecording || isComposing;
+
+  // When composition ends (e.g. user presses Escape), reset to mic state.
+  useEffect(() => {
+    if (prevIsComposing.current && !isComposing) {
+      setIsRecording(false);
+    }
+    prevIsComposing.current = isComposing;
+  }, [isComposing]);
 
   const handleClick = async () => {
     if (toggling.current) return;
@@ -50,10 +59,10 @@ export function DictationButton({ isComposing = false }: DictationButtonProps) {
       {isActive ? (
         <div
           className="px-2 py-1 text-xs rounded-md border shadow-lg bg-[var(--ui-surface-solid)] border-[var(--ui-border)] text-[var(--ui-text-muted)]"
-          aria-label="Press Esc to stop dictation"
-          title="Press Esc to stop dictation"
+          aria-label="Press Escape to cancel dictation"
+          title="Press Escape to cancel dictation"
         >
-          Press Esc
+          Press Escape to cancel dictation
         </div>
       ) : (
         <button
