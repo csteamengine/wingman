@@ -1,6 +1,7 @@
 import {EditorView, Decoration, ViewPlugin, WidgetType} from '@codemirror/view';
 import type {DecorationSet, ViewUpdate} from '@codemirror/view';
 import type {SelectionRange} from '@codemirror/state';
+import {syntaxTree} from '@codemirror/language';
 
 // ===== UNIFIED MARKDOWN DECORATION SYSTEM =====
 // Obsidian-style editing: syntax hidden when cursor is outside, shown when cursor is inside
@@ -108,6 +109,20 @@ interface DecorationEntry {
     decoration: Decoration;
 }
 
+function getDelimitedContentRange(
+    node: { from: number; to: number; getChildren: (name: string) => Array<{ from: number; to: number }> },
+    markName: string,
+): { contentFrom: number; contentTo: number } {
+    const marks = node.getChildren(markName).sort((a, b) => a.from - b.from);
+    if (marks.length < 2) {
+        return { contentFrom: node.from, contentTo: node.to };
+    }
+    return {
+        contentFrom: marks[0].to,
+        contentTo: marks[marks.length - 1].from,
+    };
+}
+
 // Build all markdown decorations
 function buildMarkdownDecorations(view: EditorView): DecorationSet {
     const decorations: DecorationEntry[] = [];
@@ -118,21 +133,6 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
     const activeLineNumbers = new Set(
         selections.map((sel) => doc.lineAt(sel.head).number)
     );
-
-    // Track ranges that have been decorated to avoid overlaps
-    const decoratedRanges: {from: number, to: number}[] = [];
-
-    const isRangeDecorated = (from: number, to: number): boolean => {
-        return decoratedRanges.some(r =>
-            (from >= r.from && from < r.to) ||
-            (to > r.from && to <= r.to) ||
-            (from <= r.from && to >= r.to)
-        );
-    };
-
-    const markDecorated = (from: number, to: number) => {
-        decoratedRanges.push({from, to});
-    };
 
     // Track lines that are part of fenced code blocks (to skip in line processing)
     const codeBlockLines = new Set<number>();
@@ -262,176 +262,152 @@ function buildMarkdownDecorations(view: EditorView): DecorationSet {
             }
         }
 
-        // === INLINE ELEMENTS ===
+    }
 
-        // Images: ![alt](url) - process before links
-        const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-        let imageMatch;
-        while ((imageMatch = imageRegex.exec(lineText)) !== null) {
-            const matchStart = lineFrom + imageMatch.index;
-            const matchEnd = matchStart + imageMatch[0].length;
+    // === INLINE ELEMENTS (syntax-tree driven) ===
+    syntaxTree(view.state).iterate({
+        enter: (node) => {
+            const lineNumber = doc.lineAt(node.from).number;
+            if (codeBlockLines.has(lineNumber)) return false;
 
-            if (isEscaped(text, matchStart)) continue;
-            if (isRangeDecorated(matchStart, matchEnd)) continue;
+            if (node.name === 'Image') {
+                const cursorInside = isCursorInRange(selections, node.from, node.to);
+                const urlNode = node.node.getChildren('URL')[0];
+                if (!urlNode) return false;
+                const linkMarks = node.node.getChildren('LinkMark').sort((a, b) => a.from - b.from);
+                if (linkMarks.length < 4) return false;
 
-            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
-            markDecorated(matchStart, matchEnd);
+                const altFrom = linkMarks[0].to;
+                const altTo = linkMarks[1].from;
+                const altText = text.slice(altFrom, altTo);
+                const imageUrl = text.slice(urlNode.from, urlNode.to);
 
-            if (!cursorInside) {
-                // Hide syntax and show image
-                decorations.push({ from: matchStart, to: matchEnd, decoration: mdHidden });
-                widgets.push({
-                    pos: matchStart,
-                    widget: Decoration.widget({
-                        widget: new ImageWidget(imageMatch[2], imageMatch[1]),
-                        side: 1,
-                    })
-                });
+                if (!cursorInside) {
+                    decorations.push({ from: node.from, to: node.to, decoration: mdHidden });
+                    widgets.push({
+                        pos: node.from,
+                        widget: Decoration.widget({
+                            widget: new ImageWidget(imageUrl, altText),
+                            side: 1,
+                        }),
+                    });
+                }
+                return false;
             }
-        }
 
-        // Links: [text](url)
-        const linkRegex = /(?<!!)\[([^\]]+)\]\(([^)]+)\)/g;
-        let linkMatch;
-        while ((linkMatch = linkRegex.exec(lineText)) !== null) {
-            const matchStart = lineFrom + linkMatch.index;
-            const matchEnd = matchStart + linkMatch[0].length;
+            if (node.name === 'Link') {
+                const cursorInside = isCursorInRange(selections, node.from, node.to);
+                const linkMarks = node.node.getChildren('LinkMark').sort((a, b) => a.from - b.from);
+                if (linkMarks.length < 2) return false;
+                const textStart = linkMarks[0].to;
+                const textEnd = linkMarks[1].from;
 
-            if (isEscaped(text, matchStart)) continue;
-            if (isRangeDecorated(matchStart, matchEnd)) continue;
+                if (textStart >= textEnd) return false;
 
-            const textStart = matchStart + 1;
-            const textEnd = textStart + linkMatch[1].length;
-            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
-            markDecorated(matchStart, matchEnd);
-
-            if (cursorInside) {
-                decorations.push({ from: textStart, to: textEnd, decoration: mdLink });
-            } else {
-                decorations.push({ from: matchStart, to: textStart, decoration: mdHidden });
-                decorations.push({ from: textStart, to: textEnd, decoration: mdLink });
-                decorations.push({ from: textEnd, to: matchEnd, decoration: mdHidden });
+                if (cursorInside) {
+                    decorations.push({ from: textStart, to: textEnd, decoration: mdLink });
+                } else {
+                    decorations.push({ from: node.from, to: textStart, decoration: mdHidden });
+                    decorations.push({ from: textStart, to: textEnd, decoration: mdLink });
+                    decorations.push({ from: textEnd, to: node.to, decoration: mdHidden });
+                }
+                return false;
             }
-        }
 
-        // Bold+Italic: ***text***
-        const boldItalicRegex = /\*\*\*([^*]+)\*\*\*/g;
-        let boldItalicMatch;
-        while ((boldItalicMatch = boldItalicRegex.exec(lineText)) !== null) {
-            const matchStart = lineFrom + boldItalicMatch.index;
-            const matchEnd = matchStart + boldItalicMatch[0].length;
+            if (node.name === 'InlineCode') {
+                const line = doc.lineAt(node.from);
+                const cursorInLine = isCursorInRange(selections, line.from, line.to);
+                const { contentFrom, contentTo } = getDelimitedContentRange(node.node, 'CodeMark');
+                if (contentFrom >= contentTo) return false;
 
-            if (isEscaped(text, matchStart)) continue;
-            if (isRangeDecorated(matchStart, matchEnd)) continue;
-
-            const contentStart = matchStart + 3;
-            const contentEnd = matchEnd - 3;
-            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
-            markDecorated(matchStart, matchEnd);
-
-            if (cursorInside) {
-                decorations.push({ from: contentStart, to: contentEnd, decoration: mdBoldItalic });
-            } else {
-                decorations.push({ from: matchStart, to: contentStart, decoration: mdHidden });
-                decorations.push({ from: contentStart, to: contentEnd, decoration: mdBoldItalic });
-                decorations.push({ from: contentEnd, to: matchEnd, decoration: mdHidden });
+                if (cursorInLine) {
+                    decorations.push({ from: contentFrom, to: contentTo, decoration: mdCode });
+                } else {
+                    decorations.push({ from: node.from, to: contentFrom, decoration: mdHidden });
+                    decorations.push({ from: contentFrom, to: contentTo, decoration: mdCode });
+                    decorations.push({ from: contentTo, to: node.to, decoration: mdHidden });
+                }
+                return false;
             }
-        }
 
-        // Bold: **text** or __text__
-        const boldRegex = /(\*\*|__)([^*_]+)\1/g;
-        let boldMatch;
-        while ((boldMatch = boldRegex.exec(lineText)) !== null) {
-            const matchStart = lineFrom + boldMatch.index;
-            const matchEnd = matchStart + boldMatch[0].length;
+            if (node.name === 'StrongEmphasis') {
+                const parent = node.node.parent;
+                if (parent?.name === 'Emphasis' && parent.from < node.from && parent.to > node.to) {
+                    // Handled by the parent Emphasis as bold+italic.
+                    return false;
+                }
 
-            if (isEscaped(text, matchStart)) continue;
-            if (isRangeDecorated(matchStart, matchEnd)) continue;
+                const cursorInside = isCursorInRange(selections, node.from, node.to);
+                const { contentFrom, contentTo } = getDelimitedContentRange(node.node, 'EmphasisMark');
+                if (contentFrom >= contentTo) return false;
 
-            const contentStart = matchStart + 2;
-            const contentEnd = matchEnd - 2;
-            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
-            markDecorated(matchStart, matchEnd);
-
-            if (cursorInside) {
-                decorations.push({ from: contentStart, to: contentEnd, decoration: mdBold });
-            } else {
-                decorations.push({ from: matchStart, to: contentStart, decoration: mdHidden });
-                decorations.push({ from: contentStart, to: contentEnd, decoration: mdBold });
-                decorations.push({ from: contentEnd, to: matchEnd, decoration: mdHidden });
+                if (cursorInside) {
+                    decorations.push({ from: contentFrom, to: contentTo, decoration: mdBold });
+                } else {
+                    decorations.push({ from: node.from, to: contentFrom, decoration: mdHidden });
+                    decorations.push({ from: contentFrom, to: contentTo, decoration: mdBold });
+                    decorations.push({ from: contentTo, to: node.to, decoration: mdHidden });
+                }
+                return false;
             }
-        }
 
-        // Italic: *text* or _text_ (not preceded/followed by same char)
-        const italicRegex = /(?<![*_])([*_])([^*_]+)\1(?![*_])/g;
-        let italicMatch;
-        while ((italicMatch = italicRegex.exec(lineText)) !== null) {
-            const matchStart = lineFrom + italicMatch.index;
-            const matchEnd = matchStart + italicMatch[0].length;
+            if (node.name === 'Emphasis') {
+                const strongChild = node.node.getChildren('StrongEmphasis')[0];
+                if (strongChild && strongChild.from > node.from && strongChild.to < node.to) {
+                    const cursorInside = isCursorInRange(selections, node.from, node.to);
+                    const outer = getDelimitedContentRange(node.node, 'EmphasisMark');
+                    const inner = getDelimitedContentRange(strongChild, 'EmphasisMark');
+                    if (outer.contentFrom < outer.contentTo && inner.contentFrom < inner.contentTo) {
+                        if (cursorInside) {
+                            decorations.push({ from: inner.contentFrom, to: inner.contentTo, decoration: mdBoldItalic });
+                        } else {
+                            decorations.push({ from: node.from, to: inner.contentFrom, decoration: mdHidden });
+                            decorations.push({ from: inner.contentFrom, to: inner.contentTo, decoration: mdBoldItalic });
+                            decorations.push({ from: inner.contentTo, to: node.to, decoration: mdHidden });
+                        }
+                    }
+                    return false;
+                }
 
-            if (isEscaped(text, matchStart)) continue;
-            if (isRangeDecorated(matchStart, matchEnd)) continue;
+                const cursorInside = isCursorInRange(selections, node.from, node.to);
+                const { contentFrom, contentTo } = getDelimitedContentRange(node.node, 'EmphasisMark');
+                if (contentFrom >= contentTo) return false;
 
-            const contentStart = matchStart + 1;
-            const contentEnd = matchEnd - 1;
-            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
-            markDecorated(matchStart, matchEnd);
-
-            if (cursorInside) {
-                decorations.push({ from: contentStart, to: contentEnd, decoration: mdItalic });
-            } else {
-                decorations.push({ from: matchStart, to: contentStart, decoration: mdHidden });
-                decorations.push({ from: contentStart, to: contentEnd, decoration: mdItalic });
-                decorations.push({ from: contentEnd, to: matchEnd, decoration: mdHidden });
+                if (cursorInside) {
+                    decorations.push({ from: contentFrom, to: contentTo, decoration: mdItalic });
+                } else {
+                    decorations.push({ from: node.from, to: contentFrom, decoration: mdHidden });
+                    decorations.push({ from: contentFrom, to: contentTo, decoration: mdItalic });
+                    decorations.push({ from: contentTo, to: node.to, decoration: mdHidden });
+                }
+                return false;
             }
-        }
 
-        // Strikethrough: ~~text~~
-        const strikeRegex = /~~([^~]+)~~/g;
-        let strikeMatch;
-        while ((strikeMatch = strikeRegex.exec(lineText)) !== null) {
-            const matchStart = lineFrom + strikeMatch.index;
-            const matchEnd = matchStart + strikeMatch[0].length;
+            return undefined;
+        },
+    });
 
-            if (isEscaped(text, matchStart)) continue;
-            if (isRangeDecorated(matchStart, matchEnd)) continue;
+    // Fallback for strikethrough until parser extension coverage is enabled.
+    const strikeRegex = /~~([^~]+)~~/g;
+    let strikeMatch;
+    while ((strikeMatch = strikeRegex.exec(text)) !== null) {
+        const matchStart = strikeMatch.index;
+        const matchEnd = matchStart + strikeMatch[0].length;
+        if (isEscaped(text, matchStart)) continue;
 
-            const contentStart = matchStart + 2;
-            const contentEnd = matchEnd - 2;
-            const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
-            markDecorated(matchStart, matchEnd);
+        const line = doc.lineAt(matchStart);
+        if (codeBlockLines.has(line.number)) continue;
 
-            if (cursorInside) {
-                decorations.push({ from: contentStart, to: contentEnd, decoration: mdStrikethrough });
-            } else {
-                decorations.push({ from: matchStart, to: contentStart, decoration: mdHidden });
-                decorations.push({ from: contentStart, to: contentEnd, decoration: mdStrikethrough });
-                decorations.push({ from: contentEnd, to: matchEnd, decoration: mdHidden });
-            }
-        }
+        const contentStart = matchStart + 2;
+        const contentEnd = matchEnd - 2;
+        const cursorInside = isCursorInRange(selections, matchStart, matchEnd);
 
-        // Inline code: `code`
-        const codeRegex = /`([^`]+)`/g;
-        let codeMatch;
-        const cursorInLine = isCursorInRange(selections, lineFrom, line.to);
-        while ((codeMatch = codeRegex.exec(lineText)) !== null) {
-            const matchStart = lineFrom + codeMatch.index;
-            const matchEnd = matchStart + codeMatch[0].length;
-
-            if (isEscaped(text, matchStart)) continue;
-            if (isRangeDecorated(matchStart, matchEnd)) continue;
-
-            const contentStart = matchStart + 1;
-            const contentEnd = matchEnd - 1;
-            markDecorated(matchStart, matchEnd);
-
-            if (cursorInLine) {
-                decorations.push({ from: contentStart, to: contentEnd, decoration: mdCode });
-            } else {
-                decorations.push({ from: matchStart, to: contentStart, decoration: mdHidden });
-                decorations.push({ from: contentStart, to: contentEnd, decoration: mdCode });
-                decorations.push({ from: contentEnd, to: matchEnd, decoration: mdHidden });
-            }
+        if (cursorInside) {
+            decorations.push({ from: contentStart, to: contentEnd, decoration: mdStrikethrough });
+        } else {
+            decorations.push({ from: matchStart, to: contentStart, decoration: mdHidden });
+            decorations.push({ from: contentStart, to: contentEnd, decoration: mdStrikethrough });
+            decorations.push({ from: contentEnd, to: matchEnd, decoration: mdHidden });
         }
     }
 
