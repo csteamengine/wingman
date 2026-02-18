@@ -7,11 +7,9 @@ interface DictationButtonProps {
   isComposing?: boolean;
   /** Ensure editor is first responder before sending native stop action. */
   onPrepareStop?: () => void;
-  /** DOM-level fallback to end an active composition (blur/refocus the editor). */
-  onStopFallback?: () => void;
 }
 
-export function DictationButton({ isComposing = false, onPrepareStop, onStopFallback }: DictationButtonProps) {
+export function DictationButton({ isComposing = false, onPrepareStop }: DictationButtonProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toggling = useRef(false);
@@ -29,16 +27,11 @@ export function DictationButton({ isComposing = false, onPrepareStop, onStopFall
 
     try {
       if (isActive) {
-        // --- STOP ---
+        // Native stop is currently unreliable in packaged builds.
+        // Instruct users to press Esc, which reliably stops macOS dictation.
         onPrepareStop?.();
-        // Rust stop is non-blocking but we still await command dispatch and
-        // surface errors instead of silently swallowing them.
-        await invoke('stop_dictation');
-        // DOM-level fallback: tear down any remaining composition state.
-        onStopFallback?.();
-        setIsRecording(false);
-        // Brief cooldown covering the Rust-side afterDelay restore window.
-        await new Promise((r) => setTimeout(r, 300));
+        setError('Press Esc to stop dictation');
+        setTimeout(() => setError(null), 3000);
       } else {
         // --- START ---
         // Update the icon immediately, then fire-and-forget the Tauri command.
@@ -72,8 +65,8 @@ export function DictationButton({ isComposing = false, onPrepareStop, onStopFall
             ? 'bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30'
             : 'bg-[var(--ui-surface-solid)] border-[var(--ui-border)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)]'
         }`}
-        aria-label={isActive ? 'Stop dictation' : 'Start dictation'}
-        title={isActive ? 'Stop dictation' : 'Start dictation'}
+        aria-label={isActive ? 'Press Esc to stop dictation' : 'Start dictation'}
+        title={isActive ? 'Press Esc to stop dictation' : 'Start dictation'}
       >
         {isActive ? (
           <Square className="w-3.5 h-3.5 fill-current" />
