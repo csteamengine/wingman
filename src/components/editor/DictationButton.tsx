@@ -40,7 +40,9 @@ export function DictationButton({ isComposing = false }: DictationButtonProps) {
         editorContent?.focus();
 
         setIsRecording(false);
-        await invoke('stop_dictation');
+        // macOS dictation uses a native toggle action; using the same command
+        // as start is more reliable than trying to route explicit stop actions.
+        await invoke('start_dictation');
       } else {
         // Update the icon immediately, then fire-and-forget the Tauri command.
         // The Rust side blocks up to 500 ms waiting for the main-thread action

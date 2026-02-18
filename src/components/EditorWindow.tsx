@@ -61,7 +61,6 @@ import {
     AILoadingOverlay,
     searchPanelExtension,
     TipsBar,
-    DictationButton,
 } from './editor';
 
 import type {ObsidianResult, GistResult, AIPreset} from '../types';
@@ -155,7 +154,6 @@ export function EditorWindow() {
     const [contextDetection, setContextDetection] = useState<DetectorResult | null>(null);
     const contextDismissedRef = useRef<string | null>(null); // tracks dismissed detector id
     const pasteOrDropRef = useRef(false); // tracks if content change came from paste/drag
-    const [isComposing, setIsComposing] = useState(false);
 
     // Get drag store state and functions
     const {
@@ -1080,26 +1078,12 @@ export function EditorWindow() {
             },
         });
 
-        // Track composition state so the DictationButton can reflect
-        // system-initiated dictation (e.g. double-tap ⌘).
-        const compositionTracker = EditorView.domEventHandlers({
-            compositionstart() {
-                setIsComposing(true);
-                return false;
-            },
-            compositionend() {
-                setIsComposing(false);
-                return false;
-            },
-        });
-
         const extensions = [
             history(),
             EditorState.allowMultipleSelections.of(true),
             drawSelection(),
             dropCursor(),
             preventAnnouncementTextInsertion,
-            compositionTracker,
             editorKeymap,
             tripleBacktickHandler,
             keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
@@ -1320,9 +1304,6 @@ export function EditorWindow() {
                         fontSize: `${settings?.font_size || 14}px`,
                     }}
                     onMouseDownCapture={handleEditorPaneMouseDownCapture}
-                />
-                <DictationButton
-                    isComposing={isComposing}
                 />
             </div>
 
