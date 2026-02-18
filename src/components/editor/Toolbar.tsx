@@ -163,8 +163,8 @@ export function Toolbar({
         }
     }, []);
 
-    const handleButtonHoldDragStart = useCallback((e: React.MouseEvent, itemId: string, disabled: boolean) => {
-        if (!onToolbarOrderChange || disabled) return;
+    const handleButtonHoldDragStart = useCallback((e: React.MouseEvent, itemId: string) => {
+        if (!onToolbarOrderChange) return;
         if (e.button !== 0) return;
 
         clearPendingDrag();
@@ -384,12 +384,12 @@ export function Toolbar({
                                     }
                                     if (!disabled) handleClick(item);
                                 }}
-                                onMouseDown={(e) => handleButtonHoldDragStart(e, itemId, disabled)}
+                                onMouseDown={(e) => handleButtonHoldDragStart(e, itemId)}
                                 onMouseUp={clearPendingDrag}
                                 onMouseLeave={clearPendingDrag}
                                 title={item.title}
-                                className={`toolbar-btn ${disabled ? 'opacity-40 cursor-not-allowed' : ''} ${isDragging ? 'opacity-50' : ''}`}
-                                disabled={disabled}
+                                className={`toolbar-btn ${disabled ? 'opacity-40' : ''} ${isDragging ? 'opacity-50' : ''}`}
+                                aria-disabled={disabled}
                                 onDragStart={preventNativeDrag}
                                 draggable={false}
                             >
