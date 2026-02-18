@@ -605,6 +605,33 @@ body {
   user-drag: none;
 }
 
+.toolbar-separator-remove {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--ui-surface);
+  color: var(--ui-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+.toolbar-separator-remove:hover {
+  color: var(--ui-text);
+}
+
+.relative:hover > .toolbar-separator-remove {
+  opacity: 0.9;
+}
+
 .toolbar-btn:hover:not(:disabled) {
   background: var(--ui-hover);
   color: var(--ui-text);

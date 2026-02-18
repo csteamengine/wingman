@@ -16,6 +16,8 @@ import {
     EyeOff,
     CircleCheck,
     GripVertical,
+    Plus,
+    X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { getIconComponent } from '../IconPicker';
@@ -61,6 +63,7 @@ export const TOOLBAR_ITEMS: Record<string, ToolbarItem> = {
     'separator-2': { id: 'separator-2', type: 'separator' },
     'separator-3': { id: 'separator-3', type: 'separator' },
 };
+const SEPARATOR_IDS = ['separator-1', 'separator-2', 'separator-3'] as const;
 
 interface ToolbarProps {
     onTransform: (transform: string) => void;
@@ -103,6 +106,8 @@ export function Toolbar({
     const [dragOverItem, setDragOverItem] = useState<string | null>(null);
     const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null);
     const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+    const pendingDragTimeoutRef = useRef<number | null>(null);
+    const suppressNextClickRef = useRef(false);
 
     // Use provided order or default
     const order = toolbarOrder || Object.keys(TOOLBAR_ITEMS).filter(id => !id.startsWith('separator'));
@@ -145,10 +150,32 @@ export function Toolbar({
         if (!onToolbarOrderChange) return;
         if (e.button !== 0) return; // Only left click
         e.preventDefault();
+        suppressNextClickRef.current = true;
         setDraggedItem(itemId);
         setDragOverItem(null);
         setDropIndicator(null);
     }, [onToolbarOrderChange]);
+
+    const clearPendingDrag = useCallback(() => {
+        if (pendingDragTimeoutRef.current !== null) {
+            window.clearTimeout(pendingDragTimeoutRef.current);
+            pendingDragTimeoutRef.current = null;
+        }
+    }, []);
+
+    const handleButtonHoldDragStart = useCallback((e: React.MouseEvent, itemId: string, disabled: boolean) => {
+        if (!onToolbarOrderChange || disabled) return;
+        if (e.button !== 0) return;
+
+        clearPendingDrag();
+        pendingDragTimeoutRef.current = window.setTimeout(() => {
+            suppressNextClickRef.current = true;
+            setDraggedItem(itemId);
+            setDragOverItem(null);
+            setDropIndicator(null);
+            pendingDragTimeoutRef.current = null;
+        }, 180);
+    }, [onToolbarOrderChange, clearPendingDrag]);
 
     const handleDragReorder = useCallback((sourceId: string, targetId: string, position: 'before' | 'after') => {
         if (!onToolbarOrderChange || sourceId === targetId) return;
@@ -167,6 +194,18 @@ export function Toolbar({
     const preventNativeDrag = useCallback((e: DragEvent) => {
         e.preventDefault();
     }, []);
+
+    const handleAddSeparator = useCallback(() => {
+        if (!onToolbarOrderChange) return;
+        const nextSeparator = SEPARATOR_IDS.find((id) => !order.includes(id));
+        if (!nextSeparator) return;
+        onToolbarOrderChange([...order, nextSeparator]);
+    }, [onToolbarOrderChange, order]);
+
+    const handleRemoveSeparator = useCallback((separatorId: string) => {
+        if (!onToolbarOrderChange) return;
+        onToolbarOrderChange(order.filter((id) => id !== separatorId));
+    }, [onToolbarOrderChange, order]);
 
     useEffect(() => {
         if (!draggedItem) return;
@@ -251,6 +290,17 @@ export function Toolbar({
         };
     }, [draggedItem, dropIndicator, handleDragReorder]);
 
+    useEffect(() => {
+        const handleMouseUp = () => {
+            clearPendingDrag();
+        };
+        document.addEventListener('mouseup', handleMouseUp);
+        return () => {
+            document.removeEventListener('mouseup', handleMouseUp);
+            clearPendingDrag();
+        };
+    }, [clearPendingDrag]);
+
     const setItemRef = useCallback((itemId: string, element: HTMLDivElement | null) => {
         if (element) {
             itemRefs.current.set(itemId, element);
@@ -282,6 +332,20 @@ export function Toolbar({
                                 onDragStart={preventNativeDrag}
                                 draggable={false}
                             >
+                                {onToolbarOrderChange && (
+                                    <button
+                                        type="button"
+                                        className="toolbar-separator-remove"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRemoveSeparator(itemId);
+                                        }}
+                                        title="Remove divider"
+                                        aria-label="Remove divider"
+                                    >
+                                        <X className="w-2.5 h-2.5" />
+                                    </button>
+                                )}
                                 {isDropTarget && (
                                     <div
                                         className={`pointer-events-none absolute top-0 bottom-0 w-0.5 bg-[var(--ui-accent)] ${
@@ -313,7 +377,16 @@ export function Toolbar({
                                 />
                             )}
                             <button
-                                onClick={() => !disabled && handleClick(item)}
+                                onClick={() => {
+                                    if (suppressNextClickRef.current) {
+                                        suppressNextClickRef.current = false;
+                                        return;
+                                    }
+                                    if (!disabled) handleClick(item);
+                                }}
+                                onMouseDown={(e) => handleButtonHoldDragStart(e, itemId, disabled)}
+                                onMouseUp={clearPendingDrag}
+                                onMouseLeave={clearPendingDrag}
                                 title={item.title}
                                 className={`toolbar-btn ${disabled ? 'opacity-40 cursor-not-allowed' : ''} ${isDragging ? 'opacity-50' : ''}`}
                                 disabled={disabled}
@@ -340,6 +413,18 @@ export function Toolbar({
                         </div>
                     );
                 })}
+
+                {onToolbarOrderChange && SEPARATOR_IDS.some((id) => !order.includes(id)) && (
+                    <button
+                        type="button"
+                        onClick={handleAddSeparator}
+                        className="toolbar-drag-handle w-6 h-6 flex items-center justify-center rounded text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
+                        title="Add divider"
+                        aria-label="Add divider"
+                    >
+                        <Plus className="w-3.5 h-3.5" />
+                    </button>
+                )}
 
                 {/* Pinned Custom Transformations */}
                 {pinnedTransformations && pinnedTransformations.length > 0 && onPinnedTransform && (
