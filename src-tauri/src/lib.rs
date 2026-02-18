@@ -1303,20 +1303,17 @@ fn stop_dictation(window: tauri::WebviewWindow, app_handle: tauri::AppHandle) ->
                 }
             }
 
-            // Broadcast through responder chain as additional fallback.
+            // Toggle dictation directly. In practice this route is often the
+            // most reliable in packaged builds because startDictation: is the
+            // standard menu action that flips start/stop.
+            let sent_toggle_action: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
+            sent_any_stop |= sent_toggle_action;
+
+            // Broadcast cancel/stop through responder chain as additional stop
+            // reinforcement (and to cancel any stale composition state).
             let sent_cancel_action: bool = msg_send![app, sendAction: sel!(cancelOperation:) to: cocoa::base::nil from: cocoa::base::nil];
             let sent_stop_action: bool = msg_send![app, sendAction: sel!(stopDictation:) to: cocoa::base::nil from: cocoa::base::nil];
             sent_any_stop |= sent_cancel_action || sent_stop_action;
-
-            // Some responders only toggle via startDictation:. Try it as a
-            // last-resort fallback if explicit stop/cancel couldn't route.
-            let sent_toggle_action = if sent_any_stop {
-                false
-            } else {
-                let sent_start_action: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
-                sent_start_action
-            };
-            sent_any_stop |= sent_toggle_action;
 
             // Clear in-progress marked (composition) text after stop/cancel.
             let input_context: cocoa::base::id = msg_send![class!(NSTextInputContext), currentInputContext];
