@@ -77,6 +77,11 @@ interface ToolbarProps {
     onToolbarOrderChange?: (newOrder: string[]) => void;
 }
 
+type DropIndicator = {
+    targetId: string;
+    position: 'before' | 'after';
+};
+
 export function Toolbar({
     onTransform,
     onBulletList,
@@ -96,6 +101,7 @@ export function Toolbar({
 
     const [draggedItem, setDraggedItem] = useState<string | null>(null);
     const [dragOverItem, setDragOverItem] = useState<string | null>(null);
+    const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null);
     const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
     // Use provided order or default
@@ -141,19 +147,19 @@ export function Toolbar({
         e.preventDefault();
         setDraggedItem(itemId);
         setDragOverItem(null);
+        setDropIndicator(null);
     }, [onToolbarOrderChange]);
 
-    const handleDragReorder = useCallback((sourceId: string, targetId: string) => {
+    const handleDragReorder = useCallback((sourceId: string, targetId: string, position: 'before' | 'after') => {
         if (!onToolbarOrderChange || sourceId === targetId) return;
 
-        const newOrder = [...order];
-        const draggedIndex = newOrder.indexOf(sourceId);
+        const newOrder = order.filter((id) => id !== sourceId);
         const targetIndex = newOrder.indexOf(targetId);
 
-        if (draggedIndex === -1 || targetIndex === -1) return;
+        if (targetIndex === -1) return;
 
-        newOrder.splice(draggedIndex, 1);
-        newOrder.splice(targetIndex, 0, sourceId);
+        const insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
+        newOrder.splice(insertIndex, 0, sourceId);
 
         onToolbarOrderChange(newOrder);
     }, [order, onToolbarOrderChange]);
@@ -179,18 +185,27 @@ export function Toolbar({
                     e.clientY <= rect.bottom
                 ) {
                     hoveredItem = itemId;
+                    const midpoint = rect.left + rect.width / 2;
+                    setDropIndicator({
+                        targetId: itemId,
+                        position: e.clientX < midpoint ? 'before' : 'after',
+                    });
                 }
             });
 
             setDragOverItem(hoveredItem);
+            if (!hoveredItem) {
+                setDropIndicator(null);
+            }
         };
 
         const handleMouseUp = () => {
-            if (draggedItem && dragOverItem) {
-                handleDragReorder(draggedItem, dragOverItem);
+            if (draggedItem && dropIndicator) {
+                handleDragReorder(draggedItem, dropIndicator.targetId, dropIndicator.position);
             }
             setDraggedItem(null);
             setDragOverItem(null);
+            setDropIndicator(null);
         };
 
         document.addEventListener('mousemove', handleMouseMove);
@@ -204,7 +219,7 @@ export function Toolbar({
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
         };
-    }, [draggedItem, dragOverItem, handleDragReorder]);
+    }, [draggedItem, dropIndicator, handleDragReorder]);
 
     const setItemRef = useCallback((itemId: string, element: HTMLDivElement | null) => {
         if (element) {
@@ -222,11 +237,12 @@ export function Toolbar({
                     if (!item) return null;
 
                     if (item.type === 'separator') {
+                        const isDropTarget = dropIndicator?.targetId === itemId;
                         return (
                             <div
                                 key={itemId}
                                 ref={(el) => setItemRef(itemId, el)}
-                                className={`w-px h-6 bg-[var(--ui-border)] mx-1 transition-all ${
+                                className={`relative w-px h-6 bg-[var(--ui-border)] mx-1 transition-all ${
                                     dragOverItem === itemId ? 'bg-[var(--ui-accent)] w-1' : ''
                                 }`}
                                 onMouseDown={(e) => {
@@ -235,7 +251,15 @@ export function Toolbar({
                                 }}
                                 onDragStart={preventNativeDrag}
                                 draggable={false}
-                            />
+                            >
+                                {isDropTarget && (
+                                    <div
+                                        className={`pointer-events-none absolute top-0 bottom-0 w-0.5 bg-[var(--ui-accent)] ${
+                                            dropIndicator.position === 'before' ? '-left-1' : '-right-1'
+                                        }`}
+                                    />
+                                )}
+                            </div>
                         );
                     }
 
@@ -243,6 +267,7 @@ export function Toolbar({
                     const disabled = isDisabled(item);
                     const isDragging = draggedItem === itemId;
                     const isDragOver = dragOverItem === itemId;
+                    const isDropTarget = dropIndicator?.targetId === itemId;
 
                     return (
                         <div
@@ -250,6 +275,13 @@ export function Toolbar({
                             ref={(el) => setItemRef(itemId, el)}
                             className={`relative group ${isDragOver ? 'ring-2 ring-[var(--ui-accent)] ring-offset-1 ring-offset-[var(--ui-bg)] rounded' : ''}`}
                         >
+                            {isDropTarget && (
+                                <div
+                                    className={`pointer-events-none absolute top-0 bottom-0 w-0.5 bg-[var(--ui-accent)] z-10 ${
+                                        dropIndicator.position === 'before' ? '-left-1' : '-right-1'
+                                    }`}
+                                />
+                            )}
                             <button
                                 onClick={() => !disabled && handleClick(item)}
                                 title={item.title}
