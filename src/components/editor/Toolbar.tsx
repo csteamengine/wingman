@@ -322,9 +322,7 @@ export function Toolbar({
                             <div
                                 key={itemId}
                                 ref={(el) => setItemRef(itemId, el)}
-                                className={`relative w-px h-6 bg-[var(--ui-border)] mx-1 transition-all ${
-                                    dragOverItem === itemId ? 'bg-[var(--ui-accent)] w-1' : ''
-                                }`}
+                                className="relative h-8 w-4 mx-0.5 flex items-center justify-center rounded-sm cursor-grab active:cursor-grabbing hover:bg-[var(--ui-hover)]"
                                 onMouseDown={(e) => {
                                     e.stopPropagation();
                                     handleMouseDragStart(e, itemId);
@@ -332,6 +330,11 @@ export function Toolbar({
                                 onDragStart={preventNativeDrag}
                                 draggable={false}
                             >
+                                <div
+                                    className={`h-6 transition-all ${
+                                        dragOverItem === itemId ? 'bg-[var(--ui-accent)] w-1' : 'bg-[var(--ui-border)] w-px'
+                                    }`}
+                                />
                                 {onToolbarOrderChange && (
                                     <button
                                         type="button"
