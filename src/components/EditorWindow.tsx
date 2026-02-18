@@ -1323,9 +1323,6 @@ export function EditorWindow() {
                 />
                 <DictationButton
                     isComposing={isComposing}
-                    onPrepareStop={() => {
-                        viewRef.current?.focus();
-                    }}
                 />
             </div>
 

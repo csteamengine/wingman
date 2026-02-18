@@ -1,15 +1,13 @@
 import { useState, useRef } from 'react';
-import { Mic, Square } from 'lucide-react';
+import { Mic } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
 interface DictationButtonProps {
   /** True while the editor is in a composition session (dictation or IME). */
   isComposing?: boolean;
-  /** Ensure editor is first responder before sending native stop action. */
-  onPrepareStop?: () => void;
 }
 
-export function DictationButton({ isComposing = false, onPrepareStop }: DictationButtonProps) {
+export function DictationButton({ isComposing = false }: DictationButtonProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toggling = useRef(false);
@@ -26,25 +24,17 @@ export function DictationButton({ isComposing = false, onPrepareStop }: Dictatio
     const safety = setTimeout(() => { toggling.current = false; }, 2000);
 
     try {
-      if (isActive) {
-        // Native stop is currently unreliable in packaged builds.
-        // Instruct users to press Esc, which reliably stops macOS dictation.
-        onPrepareStop?.();
-        setError('Press Esc to stop dictation');
+      // --- START ---
+      // Update the icon immediately, then fire-and-forget the Tauri command.
+      // The Rust side blocks up to 500 ms waiting for the main-thread action
+      // to execute, so we must NOT await it or the icon won't update and the
+      // toggle guard will be held.
+      setIsRecording(true);
+      invoke('start_dictation').catch((e) => {
+        setIsRecording(false);
+        setError(String(e));
         setTimeout(() => setError(null), 3000);
-      } else {
-        // --- START ---
-        // Update the icon immediately, then fire-and-forget the Tauri command.
-        // The Rust side blocks up to 500 ms waiting for the main-thread action
-        // to execute, so we must NOT await it or the icon won't update and the
-        // toggle guard will be held.
-        setIsRecording(true);
-        invoke('start_dictation').catch((e) => {
-          setIsRecording(false);
-          setError(String(e));
-          setTimeout(() => setError(null), 3000);
-        });
-      }
+      });
     } catch (e) {
       setIsRecording(false);
       setError(String(e));
@@ -57,23 +47,25 @@ export function DictationButton({ isComposing = false, onPrepareStop }: Dictatio
 
   return (
     <div className="absolute bottom-3 right-3 z-40">
-      <button
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={handleClick}
-        className={`flex items-center justify-center w-8 h-8 rounded-lg border shadow-lg transition-colors ${
-          isActive
-            ? 'bg-red-500/20 border-red-500/40 text-red-400 hover:bg-red-500/30'
-            : 'bg-[var(--ui-surface-solid)] border-[var(--ui-border)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)]'
-        }`}
-        aria-label={isActive ? 'Press Esc to stop dictation' : 'Start dictation'}
-        title={isActive ? 'Press Esc to stop dictation' : 'Start dictation'}
-      >
-        {isActive ? (
-          <Square className="w-3.5 h-3.5 fill-current" />
-        ) : (
+      {isActive ? (
+        <div
+          className="px-2 py-1 text-xs rounded-md border shadow-lg bg-[var(--ui-surface-solid)] border-[var(--ui-border)] text-[var(--ui-text-muted)]"
+          aria-label="Press Esc to stop dictation"
+          title="Press Esc to stop dictation"
+        >
+          Press Esc
+        </div>
+      ) : (
+        <button
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleClick}
+          className="flex items-center justify-center w-8 h-8 rounded-lg border shadow-lg transition-colors bg-[var(--ui-surface-solid)] border-[var(--ui-border)] text-[var(--ui-text-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)]"
+          aria-label="Start dictation"
+          title="Start dictation"
+        >
           <Mic className="w-4 h-4" />
-        )}
-      </button>
+        </button>
+      )}
       {error && (
         <div className="absolute bottom-10 right-0 whitespace-nowrap px-2 py-1 text-xs rounded bg-[var(--ui-surface-solid)] border border-[var(--ui-border)] shadow-lg text-[var(--ui-text-muted)]">
           {error}
