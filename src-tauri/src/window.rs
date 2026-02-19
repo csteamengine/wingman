@@ -540,12 +540,11 @@ pub fn get_window_monitor_name<R: Runtime>(window: &WebviewWindow<R>) -> Option<
     get_monitor_name_for_point(center_x, center_y)
 }
 
-/// Disable continuous spellcheck and automatic spelling correction on the
-/// WKWebView.  In packaged (.dmg) builds, macOS WKWebView can draw native
-/// red underlines even when the HTML `spellcheck="false"` attribute is set.
-/// We walk the view hierarchy to find every view that responds to the
-/// relevant Cocoa selectors and flip them off.  We also poke NSUserDefaults
-/// for the legacy WebKit preferences keys, in case the WebView reads them.
+/// Disable native text services on WKWebView-hosted editors in packaged macOS
+/// builds. Besides spellcheck underlines, AppKit can apply Smart Insert/Delete
+/// and text substitutions that mutate content (for example, deleting adjacent
+/// spaces with Backspace). We walk the full view hierarchy and disable these
+/// features on every view that exposes the relevant selectors.
 #[allow(deprecated)]
 pub fn disable_webview_spellcheck(window: &WebviewWindow<impl Runtime>) -> Result<(), String> {
     use cocoa::appkit::NSWindow as NSWindowTrait;
@@ -561,13 +560,21 @@ pub fn disable_webview_spellcheck(window: &WebviewWindow<impl Runtime>) -> Resul
     }
 
     unsafe {
-        // ── 1. NSUserDefaults: disable legacy WebKit spell-checking prefs ──
+        // ── 1. NSUserDefaults: disable legacy WebKit/AppKit text service prefs ──
         let defaults: id = msg_send![class!(NSUserDefaults), standardUserDefaults];
         if !defaults.is_null() {
             for key_bytes in &[
                 b"WebContinuousSpellCheckingEnabled\0" as &[u8],
                 b"WebAutomaticSpellingCorrectionEnabled\0",
                 b"NSAllowsContinuousSpellChecking\0",
+                b"WebSmartInsertDeleteEnabled\0",
+                b"NSAutomaticQuoteSubstitutionEnabled\0",
+                b"NSAutomaticDashSubstitutionEnabled\0",
+                b"NSAutomaticTextCompletionEnabled\0",
+                b"NSAutomaticTextReplacementEnabled\0",
+                b"NSAutomaticSpellingCorrectionEnabled\0",
+                b"NSAutomaticPeriodSubstitutionEnabled\0",
+                b"NSAutomaticCapitalizationEnabled\0",
             ] {
                 let key: id = msg_send![
                     class!(NSString),
@@ -577,36 +584,75 @@ pub fn disable_webview_spellcheck(window: &WebviewWindow<impl Runtime>) -> Resul
             }
         }
 
-        // ── 2. Walk the view tree and disable spellcheck on every view ──
+        // ── 2. Walk the view tree and disable text services on every view ──
         fn disable_on_view(view: cocoa::base::id) {
             use objc::{msg_send, sel, sel_impl};
 
             let sel_continuous = sel!(setContinuousSpellCheckingEnabled:);
             let sel_automatic = sel!(setAutomaticSpellCheckingEnabled:);
-            let sel_grammar   = sel!(setGrammarCheckingEnabled:);
+            let sel_grammar = sel!(setGrammarCheckingEnabled:);
+            let sel_smart_insert_delete = sel!(setSmartInsertDeleteEnabled:);
+            let sel_text_replacement = sel!(setAutomaticTextReplacementEnabled:);
+            let sel_quote_substitution = sel!(setAutomaticQuoteSubstitutionEnabled:);
+            let sel_dash_substitution = sel!(setAutomaticDashSubstitutionEnabled:);
+            let sel_text_completion = sel!(setAutomaticTextCompletionEnabled:);
+            let sel_period_substitution = sel!(setAutomaticPeriodSubstitutionEnabled:);
+            let sel_capitalization = sel!(setAutomaticCapitalizationEnabled:);
+            let sel_data_detection = sel!(setAutomaticDataDetectionEnabled:);
 
-            let responds_continuous: bool = unsafe {
-                msg_send![view, respondsToSelector: sel_continuous]
-            };
-            if responds_continuous {
+            if unsafe { msg_send![view, respondsToSelector: sel_continuous] } {
                 unsafe {
                     let _: () = msg_send![view, setContinuousSpellCheckingEnabled: false];
                 }
             }
-            let responds_automatic: bool = unsafe {
-                msg_send![view, respondsToSelector: sel_automatic]
-            };
-            if responds_automatic {
+            if unsafe { msg_send![view, respondsToSelector: sel_automatic] } {
                 unsafe {
                     let _: () = msg_send![view, setAutomaticSpellCheckingEnabled: false];
                 }
             }
-            let responds_grammar: bool = unsafe {
-                msg_send![view, respondsToSelector: sel_grammar]
-            };
-            if responds_grammar {
+            if unsafe { msg_send![view, respondsToSelector: sel_grammar] } {
                 unsafe {
                     let _: () = msg_send![view, setGrammarCheckingEnabled: false];
+                }
+            }
+            if unsafe { msg_send![view, respondsToSelector: sel_smart_insert_delete] } {
+                unsafe {
+                    let _: () = msg_send![view, setSmartInsertDeleteEnabled: false];
+                }
+            }
+            if unsafe { msg_send![view, respondsToSelector: sel_text_replacement] } {
+                unsafe {
+                    let _: () = msg_send![view, setAutomaticTextReplacementEnabled: false];
+                }
+            }
+            if unsafe { msg_send![view, respondsToSelector: sel_quote_substitution] } {
+                unsafe {
+                    let _: () = msg_send![view, setAutomaticQuoteSubstitutionEnabled: false];
+                }
+            }
+            if unsafe { msg_send![view, respondsToSelector: sel_dash_substitution] } {
+                unsafe {
+                    let _: () = msg_send![view, setAutomaticDashSubstitutionEnabled: false];
+                }
+            }
+            if unsafe { msg_send![view, respondsToSelector: sel_text_completion] } {
+                unsafe {
+                    let _: () = msg_send![view, setAutomaticTextCompletionEnabled: false];
+                }
+            }
+            if unsafe { msg_send![view, respondsToSelector: sel_period_substitution] } {
+                unsafe {
+                    let _: () = msg_send![view, setAutomaticPeriodSubstitutionEnabled: false];
+                }
+            }
+            if unsafe { msg_send![view, respondsToSelector: sel_capitalization] } {
+                unsafe {
+                    let _: () = msg_send![view, setAutomaticCapitalizationEnabled: false];
+                }
+            }
+            if unsafe { msg_send![view, respondsToSelector: sel_data_detection] } {
+                unsafe {
+                    let _: () = msg_send![view, setAutomaticDataDetectionEnabled: false];
                 }
             }
 
@@ -662,13 +708,17 @@ pub fn disable_webview_spellcheck(window: &WebviewWindow<impl Runtime>) -> Resul
                 class!(NSString),
                 stringWithUTF8String:
                     b"document.documentElement.setAttribute('spellcheck','false');\
-                      document.body.setAttribute('spellcheck','false');\0"
+                      document.body.setAttribute('spellcheck','false');\
+                      document.documentElement.setAttribute('autocorrect','off');\
+                      document.body.setAttribute('autocorrect','off');\
+                      document.documentElement.setAttribute('autocapitalize','off');\
+                      document.body.setAttribute('autocapitalize','off');\0"
                         .as_ptr()
             ];
             let _: () = msg_send![wk, evaluateJavaScript: js completionHandler: nil];
         }
 
-        log::info!("Native WKWebView spellcheck disabled");
+        log::info!("Native WKWebView text services disabled");
     }
     Ok(())
 }

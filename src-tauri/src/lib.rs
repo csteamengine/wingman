@@ -1555,6 +1555,12 @@ async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Resul
                     log::warn!("Failed to move to cursor monitor: {}", e);
                 }
 
+                // Re-apply macOS native text-service suppression after panel focus/show,
+                // as some AppKit text settings can be restored when focus changes.
+                if let Err(e) = disable_webview_spellcheck(&webview_window) {
+                    log::warn!("Failed to disable webview text services on show: {:?}", e);
+                }
+
                 panel.show_and_make_key();
                 log::info!("show_window (panel) completed successfully");
             })
