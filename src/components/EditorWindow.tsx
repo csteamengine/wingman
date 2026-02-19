@@ -1044,6 +1044,29 @@ export function EditorWindow() {
             beforeinput(event, view) {
                 const inputEvent = event as InputEvent;
 
+                // Returning true here tells CodeMirror to skip its own beforeinput
+                // processing for these input types.  This is critical: when CodeMirror
+                // processes a deleteContent* beforeinput it tags the resulting transaction
+                // as userEvent:"delete.backward" (etc.), which makes it indistinguishable
+                // from our own keymap's delete transactions.  By blocking here the smart-
+                // delete DOM mutation (already applied by AppKit in the packaged app) ends
+                // up in a MutationObserver transaction with NO delete.* userEvent, which
+                // the smartDeleteGuard transactionFilter can then identify and neutralise.
+                // Dictation corrections are exempt because view.composing is true during
+                // active dictation/IME input.
+                if (!view.composing) {
+                    const t = inputEvent.inputType;
+                    if (
+                        t === 'deleteContentBackward' ||
+                        t === 'deleteContentForward' ||
+                        t === 'deleteWordBackward' ||
+                        t === 'deleteWordForward'
+                    ) {
+                        event.preventDefault();
+                        return true;
+                    }
+                }
+
                 const isBlockedAnnouncement = isNonEditableAnnouncement(inputEvent.data);
 
                 if (!isBlockedAnnouncement) return false;
