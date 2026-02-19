@@ -1562,6 +1562,13 @@ async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Resul
                 }
 
                 panel.show_and_make_key();
+
+                // Re-apply once again immediately after show. Some WebKit/AppKit
+                // text-service flags are only effective once the view is key.
+                if let Err(e) = disable_webview_spellcheck(&webview_window) {
+                    log::warn!("Failed to disable webview text services after show: {:?}", e);
+                }
+
                 log::info!("show_window (panel) completed successfully");
             })
             .map_err(|e| e.to_string())?;
