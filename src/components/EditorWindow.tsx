@@ -1083,12 +1083,53 @@ export function EditorWindow() {
             },
         });
 
+        // WKWebView smart-delete guard.
+        //
+        // In packaged macOS builds, AppKit's text layer performs "smart delete" —
+        // removing an adjacent space when the last character of a word is deleted.
+        // This extra deletion arrives via WKWebView IPC as a *new browser macrotask*,
+        // so setTimeout(0) fires too early to catch it.
+        //
+        // Instead we snapshot the expected document state on each Backspace/Delete
+        // keydown, then use an updateListener that fires reactively on every CodeMirror
+        // state change.  Whenever the actual document deviates from the snapshot, we
+        // immediately dispatch a history-excluded correction — no matter how many
+        // macrotasks later the smart delete arrives.
+        let expectedDoc: string | null = null;
+        let expectedAnchor = -1;
+        let expectClearHandle: ReturnType<typeof setTimeout> | null = null;
+
+        const correctionListener = EditorView.updateListener.of((update) => {
+            if (!update.docChanged || expectedDoc === null) return;
+            const actual = update.state.doc.toString();
+            if (actual === expectedDoc) return; // State matches expectation; keep watching
+
+            // Document diverged from expectation — smart delete ate extra characters.
+            const wantDoc = expectedDoc;
+            const wantAnchor = expectedAnchor;
+            expectedDoc = null; // Clear before scheduling to prevent re-entry
+            if (expectClearHandle !== null) { clearTimeout(expectClearHandle); expectClearHandle = null; }
+
+            // Defer dispatch: cannot call view.dispatch() synchronously inside an
+            // updateListener callback (the previous dispatch hasn't finished yet).
+            Promise.resolve().then(() => {
+                const v = update.view;
+                if (v.state.doc.toString() === wantDoc) return; // Already correct
+                v.dispatch({
+                    changes: { from: 0, to: v.state.doc.length, insert: wantDoc },
+                    selection: { anchor: Math.min(wantAnchor, wantDoc.length) },
+                    annotations: [Transaction.addToHistory.of(false)],
+                });
+            });
+        });
+
         const extensions = [
             history(),
             EditorState.allowMultipleSelections.of(true),
             drawSelection(),
             dropCursor(),
             preventAnnouncementTextInsertion,
+            correctionListener,
             editorKeymap,
             tripleBacktickHandler,
             keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
@@ -1197,46 +1238,17 @@ export function EditorWindow() {
         setEditorView(view);
         view.focus();
 
-        // WKWebView smart-delete guard — verification approach.
-        //
-        // All event-level interception attempts (beforeinput, capture-phase listeners,
-        // transactionFilter) have proven unreliable because WKWebView's packaged-app
-        // behavior is opaque: we don't know exactly when the DOM is mutated, how
-        // CodeMirror tags the resulting transaction, or whether preventDefault reaches
-        // the native layer.
-        //
-        // Instead, we simply snapshot the expected document state immediately before
-        // each Backspace/Delete keydown (= exactly one character removed), then verify
-        // the actual state after a setTimeout(0).  setTimeout fires in a new macrotask,
-        // which is guaranteed to run AFTER all microtasks — including CodeMirror's
-        // MutationObserver reconciliation — so view.state is fully settled by then.
-        // If more than one character was removed (smart delete ate a space), we
-        // dispatch a correction that restores the expected state without touching the
-        // undo history.
-        let expectedDoc: string | null = null;
-        let expectedAnchor = -1;
-        let verifyHandle: ReturnType<typeof setTimeout> | null = null;
-
-        const verifyAfterDelete = () => {
-            verifyHandle = null;
-            if (expectedDoc === null) return;
-            const wantDoc = expectedDoc;
-            const wantAnchor = expectedAnchor;
-            expectedDoc = null;
-            expectedAnchor = -1;
-
-            const actual = view.state.doc.toString();
-            if (actual !== wantDoc) {
-                view.dispatch({
-                    changes: { from: 0, to: view.state.doc.length, insert: wantDoc },
-                    selection: { anchor: Math.min(wantAnchor, wantDoc.length) },
-                    annotations: [Transaction.addToHistory.of(false)],
-                });
-            }
-        };
-
+        // Keydown listener: snapshot expected state before each Backspace/Delete.
+        // The correctionListener extension (above) reactively checks and corrects
+        // the state whenever it diverges from this snapshot.
         const captureExpectedState = (e: KeyboardEvent) => {
-            if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+            if (e.key !== 'Backspace' && e.key !== 'Delete') {
+                // Any non-delete key: cancel monitoring to prevent false corrections
+                // if the user types between the keydown and a late smart-delete IPC.
+                expectedDoc = null;
+                if (expectClearHandle !== null) { clearTimeout(expectClearHandle); expectClearHandle = null; }
+                return;
+            }
 
             const state = view.state;
             const sel = state.selection.main;
@@ -1249,7 +1261,7 @@ export function EditorWindow() {
 
             if (e.key === 'Backspace' && pos > 0) {
                 const line = state.doc.lineAt(pos);
-                if (pos === line.from) { expectedDoc = null; return; } // line-join, leave to default
+                if (pos === line.from) { expectedDoc = null; return; } // line-join
                 const before = doc.slice(Math.max(0, pos - 2), pos);
                 const code = before.codePointAt(before.length - 1);
                 const charLen = code !== undefined && code > 0xffff ? 2 : 1;
@@ -1269,14 +1281,16 @@ export function EditorWindow() {
                 return;
             }
 
-            if (verifyHandle !== null) clearTimeout(verifyHandle);
-            verifyHandle = setTimeout(verifyAfterDelete, 0);
+            // Auto-clear after 500 ms in case no state update follows
+            // (e.g. cursor was at doc start/end and nothing was deleted).
+            if (expectClearHandle !== null) clearTimeout(expectClearHandle);
+            expectClearHandle = setTimeout(() => { expectedDoc = null; expectClearHandle = null; }, 500);
         };
 
         view.contentDOM.addEventListener('keydown', captureExpectedState, true);
 
         return () => {
-            if (verifyHandle !== null) clearTimeout(verifyHandle);
+            if (expectClearHandle !== null) clearTimeout(expectClearHandle);
             view.contentDOM.removeEventListener('keydown', captureExpectedState, true);
             view.destroy();
             setEditorView(null);
