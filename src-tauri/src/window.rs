@@ -704,63 +704,6 @@ pub fn disable_webview_spellcheck(window: &WebviewWindow<impl Runtime>) -> Resul
         }
 
         if let Some(wk) = find_wkwebview(content_view) {
-            // Try disabling smart delete/substitutions on WKWebView and its
-            // preference objects via KVC. Some keys are private/OS-specific,
-            // so we set them defensively and ignore unknown-key failures.
-            let responds_kvc: bool = msg_send![wk, respondsToSelector: sel!(setValue:forKey:)];
-            if responds_kvc {
-                let no_value: id = msg_send![class!(NSNumber), numberWithBool: NO];
-                for key_bytes in &[
-                    b"smartInsertDeleteEnabled\0" as &[u8],
-                    b"automaticTextReplacementEnabled\0",
-                    b"automaticQuoteSubstitutionEnabled\0",
-                    b"automaticDashSubstitutionEnabled\0",
-                    b"automaticTextCompletionEnabled\0",
-                    b"automaticSpellingCorrectionEnabled\0",
-                    b"automaticPeriodSubstitutionEnabled\0",
-                ] {
-                    let key: id = msg_send![class!(NSString), stringWithUTF8String: key_bytes.as_ptr()];
-                    let _: () = msg_send![wk, setValue: no_value forKey: key];
-                }
-            }
-
-            let configuration: id = msg_send![wk, configuration];
-            if !configuration.is_null() {
-                let responds_kvc_conf: bool =
-                    msg_send![configuration, respondsToSelector: sel!(setValue:forKey:)];
-                if responds_kvc_conf {
-                    let no_value: id = msg_send![class!(NSNumber), numberWithBool: NO];
-                    for key_bytes in &[
-                        b"smartInsertDeleteEnabled\0" as &[u8],
-                        b"automaticTextReplacementEnabled\0",
-                    ] {
-                        let key: id = msg_send![class!(NSString), stringWithUTF8String: key_bytes.as_ptr()];
-                        let _: () = msg_send![configuration, setValue: no_value forKey: key];
-                    }
-                }
-
-                let preferences: id = msg_send![configuration, preferences];
-                if !preferences.is_null() {
-                    let responds_kvc_prefs: bool =
-                        msg_send![preferences, respondsToSelector: sel!(setValue:forKey:)];
-                    if responds_kvc_prefs {
-                        let no_value: id = msg_send![class!(NSNumber), numberWithBool: NO];
-                        for key_bytes in &[
-                            b"smartInsertDeleteEnabled\0" as &[u8],
-                            b"automaticTextReplacementEnabled\0",
-                            b"automaticQuoteSubstitutionEnabled\0",
-                            b"automaticDashSubstitutionEnabled\0",
-                            b"automaticTextCompletionEnabled\0",
-                            b"automaticSpellingCorrectionEnabled\0",
-                            b"automaticPeriodSubstitutionEnabled\0",
-                        ] {
-                            let key: id = msg_send![class!(NSString), stringWithUTF8String: key_bytes.as_ptr()];
-                            let _: () = msg_send![preferences, setValue: no_value forKey: key];
-                        }
-                    }
-                }
-            }
-
             let js: id = msg_send![
                 class!(NSString),
                 stringWithUTF8String:
