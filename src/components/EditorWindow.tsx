@@ -1103,6 +1103,44 @@ export function EditorWindow() {
             }, 2000);
         };
 
+        const dispatchSingleDelete = (key: 'Backspace' | 'Delete', view: EditorView): boolean => {
+            const state = view.state;
+            const sel = state.selection.main;
+
+            if (!sel.empty) {
+                view.dispatch({
+                    changes: { from: sel.from, to: sel.to, insert: '' },
+                    selection: { anchor: sel.from },
+                });
+                return true;
+            }
+
+            const pos = sel.from;
+            if (key === 'Backspace') {
+                if (pos === 0) return true;
+                const before = state.doc.sliceString(Math.max(0, pos - 2), pos);
+                const code = before.codePointAt(before.length - 1);
+                const charLen = code !== undefined && code > 0xffff ? 2 : 1;
+                const from = pos - charLen;
+                view.dispatch({
+                    changes: { from, to: pos, insert: '' },
+                    selection: { anchor: from },
+                });
+                return true;
+            }
+
+            if (pos >= state.doc.length) return true;
+            const after = state.doc.sliceString(pos, Math.min(state.doc.length, pos + 2));
+            const code = after.codePointAt(0);
+            const charLen = code !== undefined && code > 0xffff ? 2 : 1;
+            const to = pos + charLen;
+            view.dispatch({
+                changes: { from: pos, to, insert: '' },
+                selection: { anchor: pos },
+            });
+            return true;
+        };
+
         const preventAnnouncementTextInsertion = EditorView.domEventHandlers({
             beforeinput(event, view) {
                 const inputEvent = event as InputEvent;
@@ -1303,8 +1341,23 @@ export function EditorWindow() {
         // The correctionListener extension (above) reactively checks and corrects
         // the state whenever it diverges from this snapshot.
         const captureExpectedState = (e: KeyboardEvent) => {
-            if (e.key === 'Backspace') snapshotExpectedDelete('Backspace', view);
-            if (e.key === 'Delete') snapshotExpectedDelete('Delete', view);
+            const isPlainDeleteKey = (e.key === 'Backspace' || e.key === 'Delete')
+                && !e.metaKey
+                && !e.ctrlKey
+                && !e.altKey
+                && !e.isComposing
+                && !view.composing;
+
+            if (!isPlainDeleteKey) return;
+
+            const deleteKey = e.key as 'Backspace' | 'Delete';
+            snapshotExpectedDelete(deleteKey, view);
+
+            // In packaged WKWebView, native smart-delete may remove adjacent spaces.
+            // Handle plain deletes ourselves and suppress native deletion.
+            e.preventDefault();
+            e.stopPropagation();
+            dispatchSingleDelete(deleteKey, view);
         };
 
         view.contentDOM.addEventListener('keydown', captureExpectedState, true);
