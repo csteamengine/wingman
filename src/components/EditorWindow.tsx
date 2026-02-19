@@ -1040,6 +1040,69 @@ export function EditorWindow() {
     useEffect(() => {
         if (!editorRef.current) return;
 
+        let expectedDoc: string | null = null;
+        let expectedAnchor = -1;
+        let expectClearHandle: ReturnType<typeof setTimeout> | null = null;
+
+        const clearExpectedDelete = () => {
+            expectedDoc = null;
+            expectedAnchor = -1;
+            if (expectClearHandle !== null) {
+                clearTimeout(expectClearHandle);
+                expectClearHandle = null;
+            }
+        };
+
+        const snapshotExpectedDelete = (key: 'Backspace' | 'Delete', view: EditorView) => {
+            const state = view.state;
+            const sel = state.selection.main;
+
+            if (!sel.empty) {
+                clearExpectedDelete();
+                return;
+            }
+
+            const pos = sel.from;
+            const doc = state.doc.toString();
+
+            if (key === 'Backspace' && pos > 0) {
+                const line = state.doc.lineAt(pos);
+                if (pos === line.from) {
+                    clearExpectedDelete();
+                    return;
+                }
+                const before = doc.slice(Math.max(0, pos - 2), pos);
+                const code = before.codePointAt(before.length - 1);
+                const charLen = code !== undefined && code > 0xffff ? 2 : 1;
+                const from = pos - charLen;
+                expectedDoc = doc.slice(0, from) + doc.slice(pos);
+                expectedAnchor = from;
+            } else if (key === 'Delete' && pos < doc.length) {
+                const line = state.doc.lineAt(pos);
+                if (pos === line.to) {
+                    clearExpectedDelete();
+                    return;
+                }
+                const after = doc.slice(pos, Math.min(doc.length, pos + 2));
+                const code = after.codePointAt(0);
+                const charLen = code !== undefined && code > 0xffff ? 2 : 1;
+                expectedDoc = doc.slice(0, pos) + doc.slice(pos + charLen);
+                expectedAnchor = pos;
+            } else {
+                clearExpectedDelete();
+                return;
+            }
+
+            // WKWebView/AppKit smart-delete side effects can arrive in a later task.
+            // Keep this snapshot long enough to catch delayed IPC mutations.
+            if (expectClearHandle !== null) clearTimeout(expectClearHandle);
+            expectClearHandle = setTimeout(() => {
+                expectedDoc = null;
+                expectedAnchor = -1;
+                expectClearHandle = null;
+            }, 2000);
+        };
+
         const preventAnnouncementTextInsertion = EditorView.domEventHandlers({
             beforeinput(event, view) {
                 const inputEvent = event as InputEvent;
@@ -1062,6 +1125,8 @@ export function EditorWindow() {
                         t === 'deleteWordBackward' ||
                         t === 'deleteWordForward'
                     ) {
+                        if (t === 'deleteContentBackward') snapshotExpectedDelete('Backspace', view);
+                        if (t === 'deleteContentForward') snapshotExpectedDelete('Delete', view);
                         event.preventDefault();
                         return true;
                     }
@@ -1095,10 +1160,6 @@ export function EditorWindow() {
         // state change.  Whenever the actual document deviates from the snapshot, we
         // immediately dispatch a history-excluded correction — no matter how many
         // macrotasks later the smart delete arrives.
-        let expectedDoc: string | null = null;
-        let expectedAnchor = -1;
-        let expectClearHandle: ReturnType<typeof setTimeout> | null = null;
-
         const correctionListener = EditorView.updateListener.of((update) => {
             if (!update.docChanged || expectedDoc === null) return;
             const actual = update.state.doc.toString();
@@ -1242,49 +1303,8 @@ export function EditorWindow() {
         // The correctionListener extension (above) reactively checks and corrects
         // the state whenever it diverges from this snapshot.
         const captureExpectedState = (e: KeyboardEvent) => {
-            if (e.key !== 'Backspace' && e.key !== 'Delete') {
-                // Any non-delete key: cancel monitoring to prevent false corrections
-                // if the user types between the keydown and a late smart-delete IPC.
-                expectedDoc = null;
-                if (expectClearHandle !== null) { clearTimeout(expectClearHandle); expectClearHandle = null; }
-                return;
-            }
-
-            const state = view.state;
-            const sel = state.selection.main;
-
-            // Selection deletions are handled correctly already.
-            if (!sel.empty) { expectedDoc = null; return; }
-
-            const pos = sel.from;
-            const doc = state.doc.toString();
-
-            if (e.key === 'Backspace' && pos > 0) {
-                const line = state.doc.lineAt(pos);
-                if (pos === line.from) { expectedDoc = null; return; } // line-join
-                const before = doc.slice(Math.max(0, pos - 2), pos);
-                const code = before.codePointAt(before.length - 1);
-                const charLen = code !== undefined && code > 0xffff ? 2 : 1;
-                const from = pos - charLen;
-                expectedDoc = doc.slice(0, from) + doc.slice(pos);
-                expectedAnchor = from;
-            } else if (e.key === 'Delete' && pos < doc.length) {
-                const line = state.doc.lineAt(pos);
-                if (pos === line.to) { expectedDoc = null; return; } // line-join
-                const after = doc.slice(pos, Math.min(doc.length, pos + 2));
-                const code = after.codePointAt(0);
-                const charLen = code !== undefined && code > 0xffff ? 2 : 1;
-                expectedDoc = doc.slice(0, pos) + doc.slice(pos + charLen);
-                expectedAnchor = pos;
-            } else {
-                expectedDoc = null;
-                return;
-            }
-
-            // Auto-clear after 500 ms in case no state update follows
-            // (e.g. cursor was at doc start/end and nothing was deleted).
-            if (expectClearHandle !== null) clearTimeout(expectClearHandle);
-            expectClearHandle = setTimeout(() => { expectedDoc = null; expectClearHandle = null; }, 500);
+            if (e.key === 'Backspace') snapshotExpectedDelete('Backspace', view);
+            if (e.key === 'Delete') snapshotExpectedDelete('Delete', view);
         };
 
         view.contentDOM.addEventListener('keydown', captureExpectedState, true);
