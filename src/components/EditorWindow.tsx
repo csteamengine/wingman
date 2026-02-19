@@ -1162,6 +1162,9 @@ export function EditorWindow() {
             },
             '.cm-activeLine *': { textDecoration: 'none' },
             '.cm-activeLineGutter': { backgroundColor: 'rgba(127, 127, 127, 0.10)' },
+            // Ensure cursor is always full line-height tall (CodeMirror sets an inline
+            // height that can be too short on empty lines) and matches the text color.
+            '.cm-cursor': { minHeight: '1.2em', borderLeftColor: 'var(--ui-text)' },
         }));
 
         if (isLightTheme) {
@@ -1189,7 +1192,20 @@ export function EditorWindow() {
         setEditorView(view);
         view.focus();
 
+        // Block all deletion-type beforeinput events at capture phase, before CodeMirror's
+        // own handler sees them. This prevents WKWebView's "smart delete" from widening the
+        // deletion range (e.g. eating a preceding space after a word is fully backspaced).
+        // Our custom keymap already handles the actual deletion on keydown.
+        const blockNativeDeletion = (e: Event) => {
+            const ie = e as InputEvent;
+            if (!view.composing && ie.inputType.startsWith('delete')) {
+                e.preventDefault();
+            }
+        };
+        view.contentDOM.addEventListener('beforeinput', blockNativeDeletion, true);
+
         return () => {
+            view.contentDOM.removeEventListener('beforeinput', blockNativeDeletion, true);
             view.destroy();
             setEditorView(null);
         };
