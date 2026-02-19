@@ -8,7 +8,7 @@ import {
     highlightActiveLine,
     highlightActiveLineGutter,
 } from '@codemirror/view';
-import {EditorState} from '@codemirror/state';
+import {EditorState, Transaction, EditorSelection} from '@codemirror/state';
 import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/commands';
 import {searchKeymap} from '@codemirror/search';
 import {bracketMatching} from '@codemirror/language';
@@ -1060,12 +1060,71 @@ export function EditorWindow() {
             },
         });
 
+        // WKWebView packaged-app smart-delete guard.
+        //
+        // In release builds, AppKit's native text editing layer mutates the DOM
+        // BEFORE dispatching the beforeinput event to JavaScript, so
+        // event.preventDefault() is too late to stop it.  Instead we intercept
+        // at the CodeMirror transaction layer: when the MutationObserver picks up
+        // the DOM change it creates a transaction; we catch any transaction that
+        // (a) carries no explicit userEvent from our own keymap, (b) arrives within
+        // 200 ms of a Backspace/Delete keydown, and (c) deletes only horizontal
+        // whitespace (spaces/tabs — the fingerprint of smart delete).  We neutralise
+        // it by returning two transactions: the deletion itself (history-excluded) plus
+        // an immediate re-insertion that cancels it out (also history-excluded).
+        // Because both are applied in the same ViewUpdate the DOM diff is a no-op —
+        // no flicker.
+        let keydownDeletePerfTime = -Infinity;
+        let expectedCursorAfterDelete = -1;
+
+        const smartDeleteGuard = EditorState.transactionFilter.of((tr) => {
+            // Pass through anything our own keymap dispatched.
+            const userEvent = tr.annotation(Transaction.userEvent);
+            if (userEvent && userEvent.startsWith('delete')) return tr;
+
+            // Only intercept within a short window after a keyboard delete press.
+            if (performance.now() - keydownDeletePerfTime >= 200) return tr;
+
+            // Collect whitespace-only deletions; bail out if anything else is changing.
+            const reinsertions: Array<{ at: number; text: string }> = [];
+            let hasOtherChanges = false;
+            tr.changes.iterChanges((fromA, toA, fromB, _toB, inserted) => {
+                if (inserted.length > 0) { hasOtherChanges = true; return; }
+                if (toA > fromA) {
+                    const deleted = tr.startState.doc.sliceString(fromA, toA);
+                    // Only match spaces/tabs — not newlines (those are line joins, which are intentional).
+                    if (/^[ \t]+$/.test(deleted)) {
+                        reinsertions.push({ at: fromB, text: deleted });
+                    } else {
+                        hasOtherChanges = true;
+                    }
+                }
+            });
+
+            if (hasOtherChanges || reinsertions.length === 0) return tr;
+
+            // Neutralise: apply the deletion (so the DOM stays in sync) then
+            // immediately re-insert the whitespace, placing the cursor where it
+            // should be after the single intended character deletion.
+            return [
+                { changes: tr.changes, selection: tr.newSelection, annotations: [Transaction.addToHistory.of(false)] },
+                {
+                    changes: reinsertions.map(r => ({ from: r.at, insert: r.text })),
+                    selection: expectedCursorAfterDelete >= 0
+                        ? EditorSelection.cursor(expectedCursorAfterDelete)
+                        : tr.newSelection,
+                    annotations: [Transaction.addToHistory.of(false)],
+                },
+            ];
+        });
+
         const extensions = [
             history(),
             EditorState.allowMultipleSelections.of(true),
             drawSelection(),
             dropCursor(),
             preventAnnouncementTextInsertion,
+            smartDeleteGuard,
             editorKeymap,
             tripleBacktickHandler,
             keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
@@ -1174,39 +1233,25 @@ export function EditorWindow() {
         setEditorView(view);
         view.focus();
 
-        // Block delete-type beforeinput events at capture phase (before CodeMirror's own
-        // handler) to prevent WKWebView's "smart delete" from widening the deletion range
-        // (e.g. eating the preceding space when a word is fully backspaced character by
-        // character). Our custom keymap already performs the correct single-char deletion
-        // on keydown, so the native beforeinput is redundant.
-        //
-        // We track keydown so we only block delete* events that originated from an actual
-        // keyboard Backspace/Delete press. Dictation corrections also fire
-        // deleteContentBackward but are NOT preceded by a keyboard event, so they must be
-        // allowed through (otherwise dictation text replacement is broken in the packaged
-        // WKWebView app).
-        let keydownDeleteTimestamp = -Infinity;
-        const trackKeydown = (e: KeyboardEvent) => {
-            if (e.key === 'Backspace' || e.key === 'Delete') {
-                keydownDeleteTimestamp = e.timeStamp;
+        // Feed keydown timestamps into the smartDeleteGuard filter above.
+        // We read the cursor position here (before the keymap fires) so the filter
+        // knows where the cursor should land after a single-character deletion.
+        const trackKeydownForSmartDelete = (e: KeyboardEvent) => {
+            if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+            keydownDeletePerfTime = performance.now();
+            const sel = view.state.selection.main;
+            if (sel.empty) {
+                expectedCursorAfterDelete = e.key === 'Backspace'
+                    ? Math.max(0, sel.from - 1)
+                    : sel.from; // Delete key: cursor stays in place
+            } else {
+                expectedCursorAfterDelete = -1;
             }
         };
-        const blockNativeDeletion = (e: Event) => {
-            const ie = e as InputEvent;
-            if (
-                !view.composing &&
-                ie.inputType.startsWith('delete') &&
-                e.timeStamp - keydownDeleteTimestamp < 50
-            ) {
-                e.preventDefault();
-            }
-        };
-        view.contentDOM.addEventListener('keydown', trackKeydown, true);
-        view.contentDOM.addEventListener('beforeinput', blockNativeDeletion, true);
+        view.contentDOM.addEventListener('keydown', trackKeydownForSmartDelete, true);
 
         return () => {
-            view.contentDOM.removeEventListener('keydown', trackKeydown, true);
-            view.contentDOM.removeEventListener('beforeinput', blockNativeDeletion, true);
+            view.contentDOM.removeEventListener('keydown', trackKeydownForSmartDelete, true);
             view.destroy();
             setEditorView(null);
         };
