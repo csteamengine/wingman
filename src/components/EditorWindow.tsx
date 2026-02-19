@@ -1044,24 +1044,6 @@ export function EditorWindow() {
             beforeinput(event, view) {
                 const inputEvent = event as InputEvent;
 
-                // Prevent macOS WKWebView "smart delete" behaviour in release builds.
-                // Our custom keymap handlers already perform single-character deletion
-                // on keydown, so the subsequent beforeinput is redundant. WKWebView's
-                // native handling can silently widen the deletion range (e.g. removing a
-                // preceding space when a word is fully back-spaced).
-                if (!view.composing) {
-                    const t = inputEvent.inputType;
-                    if (
-                        t === 'deleteContentBackward' ||
-                        t === 'deleteContentForward' ||
-                        t === 'deleteWordBackward' ||
-                        t === 'deleteWordForward'
-                    ) {
-                        event.preventDefault();
-                        return true;
-                    }
-                }
-
                 const isBlockedAnnouncement = isNonEditableAnnouncement(inputEvent.data);
 
                 if (!isBlockedAnnouncement) return false;
@@ -1162,9 +1144,9 @@ export function EditorWindow() {
             },
             '.cm-activeLine *': { textDecoration: 'none' },
             '.cm-activeLineGutter': { backgroundColor: 'rgba(127, 127, 127, 0.10)' },
-            // Ensure cursor is always full line-height tall (CodeMirror sets an inline
-            // height that can be too short on empty lines) and matches the text color.
-            '.cm-cursor': { minHeight: '1.2em', borderLeftColor: 'var(--ui-text)' },
+            // Ensure cursor is always full line-height tall; CodeMirror sets an inline
+            // height that can be too short on empty lines in WKWebView release builds.
+            '.cm-cursor': { minHeight: '1.2em' },
         }));
 
         if (isLightTheme) {
@@ -1192,19 +1174,38 @@ export function EditorWindow() {
         setEditorView(view);
         view.focus();
 
-        // Block all deletion-type beforeinput events at capture phase, before CodeMirror's
-        // own handler sees them. This prevents WKWebView's "smart delete" from widening the
-        // deletion range (e.g. eating a preceding space after a word is fully backspaced).
-        // Our custom keymap already handles the actual deletion on keydown.
+        // Block delete-type beforeinput events at capture phase (before CodeMirror's own
+        // handler) to prevent WKWebView's "smart delete" from widening the deletion range
+        // (e.g. eating the preceding space when a word is fully backspaced character by
+        // character). Our custom keymap already performs the correct single-char deletion
+        // on keydown, so the native beforeinput is redundant.
+        //
+        // We track keydown so we only block delete* events that originated from an actual
+        // keyboard Backspace/Delete press. Dictation corrections also fire
+        // deleteContentBackward but are NOT preceded by a keyboard event, so they must be
+        // allowed through (otherwise dictation text replacement is broken in the packaged
+        // WKWebView app).
+        let keydownDeleteTimestamp = -Infinity;
+        const trackKeydown = (e: KeyboardEvent) => {
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                keydownDeleteTimestamp = e.timeStamp;
+            }
+        };
         const blockNativeDeletion = (e: Event) => {
             const ie = e as InputEvent;
-            if (!view.composing && ie.inputType.startsWith('delete')) {
+            if (
+                !view.composing &&
+                ie.inputType.startsWith('delete') &&
+                e.timeStamp - keydownDeleteTimestamp < 50
+            ) {
                 e.preventDefault();
             }
         };
+        view.contentDOM.addEventListener('keydown', trackKeydown, true);
         view.contentDOM.addEventListener('beforeinput', blockNativeDeletion, true);
 
         return () => {
+            view.contentDOM.removeEventListener('keydown', trackKeydown, true);
             view.contentDOM.removeEventListener('beforeinput', blockNativeDeletion, true);
             view.destroy();
             setEditorView(null);
