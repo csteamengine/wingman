@@ -456,10 +456,12 @@ export const markdownTheme = EditorView.baseTheme({
         opacity: '0.7',
     },
     '.cm-md-code': {
-        background: 'var(--ui-surface)',
-        padding: '1px 4px',
-        borderRadius: '3px',
-        fontFamily: 'monospace',
+        background: 'rgba(255, 255, 255, 0.10)',
+        padding: '1px 5px',
+        borderRadius: '4px',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        fontFamily: "'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', monospace",
+        fontSize: '0.9em',
     },
     '.cm-md-link': {
         color: '#3b82f6',

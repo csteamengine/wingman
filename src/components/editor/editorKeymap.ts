@@ -18,68 +18,6 @@ export function wrapSelection(view: EditorView, open: string, close: string): bo
     return true;
 }
 
-// Ensure Backspace/Delete remove selected text instead of inserting replacement text.
-function deleteSelection(view: EditorView): boolean {
-    const selection = view.state.selection.main;
-    if (selection.empty) return false;
-
-    view.dispatch({
-        changes: {
-            from: selection.from,
-            to: selection.to,
-            insert: '',
-        },
-        selection: { anchor: selection.from },
-    });
-    return true;
-}
-
-function deleteBackwardSingleChar(view: EditorView): boolean {
-    const selection = view.state.selection.main;
-    if (!selection.empty) return false;
-
-    const pos = selection.from;
-    if (pos === 0) return false;
-
-    const line = view.state.doc.lineAt(pos);
-    // Keep default behavior for line joins at start of line.
-    if (pos === line.from) return false;
-
-    const before = view.state.doc.sliceString(pos - 2, pos);
-    const code = before.codePointAt(before.length - 1);
-    const charLen = code !== undefined && code > 0xffff ? 2 : 1;
-    const from = pos - charLen;
-
-    view.dispatch({
-        changes: { from, to: pos, insert: '' },
-        selection: { anchor: from },
-    });
-    return true;
-}
-
-function deleteForwardSingleChar(view: EditorView): boolean {
-    const selection = view.state.selection.main;
-    if (!selection.empty) return false;
-
-    const pos = selection.from;
-    if (pos >= view.state.doc.length) return false;
-
-    const line = view.state.doc.lineAt(pos);
-    // Keep default behavior at end-of-line (line joins).
-    if (pos === line.to) return false;
-
-    const after = view.state.doc.sliceString(pos, pos + 2);
-    const code = after.codePointAt(0);
-    const charLen = code !== undefined && code > 0xffff ? 2 : 1;
-    const to = pos + charLen;
-
-    view.dispatch({
-        changes: { from: pos, to, insert: '' },
-        selection: { anchor: pos },
-    });
-    return true;
-}
-
 function scrollCaretIntoView(view: EditorView): void {
     view.dispatch({
         effects: EditorView.scrollIntoView(view.state.selection.main.head, { y: 'nearest' }),
@@ -88,11 +26,6 @@ function scrollCaretIntoView(view: EditorView): void {
 
 // Editor keymaps: line operations, auto-list continuation, and bracket wrapping
 export const editorKeymap = keymap.of([
-    { key: 'Backspace', run: deleteSelection },
-    { key: 'Delete', run: deleteSelection },
-    { key: 'Backspace', run: deleteBackwardSingleChar },
-    { key: 'Delete', run: deleteForwardSingleChar },
-
     // Auto-wrap selection with quotes and brackets
     { key: '"', run: (view) => wrapSelection(view, '"', '"') },
     { key: "'", run: (view) => wrapSelection(view, "'", "'") },

@@ -1256,37 +1256,40 @@ fn start_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
 #[cfg(target_os = "macos")]
 #[tauri::command]
 #[allow(deprecated)]
-fn stop_dictation(window: tauri::WebviewWindow, app_handle: tauri::AppHandle) -> Result<(), String> {
+fn stop_dictation(_window: tauri::WebviewWindow, app_handle: tauri::AppHandle) -> Result<(), String> {
     use objc::{msg_send, sel, sel_impl, class};
+    use cocoa::base::{id, nil};
     use std::sync::mpsc;
     use std::time::Duration;
-
-    let _ = window.set_focus();
 
     let (tx, rx) = mpsc::channel();
     app_handle.run_on_main_thread(move || {
         unsafe {
-            let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
-            // AppKit's dictation action is a toggle; using the same selector
-            // as start is the most reliable stop path in packaged builds.
-            let sent_toggle_action: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
+            let app: id = msg_send![class!(NSApplication), sharedApplication];
+            let key_window: id = msg_send![app, keyWindow];
+            if key_window == nil {
+                let _ = tx.send(());
+                return;
+            }
 
-            // Clear in-progress marked (composition) text after stop/cancel.
-            let input_context: cocoa::base::id = msg_send![class!(NSTextInputContext), currentInputContext];
+            // Discard in-progress marked (composition) text so partial dictation
+            // isn't committed into the editor.
+            let input_context: id = msg_send![class!(NSTextInputContext), currentInputContext];
             if !input_context.is_null() {
                 let _: () = msg_send![input_context, discardMarkedText];
             }
 
-            log::info!(
-                "stop_dictation: sent_toggle_action={}",
-                sent_toggle_action
-            );
-            let _ = tx.send(());
+            // Resign first responder — macOS dictation stops when the text input
+            // target loses first responder status. Using nil makes the window itself
+            // the first responder. The frontend restores editor focus after a brief
+            // delay via .focus() on the contenteditable element.
+            let _: bool = msg_send![key_window, makeFirstResponder: nil];
+
+            log::info!("stop_dictation: discarded marked text and resigned first responder");
         }
+        let _ = tx.send(());
     }).map_err(|e| e.to_string())?;
 
-    // Mirror start_dictation behavior: do not fail hard if the main thread is
-    // temporarily blocked by native dictation UI.
     let _ = rx.recv_timeout(Duration::from_millis(500));
 
     Ok(())

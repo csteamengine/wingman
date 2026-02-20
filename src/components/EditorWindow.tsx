@@ -8,7 +8,7 @@ import {
     highlightActiveLine,
     highlightActiveLineGutter,
 } from '@codemirror/view';
-import {EditorState, Transaction} from '@codemirror/state';
+import {EditorState} from '@codemirror/state';
 import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/commands';
 import {searchKeymap} from '@codemirror/search';
 import {bracketMatching} from '@codemirror/language';
@@ -61,6 +61,7 @@ import {
     AILoadingOverlay,
     searchPanelExtension,
     TipsBar,
+    DictationButton,
 } from './editor';
 
 import type {ObsidianResult, GistResult, AIPreset} from '../types';
@@ -151,6 +152,7 @@ export function EditorWindow() {
     const [aiError, setAiError] = useState<string | null>(null);
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const [selectedCustomPromptId, setSelectedCustomPromptId] = useState<string | null>(null);
+    const [isComposing, setIsComposing] = useState(false);
     const [contextDetection, setContextDetection] = useState<DetectorResult | null>(null);
     const contextDismissedRef = useRef<string | null>(null); // tracks dismissed detector id
     const pasteOrDropRef = useRef(false); // tracks if content change came from paste/drag
@@ -1040,186 +1042,16 @@ export function EditorWindow() {
     useEffect(() => {
         if (!editorRef.current) return;
 
-        let expectedDoc: string | null = null;
-        let expectedAnchor = -1;
-        let expectClearHandle: ReturnType<typeof setTimeout> | null = null;
-
-        const clearExpectedDelete = () => {
-            expectedDoc = null;
-            expectedAnchor = -1;
-            if (expectClearHandle !== null) {
-                clearTimeout(expectClearHandle);
-                expectClearHandle = null;
-            }
-        };
-
-        const snapshotExpectedDelete = (key: 'Backspace' | 'Delete', view: EditorView) => {
-            const state = view.state;
-            const sel = state.selection.main;
-
-            if (!sel.empty) {
-                clearExpectedDelete();
-                return;
-            }
-
-            const pos = sel.from;
-            const doc = state.doc.toString();
-
-            if (key === 'Backspace' && pos > 0) {
-                const line = state.doc.lineAt(pos);
-                if (pos === line.from) {
-                    clearExpectedDelete();
-                    return;
-                }
-                const before = doc.slice(Math.max(0, pos - 2), pos);
-                const code = before.codePointAt(before.length - 1);
-                const charLen = code !== undefined && code > 0xffff ? 2 : 1;
-                const from = pos - charLen;
-                expectedDoc = doc.slice(0, from) + doc.slice(pos);
-                expectedAnchor = from;
-            } else if (key === 'Delete' && pos < doc.length) {
-                const line = state.doc.lineAt(pos);
-                if (pos === line.to) {
-                    clearExpectedDelete();
-                    return;
-                }
-                const after = doc.slice(pos, Math.min(doc.length, pos + 2));
-                const code = after.codePointAt(0);
-                const charLen = code !== undefined && code > 0xffff ? 2 : 1;
-                expectedDoc = doc.slice(0, pos) + doc.slice(pos + charLen);
-                expectedAnchor = pos;
-            } else {
-                clearExpectedDelete();
-                return;
-            }
-
-            // WKWebView/AppKit smart-delete side effects can arrive in a later task.
-            // Keep this snapshot long enough to catch delayed IPC mutations.
-            if (expectClearHandle !== null) clearTimeout(expectClearHandle);
-            expectClearHandle = setTimeout(() => {
-                expectedDoc = null;
-                expectedAnchor = -1;
-                expectClearHandle = null;
-            }, 2000);
-        };
-
-        const dispatchSingleDelete = (key: 'Backspace' | 'Delete', view: EditorView): boolean => {
-            const state = view.state;
-            const sel = state.selection.main;
-
-            if (!sel.empty) {
-                view.dispatch({
-                    changes: { from: sel.from, to: sel.to, insert: '' },
-                    selection: { anchor: sel.from },
-                });
-                return true;
-            }
-
-            const pos = sel.from;
-            if (key === 'Backspace') {
-                if (pos === 0) return true;
-                const before = state.doc.sliceString(Math.max(0, pos - 2), pos);
-                const code = before.codePointAt(before.length - 1);
-                const charLen = code !== undefined && code > 0xffff ? 2 : 1;
-                const from = pos - charLen;
-                view.dispatch({
-                    changes: { from, to: pos, insert: '' },
-                    selection: { anchor: from },
-                });
-                return true;
-            }
-
-            if (pos >= state.doc.length) return true;
-            const after = state.doc.sliceString(pos, Math.min(state.doc.length, pos + 2));
-            const code = after.codePointAt(0);
-            const charLen = code !== undefined && code > 0xffff ? 2 : 1;
-            const to = pos + charLen;
-            view.dispatch({
-                changes: { from: pos, to, insert: '' },
-                selection: { anchor: pos },
-            });
-            return true;
-        };
-
         const preventAnnouncementTextInsertion = EditorView.domEventHandlers({
-            beforeinput(event, view) {
+            beforeinput(event) {
                 const inputEvent = event as InputEvent;
-
-                // Returning true here tells CodeMirror to skip its own beforeinput
-                // processing for these input types.  This is critical: when CodeMirror
-                // processes a deleteContent* beforeinput it tags the resulting transaction
-                // as userEvent:"delete.backward" (etc.), which makes it indistinguishable
-                // from our own keymap's delete transactions.  By blocking here the smart-
-                // delete DOM mutation (already applied by AppKit in the packaged app) ends
-                // up in a MutationObserver transaction with NO delete.* userEvent, which
-                // the smartDeleteGuard transactionFilter can then identify and neutralise.
-                // Dictation corrections are exempt because view.composing is true during
-                // active dictation/IME input.
-                if (!view.composing) {
-                    const t = inputEvent.inputType;
-                    if (
-                        t === 'deleteContentBackward' ||
-                        t === 'deleteContentForward' ||
-                        t === 'deleteWordBackward' ||
-                        t === 'deleteWordForward'
-                    ) {
-                        if (t === 'deleteContentBackward') snapshotExpectedDelete('Backspace', view);
-                        if (t === 'deleteContentForward') snapshotExpectedDelete('Delete', view);
-                        event.preventDefault();
-                        return true;
-                    }
-                }
-
                 const isBlockedAnnouncement = isNonEditableAnnouncement(inputEvent.data);
 
                 if (!isBlockedAnnouncement) return false;
 
                 event.preventDefault();
-                const selection = view.state.selection.main;
-                if (!selection.empty) {
-                    view.dispatch({
-                        changes: { from: selection.from, to: selection.to, insert: '' },
-                        selection: { anchor: selection.from },
-                    });
-                }
                 return true;
             },
-        });
-
-        // WKWebView smart-delete guard.
-        //
-        // In packaged macOS builds, AppKit's text layer performs "smart delete" —
-        // removing an adjacent space when the last character of a word is deleted.
-        // This extra deletion arrives via WKWebView IPC as a *new browser macrotask*,
-        // so setTimeout(0) fires too early to catch it.
-        //
-        // Instead we snapshot the expected document state on each Backspace/Delete
-        // keydown, then use an updateListener that fires reactively on every CodeMirror
-        // state change.  Whenever the actual document deviates from the snapshot, we
-        // immediately dispatch a history-excluded correction — no matter how many
-        // macrotasks later the smart delete arrives.
-        const correctionListener = EditorView.updateListener.of((update) => {
-            if (!update.docChanged || expectedDoc === null) return;
-            const actual = update.state.doc.toString();
-            if (actual === expectedDoc) return; // State matches expectation; keep watching
-
-            // Document diverged from expectation — smart delete ate extra characters.
-            const wantDoc = expectedDoc;
-            const wantAnchor = expectedAnchor;
-            expectedDoc = null; // Clear before scheduling to prevent re-entry
-            if (expectClearHandle !== null) { clearTimeout(expectClearHandle); expectClearHandle = null; }
-
-            // Defer dispatch: cannot call view.dispatch() synchronously inside an
-            // updateListener callback (the previous dispatch hasn't finished yet).
-            Promise.resolve().then(() => {
-                const v = update.view;
-                if (v.state.doc.toString() === wantDoc) return; // Already correct
-                v.dispatch({
-                    changes: { from: 0, to: v.state.doc.length, insert: wantDoc },
-                    selection: { anchor: Math.min(wantAnchor, wantDoc.length) },
-                    annotations: [Transaction.addToHistory.of(false)],
-                });
-            });
         });
 
         const extensions = [
@@ -1228,7 +1060,6 @@ export function EditorWindow() {
             drawSelection(),
             dropCursor(),
             preventAnnouncementTextInsertion,
-            correctionListener,
             editorKeymap,
             tripleBacktickHandler,
             keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
@@ -1307,9 +1138,6 @@ export function EditorWindow() {
             },
             '.cm-activeLine *': { textDecoration: 'none' },
             '.cm-activeLineGutter': { backgroundColor: 'rgba(127, 127, 127, 0.10)' },
-            // Ensure cursor is always full line-height tall; CodeMirror sets an inline
-            // height that can be too short on empty lines in WKWebView release builds.
-            '.cm-cursor': { minHeight: '1.2em' },
         }));
 
         if (isLightTheme) {
@@ -1337,34 +1165,18 @@ export function EditorWindow() {
         setEditorView(view);
         view.focus();
 
-        // Keydown listener: snapshot expected state before each Backspace/Delete.
-        // The correctionListener extension (above) reactively checks and corrects
-        // the state whenever it diverges from this snapshot.
-        const captureExpectedState = (e: KeyboardEvent) => {
-            const isPlainDeleteKey = (e.key === 'Backspace' || e.key === 'Delete')
-                && !e.metaKey
-                && !e.ctrlKey
-                && !e.altKey
-                && !e.isComposing
-                && !view.composing;
-
-            if (!isPlainDeleteKey) return;
-
-            const deleteKey = e.key as 'Backspace' | 'Delete';
-            snapshotExpectedDelete(deleteKey, view);
-
-            // In packaged WKWebView, native smart-delete may remove adjacent spaces.
-            // Handle plain deletes ourselves and suppress native deletion.
-            e.preventDefault();
-            e.stopPropagation();
-            dispatchSingleDelete(deleteKey, view);
-        };
-
-        view.contentDOM.addEventListener('keydown', captureExpectedState, true);
+        // Track composition state (dictation / IME) via DOM events.
+        // These fire immediately on composition start/end, unlike CodeMirror's
+        // updateListener which only fires on doc/selection/viewport changes.
+        const editorDom = view.dom;
+        const onCompositionStart = () => setIsComposing(true);
+        const onCompositionEnd = () => setIsComposing(false);
+        editorDom.addEventListener('compositionstart', onCompositionStart);
+        editorDom.addEventListener('compositionend', onCompositionEnd);
 
         return () => {
-            if (expectClearHandle !== null) clearTimeout(expectClearHandle);
-            view.contentDOM.removeEventListener('keydown', captureExpectedState, true);
+            editorDom.removeEventListener('compositionstart', onCompositionStart);
+            editorDom.removeEventListener('compositionend', onCompositionEnd);
             view.destroy();
             setEditorView(null);
         };
@@ -1380,6 +1192,32 @@ export function EditorWindow() {
         });
         return () => { unlisten.then(fn => fn()); };
     }, []);
+
+    // Fallback: detect composition end when compositionend DOM event doesn't fire.
+    // When macOS dictation is cancelled by native Escape, the composition text is
+    // removed from the DOM but compositionend may not be dispatched. A MutationObserver
+    // detects the removal, then we check CodeMirror's state after it processes the change.
+    useEffect(() => {
+        if (!isComposing) return;
+        const view = viewRef.current;
+        if (!view) return;
+
+        const observer = new MutationObserver(() => {
+            requestAnimationFrame(() => {
+                if (viewRef.current && !viewRef.current.composing) {
+                    setIsComposing(false);
+                }
+            });
+        });
+
+        observer.observe(view.contentDOM, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+        });
+
+        return () => observer.disconnect();
+    }, [isComposing]);
 
     // Update editor content when it changes externally
     useEffect(() => {
@@ -1480,6 +1318,7 @@ export function EditorWindow() {
                     }}
                     onMouseDownCapture={handleEditorPaneMouseDownCapture}
                 />
+                <DictationButton isComposing={isComposing} onDictationStop={() => setIsComposing(false)} />
             </div>
 
             <AttachmentsBar

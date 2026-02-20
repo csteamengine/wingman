@@ -5,9 +5,11 @@ import { invoke } from '@tauri-apps/api/core';
 interface DictationButtonProps {
   /** True while the editor is in a composition session (dictation or IME). */
   isComposing?: boolean;
+  /** Called when dictation is programmatically stopped so the parent can clear composition state. */
+  onDictationStop?: () => void;
 }
 
-export function DictationButton({ isComposing = false }: DictationButtonProps) {
+export function DictationButton({ isComposing = false, onDictationStop }: DictationButtonProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toggling = useRef(false);
@@ -34,15 +36,23 @@ export function DictationButton({ isComposing = false }: DictationButtonProps) {
 
     try {
       if (isActive) {
-        // Keep editor/webview focus so macOS responder-chain stop actions can land
-        // on the text input in release builds too.
-        const editorContent = document.querySelector<HTMLElement>('.cm-content');
-        editorContent?.focus();
-
         setIsRecording(false);
-        // macOS dictation uses a native toggle action; using the same command
-        // as start is more reliable than trying to route explicit stop actions.
-        await invoke('start_dictation');
+        // Immediately clear composition state so the icon updates in one click.
+        // The Rust side resigns first responder (ending dictation) but the DOM
+        // compositionend event may not fire since the native resign bypasses it.
+        onDictationStop?.();
+        // Resign first responder at the native level to end dictation, then
+        // refocus the editor after a brief delay so the WKWebView can properly
+        // re-acquire first responder status.
+        invoke('stop_dictation').then(() => {
+          setTimeout(() => {
+            const editor = document.querySelector<HTMLElement>('.cm-content');
+            editor?.focus();
+          }, 150);
+        }).catch((e) => {
+          setError(String(e));
+          setTimeout(() => setError(null), 3000);
+        });
       } else {
         // Update the icon immediately, then fire-and-forget the Tauri command.
         // The Rust side blocks up to 500 ms waiting for the main-thread action
