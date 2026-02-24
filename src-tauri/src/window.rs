@@ -12,6 +12,11 @@ pub const MAIN_WINDOW_LABEL: &str = "main";
 /// Global flag to prevent panel from hiding during dialog operations
 pub static DIALOG_OPEN: AtomicBool = AtomicBool::new(false);
 
+/// Tracks whether the panel currently has key-window status.
+/// Used by the debounced resign-key handler to avoid hiding the panel
+/// during transient focus changes (e.g. macOS dictation overlay).
+static PANEL_IS_KEY: AtomicBool = AtomicBool::new(false);
+
 /// Monitor workspace and monitor changes, move panel to follow cursor in sticky mode
 pub fn start_workspace_monitor<R: Runtime>(app_handle: tauri::AppHandle<R>) {
     std::thread::spawn(move || {
@@ -199,6 +204,14 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
         let app_handle_for_key = self.app_handle().clone();
         handler.window_did_become_key(move |_| {
             log::info!("panel became key window");
+            PANEL_IS_KEY.store(true, Ordering::SeqCst);
+
+            // Promote WKContentView to first responder so macOS system dictation
+            // (Fn-Fn / Globe key) targets the correct NSTextInputClient instead
+            // of Wry's WryWebView wrapper.
+            if let Some(window) = app_handle_for_key.get_webview_window(MAIN_WINDOW_LABEL) {
+                promote_wk_content_view_to_first_responder(&window);
+            }
 
             // When panel becomes key window in sticky mode, emit event to refocus editor
             // This handles workspace switches where the panel needs to regain input focus
@@ -214,6 +227,7 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
 
         handler.window_did_resign_key(move |_| {
             log::info!("panel resigned key window");
+            PANEL_IS_KEY.store(false, Ordering::SeqCst);
 
             // Don't hide if a dialog is open (e.g., folder picker)
             if DIALOG_OPEN.load(Ordering::SeqCst) {
@@ -229,30 +243,49 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
                 }
             }
 
-            // Hide panel when it loses focus (clicking outside, switching spaces, etc.)
-            // Like Raycast behavior - dismiss and re-summon with hotkey
-            if let Ok(panel) = app_handle.get_webview_panel(MAIN_WINDOW_LABEL) {
-                if panel.is_visible() {
-                    // Save position before hiding
-                    // IMPORTANT: Use the window's actual position to determine monitor,
-                    // not cursor position (user may have dragged window to different monitor)
-                    if let Some(window) = app_handle.get_webview_window(MAIN_WINDOW_LABEL) {
-                        if let Some(monitor_name) = get_window_monitor_name(&window) {
-                            if !monitor_name.is_empty() {
-                                if let Err(e) = window.save_position_for_current_monitor(&monitor_name) {
-                                    log::warn!("Failed to save position on hide: {:?}", e);
-                                } else {
-                                    log::info!("Saved position for {} before hiding (based on window position)", monitor_name);
-                                }
-                            }
-                        }
+            // Debounce: wait briefly before hiding to tolerate transient focus
+            // changes.  macOS dictation, Spotlight suggestions, and similar system
+            // overlays can momentarily steal key-window status from the panel.
+            // If the panel regains key within the grace period we skip the hide.
+            let app_handle2 = app_handle.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(300));
+
+                // Fast path: if the panel already regained key, nothing to do.
+                if PANEL_IS_KEY.load(Ordering::SeqCst) {
+                    log::info!("panel regained key within debounce window, not hiding");
+                    return;
+                }
+
+                let app_handle3 = app_handle2.clone();
+                let _ = app_handle2.run_on_main_thread(move || {
+                    // Re-check on main thread in case state changed during dispatch.
+                    if PANEL_IS_KEY.load(Ordering::SeqCst) {
+                        log::info!("panel regained key before main-thread hide, not hiding");
+                        return;
                     }
 
-                    panel.hide();
-                    // Notify frontend that panel was hidden so it can sync isVisible state
-                    let _ = app_handle.emit("panel-hidden", ());
-                }
-            }
+                    if let Ok(panel) = app_handle3.get_webview_panel(MAIN_WINDOW_LABEL) {
+                        if panel.is_visible() {
+                            // Save position before hiding
+                            if let Some(window) = app_handle3.get_webview_window(MAIN_WINDOW_LABEL) {
+                                if let Some(monitor_name) = get_window_monitor_name(&window) {
+                                    if !monitor_name.is_empty() {
+                                        if let Err(e) = window.save_position_for_current_monitor(&monitor_name) {
+                                            log::warn!("Failed to save position on hide: {:?}", e);
+                                        } else {
+                                            log::info!("Saved position for {} before hiding (based on window position)", monitor_name);
+                                        }
+                                    }
+                                }
+                            }
+
+                            panel.hide();
+                            let _ = app_handle3.emit("panel-hidden", ());
+                        }
+                    }
+                });
+            });
         });
 
         panel.set_event_handler(Some(handler.as_ref()));
@@ -540,6 +573,61 @@ pub fn get_window_monitor_name<R: Runtime>(window: &WebviewWindow<R>) -> Option<
     get_monitor_name_for_point(center_x, center_y)
 }
 
+/// Walk the view hierarchy to find WKContentView — the private WebKit view
+/// that implements NSTextInputClient and handles dictation / IME.
+/// Wry's WryWebView wrapper is NOT the text-input view; making WKContentView
+/// the first responder is required for macOS system dictation to work.
+#[allow(deprecated)]
+pub unsafe fn find_wk_content_view(view: cocoa::base::id) -> Option<cocoa::base::id> {
+    use cocoa::base::id;
+    use objc::{msg_send, sel, sel_impl};
+
+    if view.is_null() { return None; }
+
+    let cls: id = msg_send![view, class];
+    let name: id = msg_send![cls, description];
+    let cstr: *const std::os::raw::c_char = msg_send![name, UTF8String];
+    let name_str = std::ffi::CStr::from_ptr(cstr).to_string_lossy();
+    if name_str == "WKContentView" {
+        return Some(view);
+    }
+
+    let subviews: id = msg_send![view, subviews];
+    if subviews.is_null() { return None; }
+    let count: usize = msg_send![subviews, count];
+    for i in 0..count {
+        let child: id = msg_send![subviews, objectAtIndex: i];
+        if !child.is_null() {
+            if let Some(cv) = find_wk_content_view(child) {
+                return Some(cv);
+            }
+        }
+    }
+    None
+}
+
+/// Promote WKContentView to first responder on the given window.
+/// Call this after the panel is shown / becomes key so that macOS system
+/// dictation (Fn-Fn) targets the correct NSTextInputClient.
+#[allow(deprecated)]
+pub fn promote_wk_content_view_to_first_responder<R: Runtime>(window: &WebviewWindow<R>) {
+    use cocoa::appkit::NSWindow as NSWindowTrait;
+
+    let ns_window = match window.ns_window() {
+        Ok(w) => w as cocoa::base::id,
+        Err(_) => return,
+    };
+    if ns_window.is_null() { return; }
+
+    unsafe {
+        let content_view: cocoa::base::id = ns_window.contentView();
+        if let Some(wk_content) = find_wk_content_view(content_view) {
+            use objc::{msg_send, sel, sel_impl};
+            let _: bool = msg_send![ns_window, makeFirstResponder: wk_content];
+        }
+    }
+}
+
 /// Disable native text services on WKWebView-hosted editors in packaged macOS
 /// builds. Besides spellcheck underlines, AppKit can apply Smart Insert/Delete
 /// and text substitutions that mutate content (for example, deleting adjacent
@@ -584,9 +672,20 @@ pub fn disable_webview_spellcheck(window: &WebviewWindow<impl Runtime>) -> Resul
             }
         }
 
-        // ── 2. Walk the view tree and disable text services on every view ──
+        // ── 2. Walk the view tree and disable text services on non-WebView views ──
+        // IMPORTANT: We skip WKWebView and all its internal subviews (WKContentView,
+        // WKScrollView, etc.) because calling text-service methods on those views
+        // corrupts the NSTextInputContext, breaking dictation and IME composition.
+        // Spellcheck in the web content is handled by the JS injection in step 3
+        // plus the HTML attributes set by CodeMirror.
         fn disable_on_view(view: cocoa::base::id) {
-            use objc::{msg_send, sel, sel_impl};
+            use objc::{class, msg_send, sel, sel_impl};
+
+            // Do not touch WKWebView or any of its descendants.
+            let wk_class = class!(WKWebView);
+            if unsafe { msg_send![view, isKindOfClass: wk_class] } {
+                return;
+            }
 
             let sel_continuous = sel!(setContinuousSpellCheckingEnabled:);
             let sel_automatic = sel!(setAutomaticSpellCheckingEnabled:);

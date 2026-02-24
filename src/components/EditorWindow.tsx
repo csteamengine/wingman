@@ -1197,12 +1197,31 @@ export function EditorWindow() {
     // When macOS dictation is cancelled by native Escape, the composition text is
     // removed from the DOM but compositionend may not be dispatched. A MutationObserver
     // detects the removal, then we check CodeMirror's state after it processes the change.
+    //
+    // A 500 ms grace period prevents a race condition: when dictation first starts,
+    // DOM mutations fire before CodeMirror updates its internal `.composing` flag,
+    // which would otherwise immediately reset isComposing back to false.  After the
+    // grace period we also run an explicit check so that if dictation ended without
+    // producing any DOM mutations, isComposing still gets cleared.
     useEffect(() => {
         if (!isComposing) return;
         const view = viewRef.current;
         if (!view) return;
 
+        let armed = false;
+        const graceTimer = setTimeout(() => {
+            armed = true;
+            // Immediate check after grace period in case dictation already
+            // ended without producing DOM mutations (no observer callback).
+            requestAnimationFrame(() => {
+                if (viewRef.current && !viewRef.current.composing) {
+                    setIsComposing(false);
+                }
+            });
+        }, 500);
+
         const observer = new MutationObserver(() => {
+            if (!armed) return;
             requestAnimationFrame(() => {
                 if (viewRef.current && !viewRef.current.composing) {
                     setIsComposing(false);
@@ -1216,7 +1235,10 @@ export function EditorWindow() {
             characterData: true,
         });
 
-        return () => observer.disconnect();
+        return () => {
+            clearTimeout(graceTimer);
+            observer.disconnect();
+        };
     }, [isComposing]);
 
     // Update editor content when it changes externally

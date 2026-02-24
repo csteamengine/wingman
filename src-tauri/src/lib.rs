@@ -22,7 +22,7 @@ use tauri::{
 #[cfg(target_os = "macos")]
 use tauri_nspanel::ManagerExt;
 #[cfg(target_os = "macos")]
-use window::{start_workspace_monitor, set_window_blur, update_vibrancy_material, get_window_monitor_name, disable_webview_spellcheck, WebviewWindowExt, MAIN_WINDOW_LABEL};
+use window::{start_workspace_monitor, set_window_blur, update_vibrancy_material, get_window_monitor_name, disable_webview_spellcheck, find_wk_content_view, promote_wk_content_view_to_first_responder, WebviewWindowExt, MAIN_WINDOW_LABEL};
 
 use clipboard::{calculate_text_stats, transform_text, TextStats, TextTransform};
 use credentials::{store_credential, get_credential, delete_credential};
@@ -1235,23 +1235,43 @@ fn get_app_version() -> String {
 #[allow(deprecated)]
 fn start_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
     use objc::{msg_send, sel, sel_impl, class};
+    use cocoa::base::{id, nil};
     use std::sync::mpsc;
     use std::time::Duration;
     let (tx, rx) = mpsc::channel();
     app_handle.run_on_main_thread(move || {
         unsafe {
-            let app: cocoa::base::id = msg_send![class!(NSApplication), sharedApplication];
-            let _: bool = msg_send![app, sendAction: sel!(startDictation:) to: cocoa::base::nil from: cocoa::base::nil];
+            let app: id = msg_send![class!(NSApplication), sharedApplication];
+            let key_window: id = msg_send![app, keyWindow];
+            if key_window.is_null() {
+                log::warn!("start_dictation: no key window");
+                let _ = tx.send(());
+                return;
+            }
+
+            // The default first responder is WryWebView (Wry's WKWebView wrapper),
+            // which does NOT implement NSTextInputClient.  macOS dictation requires
+            // the actual WKContentView — the internal WebKit view that handles text
+            // input, composition, and dictation.  We walk the view tree to find it,
+            // promote it to first responder, then start dictation on it.
+            let content_view: id = msg_send![key_window, contentView];
+            if let Some(wk_content) = find_wk_content_view(content_view) {
+                let _: bool = msg_send![key_window, makeFirstResponder: wk_content];
+                let _: () = msg_send![wk_content, startDictation: nil];
+                log::info!("start_dictation: started on WKContentView");
+            } else {
+                // Fallback: send through the responder chain as before.
+                let _: bool = msg_send![app, sendAction: sel!(startDictation:) to: nil from: nil];
+                log::warn!("start_dictation: WKContentView not found, used sendAction fallback");
+            }
         }
         let _ = tx.send(());
     }).map_err(|e| e.to_string())?;
-    // Wait up to 500 ms for the action to run.  If the main thread is blocked
-    // (e.g. dictation UI init) the timeout prevents a permanent deadlock.
-    // We return Ok either way — composition events on the JS side are the
-    // real source of truth for whether dictation started.
     let _ = rx.recv_timeout(Duration::from_millis(500));
     Ok(())
 }
+
+
 
 #[cfg(target_os = "macos")]
 #[tauri::command]
@@ -1571,6 +1591,11 @@ async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Resul
                 if let Err(e) = disable_webview_spellcheck(&webview_window) {
                     log::warn!("Failed to disable webview text services after show: {:?}", e);
                 }
+
+                // Promote WKContentView to first responder so that macOS system
+                // dictation (Fn-Fn / Globe key) targets the correct text input
+                // view instead of the WryWebView wrapper.
+                promote_wk_content_view_to_first_responder(&webview_window);
 
                 log::info!("show_window (panel) completed successfully");
             })

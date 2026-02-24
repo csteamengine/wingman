@@ -9,7 +9,7 @@ pub struct TextStats {
 }
 
 pub fn calculate_text_stats(text: &str) -> TextStats {
-    let character_count = text.chars().count();
+    let character_count = text.chars().filter(|c| *c != '\n' && *c != '\r').count();
     let word_count = text.split_whitespace().count();
     let line_count = if text.is_empty() {
         0
