@@ -36,8 +36,8 @@ function getCorsHeaders(req: Request): Record<string, string> {
 const MONTHLY_TOKEN_LIMIT = 1_000_000;
 
 // Claude model to use for cost efficiency
-// Using Claude 3.5 Haiku - fast and affordable
-const CLAUDE_MODEL = "claude-3-5-haiku-20241022";
+// Using Claude Haiku 4.5 - fast and affordable
+const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
 
 // System prompts for different AI features
 const SYSTEM_PROMPTS: Record<string, string> = {
