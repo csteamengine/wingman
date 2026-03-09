@@ -793,13 +793,11 @@ pub fn set_window_blur(window: &WebviewWindow<impl Runtime>, enabled: bool) -> R
     unsafe {
         // Make window transparent
         let _: () = msg_send![ns_window, setOpaque: NO];
-        // Use native macOS window shadow (Raycast-style outside-window shadow).
-        let _: () = msg_send![ns_window, setHasShadow: YES];
+        // Disable native shadow — it doesn't respect CALayer corner radius
+        // on the first display frame, causing a brief artifact at the top.
+        // The CSS box-shadow on .editor-container provides the shadow instead.
+        let _: () = msg_send![ns_window, setHasShadow: NO];
         ns_window.setBackgroundColor_(NSColor::clearColor(nil));
-
-        // Set window to have no title bar (should already be set via decorations: false)
-        // But ensure it's transparent if present
-        let _: () = msg_send![ns_window, setTitlebarAppearsTransparent: YES];
 
         let content_view: id = ns_window.contentView();
 
