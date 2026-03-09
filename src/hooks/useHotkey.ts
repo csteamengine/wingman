@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { register, unregister, isRegistered } from '@tauri-apps/plugin-global-shortcut';
+import { closeSearchPanel, searchPanelOpen } from '@codemirror/search';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useEditorStore } from '../stores/editorStore';
 import { useLicenseStore } from '../stores/licenseStore';
@@ -79,6 +80,15 @@ export function useKeyboardShortcuts() {
 
       // Escape - handle based on sticky mode and active panel
       if (e.key === 'Escape') {
+        // If the search panel is open, close it instead of hiding the window
+        const editorView = useEditorStore.getState().editorView;
+        if (editorView && searchPanelOpen(editorView.state)) {
+          e.preventDefault();
+          closeSearchPanel(editorView);
+          editorView.focus();
+          return;
+        }
+
         e.preventDefault();
 
         // If on settings/history/snippets/chains: single Escape always closes and returns to editor

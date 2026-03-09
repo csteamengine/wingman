@@ -224,6 +224,7 @@ function createSearchPanel(view: EditorView): Panel {
             findNext(view);
         } else if (e.key === 'Escape') {
             e.preventDefault();
+            e.stopPropagation();
             closeSearchPanel(view);
             view.focus();
         } else {
@@ -238,6 +239,7 @@ function createSearchPanel(view: EditorView): Panel {
             handleReplace();
         } else if (e.key === 'Escape') {
             e.preventDefault();
+            e.stopPropagation();
             closeSearchPanel(view);
             view.focus();
         } else {

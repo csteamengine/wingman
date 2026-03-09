@@ -22,7 +22,7 @@ use tauri::{
 #[cfg(target_os = "macos")]
 use tauri_nspanel::ManagerExt;
 #[cfg(target_os = "macos")]
-use window::{start_workspace_monitor, set_window_blur, update_vibrancy_material, get_window_monitor_name, disable_webview_spellcheck, find_wk_content_view, promote_wk_content_view_to_first_responder, WebviewWindowExt, MAIN_WINDOW_LABEL};
+use window::{start_workspace_monitor, set_window_blur, update_vibrancy_material, get_window_monitor_name, disable_webview_spellcheck, WebviewWindowExt, MAIN_WINDOW_LABEL};
 
 use clipboard::{calculate_text_stats, transform_text, TextStats, TextTransform};
 use credentials::{store_credential, get_credential, delete_credential};
@@ -1221,112 +1221,6 @@ fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
-// Dictation commands.
-//
-// start_dictation blocks with a short timeout so the sendAction has time to
-// execute on the main thread (fully non-blocking caused the action to fire
-// too late in dev mode), but won't deadlock if the dictation UI initialisation
-// holds the main thread.
-//
-// stop_dictation is non-blocking: it schedules all stop approaches on the
-// main thread and returns immediately.
-#[cfg(target_os = "macos")]
-#[tauri::command]
-#[allow(deprecated)]
-fn start_dictation(app_handle: tauri::AppHandle) -> Result<(), String> {
-    use objc::{msg_send, sel, sel_impl, class};
-    use cocoa::base::{id, nil};
-    use std::sync::mpsc;
-    use std::time::Duration;
-    let (tx, rx) = mpsc::channel();
-    app_handle.run_on_main_thread(move || {
-        unsafe {
-            let app: id = msg_send![class!(NSApplication), sharedApplication];
-            let key_window: id = msg_send![app, keyWindow];
-            if key_window.is_null() {
-                log::warn!("start_dictation: no key window");
-                let _ = tx.send(());
-                return;
-            }
-
-            // The default first responder is WryWebView (Wry's WKWebView wrapper),
-            // which does NOT implement NSTextInputClient.  macOS dictation requires
-            // the actual WKContentView — the internal WebKit view that handles text
-            // input, composition, and dictation.  We walk the view tree to find it,
-            // promote it to first responder, then start dictation on it.
-            let content_view: id = msg_send![key_window, contentView];
-            if let Some(wk_content) = find_wk_content_view(content_view) {
-                let _: bool = msg_send![key_window, makeFirstResponder: wk_content];
-                let _: () = msg_send![wk_content, startDictation: nil];
-                log::info!("start_dictation: started on WKContentView");
-            } else {
-                // Fallback: send through the responder chain as before.
-                let _: bool = msg_send![app, sendAction: sel!(startDictation:) to: nil from: nil];
-                log::warn!("start_dictation: WKContentView not found, used sendAction fallback");
-            }
-        }
-        let _ = tx.send(());
-    }).map_err(|e| e.to_string())?;
-    let _ = rx.recv_timeout(Duration::from_millis(500));
-    Ok(())
-}
-
-
-
-#[cfg(target_os = "macos")]
-#[tauri::command]
-#[allow(deprecated)]
-fn stop_dictation(_window: tauri::WebviewWindow, app_handle: tauri::AppHandle) -> Result<(), String> {
-    use objc::{msg_send, sel, sel_impl, class};
-    use cocoa::base::{id, nil};
-    use std::sync::mpsc;
-    use std::time::Duration;
-
-    let (tx, rx) = mpsc::channel();
-    app_handle.run_on_main_thread(move || {
-        unsafe {
-            let app: id = msg_send![class!(NSApplication), sharedApplication];
-            let key_window: id = msg_send![app, keyWindow];
-            if key_window == nil {
-                let _ = tx.send(());
-                return;
-            }
-
-            // Discard in-progress marked (composition) text so partial dictation
-            // isn't committed into the editor.
-            let input_context: id = msg_send![class!(NSTextInputContext), currentInputContext];
-            if !input_context.is_null() {
-                let _: () = msg_send![input_context, discardMarkedText];
-            }
-
-            // Resign first responder — macOS dictation stops when the text input
-            // target loses first responder status. Using nil makes the window itself
-            // the first responder. The frontend restores editor focus after a brief
-            // delay via .focus() on the contenteditable element.
-            let _: bool = msg_send![key_window, makeFirstResponder: nil];
-
-            log::info!("stop_dictation: discarded marked text and resigned first responder");
-        }
-        let _ = tx.send(());
-    }).map_err(|e| e.to_string())?;
-
-    let _ = rx.recv_timeout(Duration::from_millis(500));
-
-    Ok(())
-}
-
-#[cfg(not(target_os = "macos"))]
-#[tauri::command]
-fn start_dictation() -> Result<(), String> {
-    Err("Dictation is only available on macOS".to_string())
-}
-
-#[cfg(not(target_os = "macos"))]
-#[tauri::command]
-fn stop_dictation() -> Result<(), String> {
-    Err("Dictation is only available on macOS".to_string())
-}
-
 // Window commands
 #[tauri::command]
 async fn toggle_fullscreen(window: tauri::Window) -> Result<(), String> {
@@ -1591,11 +1485,6 @@ async fn show_window(window: tauri::Window, state: State<'_, AppState>) -> Resul
                 if let Err(e) = disable_webview_spellcheck(&webview_window) {
                     log::warn!("Failed to disable webview text services after show: {:?}", e);
                 }
-
-                // Promote WKContentView to first responder so that macOS system
-                // dictation (Fn-Fn / Globe key) targets the correct text input
-                // view instead of the WryWebView wrapper.
-                promote_wk_content_view_to_first_responder(&webview_window);
 
                 log::info!("show_window (panel) completed successfully");
             })
@@ -2043,9 +1932,6 @@ pub fn run() {
             configure_ai,
             get_ai_presets,
             save_ai_presets_cmd,
-            // Dictation
-            start_dictation,
-            stop_dictation,
             // Window
             show_window,
             hide_window,

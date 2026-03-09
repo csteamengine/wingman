@@ -61,7 +61,6 @@ import {
     AILoadingOverlay,
     searchPanelExtension,
     TipsBar,
-    DictationButton,
 } from './editor';
 
 import type {ObsidianResult, GistResult, AIPreset} from '../types';
@@ -152,7 +151,6 @@ export function EditorWindow() {
     const [aiError, setAiError] = useState<string | null>(null);
     const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
     const [selectedCustomPromptId, setSelectedCustomPromptId] = useState<string | null>(null);
-    const [isComposing, setIsComposing] = useState(false);
     const [contextDetection, setContextDetection] = useState<DetectorResult | null>(null);
     const contextDismissedRef = useRef<string | null>(null); // tracks dismissed detector id
     const pasteOrDropRef = useRef(false); // tracks if content change came from paste/drag
@@ -1165,18 +1163,7 @@ export function EditorWindow() {
         setEditorView(view);
         view.focus();
 
-        // Track composition state (dictation / IME) via DOM events.
-        // These fire immediately on composition start/end, unlike CodeMirror's
-        // updateListener which only fires on doc/selection/viewport changes.
-        const editorDom = view.dom;
-        const onCompositionStart = () => setIsComposing(true);
-        const onCompositionEnd = () => setIsComposing(false);
-        editorDom.addEventListener('compositionstart', onCompositionStart);
-        editorDom.addEventListener('compositionend', onCompositionEnd);
-
         return () => {
-            editorDom.removeEventListener('compositionstart', onCompositionStart);
-            editorDom.removeEventListener('compositionend', onCompositionEnd);
             view.destroy();
             setEditorView(null);
         };
@@ -1192,54 +1179,6 @@ export function EditorWindow() {
         });
         return () => { unlisten.then(fn => fn()); };
     }, []);
-
-    // Fallback: detect composition end when compositionend DOM event doesn't fire.
-    // When macOS dictation is cancelled by native Escape, the composition text is
-    // removed from the DOM but compositionend may not be dispatched. A MutationObserver
-    // detects the removal, then we check CodeMirror's state after it processes the change.
-    //
-    // A 500 ms grace period prevents a race condition: when dictation first starts,
-    // DOM mutations fire before CodeMirror updates its internal `.composing` flag,
-    // which would otherwise immediately reset isComposing back to false.  After the
-    // grace period we also run an explicit check so that if dictation ended without
-    // producing any DOM mutations, isComposing still gets cleared.
-    useEffect(() => {
-        if (!isComposing) return;
-        const view = viewRef.current;
-        if (!view) return;
-
-        let armed = false;
-        const graceTimer = setTimeout(() => {
-            armed = true;
-            // Immediate check after grace period in case dictation already
-            // ended without producing DOM mutations (no observer callback).
-            requestAnimationFrame(() => {
-                if (viewRef.current && !viewRef.current.composing) {
-                    setIsComposing(false);
-                }
-            });
-        }, 500);
-
-        const observer = new MutationObserver(() => {
-            if (!armed) return;
-            requestAnimationFrame(() => {
-                if (viewRef.current && !viewRef.current.composing) {
-                    setIsComposing(false);
-                }
-            });
-        });
-
-        observer.observe(view.contentDOM, {
-            childList: true,
-            subtree: true,
-            characterData: true,
-        });
-
-        return () => {
-            clearTimeout(graceTimer);
-            observer.disconnect();
-        };
-    }, [isComposing]);
 
     // Update editor content when it changes externally
     useEffect(() => {
@@ -1340,7 +1279,6 @@ export function EditorWindow() {
                     }}
                     onMouseDownCapture={handleEditorPaneMouseDownCapture}
                 />
-                <DictationButton isComposing={isComposing} onDictationStop={() => setIsComposing(false)} />
             </div>
 
             <AttachmentsBar

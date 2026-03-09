@@ -1,5 +1,6 @@
 import { EditorView, keymap } from '@codemirror/view';
 import { insertNewlineAndIndent } from '@codemirror/commands';
+import { openSearchPanel } from '@codemirror/search';
 
 // Helper to wrap selected text with brackets/quotes
 export function wrapSelection(view: EditorView, open: string, close: string): boolean {
@@ -38,6 +39,9 @@ export const editorKeymap = keymap.of([
     { key: '<', run: (view) => wrapSelection(view, '<', '>') },
     { key: '>', run: (view) => wrapSelection(view, '<', '>') },
     { key: '`', run: (view) => wrapSelection(view, '`', '`') },
+
+    // Cmd/Ctrl+R: Open search & replace panel
+    { key: 'Mod-r', run: (view) => { openSearchPanel(view); return true; } },
 
     // Cmd/Ctrl+D: Duplicate line
     {

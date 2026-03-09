@@ -14,7 +14,7 @@ pub static DIALOG_OPEN: AtomicBool = AtomicBool::new(false);
 
 /// Tracks whether the panel currently has key-window status.
 /// Used by the debounced resign-key handler to avoid hiding the panel
-/// during transient focus changes (e.g. macOS dictation overlay).
+/// during transient focus changes (e.g. system overlays).
 static PANEL_IS_KEY: AtomicBool = AtomicBool::new(false);
 
 /// Monitor workspace and monitor changes, move panel to follow cursor in sticky mode
@@ -206,13 +206,6 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
             log::info!("panel became key window");
             PANEL_IS_KEY.store(true, Ordering::SeqCst);
 
-            // Promote WKContentView to first responder so macOS system dictation
-            // (Fn-Fn / Globe key) targets the correct NSTextInputClient instead
-            // of Wry's WryWebView wrapper.
-            if let Some(window) = app_handle_for_key.get_webview_window(MAIN_WINDOW_LABEL) {
-                promote_wk_content_view_to_first_responder(&window);
-            }
-
             // When panel becomes key window in sticky mode, emit event to refocus editor
             // This handles workspace switches where the panel needs to regain input focus
             if let Ok(settings) = load_settings() {
@@ -244,8 +237,8 @@ impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
             }
 
             // Debounce: wait briefly before hiding to tolerate transient focus
-            // changes.  macOS dictation, Spotlight suggestions, and similar system
-            // overlays can momentarily steal key-window status from the panel.
+            // changes.  Spotlight suggestions and similar system overlays can
+            // momentarily steal key-window status from the panel.
             // If the panel regains key within the grace period we skip the hide.
             let app_handle2 = app_handle.clone();
             std::thread::spawn(move || {
@@ -573,61 +566,6 @@ pub fn get_window_monitor_name<R: Runtime>(window: &WebviewWindow<R>) -> Option<
     get_monitor_name_for_point(center_x, center_y)
 }
 
-/// Walk the view hierarchy to find WKContentView — the private WebKit view
-/// that implements NSTextInputClient and handles dictation / IME.
-/// Wry's WryWebView wrapper is NOT the text-input view; making WKContentView
-/// the first responder is required for macOS system dictation to work.
-#[allow(deprecated)]
-pub unsafe fn find_wk_content_view(view: cocoa::base::id) -> Option<cocoa::base::id> {
-    use cocoa::base::id;
-    use objc::{msg_send, sel, sel_impl};
-
-    if view.is_null() { return None; }
-
-    let cls: id = msg_send![view, class];
-    let name: id = msg_send![cls, description];
-    let cstr: *const std::os::raw::c_char = msg_send![name, UTF8String];
-    let name_str = std::ffi::CStr::from_ptr(cstr).to_string_lossy();
-    if name_str == "WKContentView" {
-        return Some(view);
-    }
-
-    let subviews: id = msg_send![view, subviews];
-    if subviews.is_null() { return None; }
-    let count: usize = msg_send![subviews, count];
-    for i in 0..count {
-        let child: id = msg_send![subviews, objectAtIndex: i];
-        if !child.is_null() {
-            if let Some(cv) = find_wk_content_view(child) {
-                return Some(cv);
-            }
-        }
-    }
-    None
-}
-
-/// Promote WKContentView to first responder on the given window.
-/// Call this after the panel is shown / becomes key so that macOS system
-/// dictation (Fn-Fn) targets the correct NSTextInputClient.
-#[allow(deprecated)]
-pub fn promote_wk_content_view_to_first_responder<R: Runtime>(window: &WebviewWindow<R>) {
-    use cocoa::appkit::NSWindow as NSWindowTrait;
-
-    let ns_window = match window.ns_window() {
-        Ok(w) => w as cocoa::base::id,
-        Err(_) => return,
-    };
-    if ns_window.is_null() { return; }
-
-    unsafe {
-        let content_view: cocoa::base::id = ns_window.contentView();
-        if let Some(wk_content) = find_wk_content_view(content_view) {
-            use objc::{msg_send, sel, sel_impl};
-            let _: bool = msg_send![ns_window, makeFirstResponder: wk_content];
-        }
-    }
-}
-
 /// Disable native text services on WKWebView-hosted editors in packaged macOS
 /// builds. Besides spellcheck underlines, AppKit can apply Smart Insert/Delete
 /// and text substitutions that mutate content (for example, deleting adjacent
@@ -675,7 +613,7 @@ pub fn disable_webview_spellcheck(window: &WebviewWindow<impl Runtime>) -> Resul
         // ── 2. Walk the view tree and disable text services on non-WebView views ──
         // IMPORTANT: We skip WKWebView and all its internal subviews (WKContentView,
         // WKScrollView, etc.) because calling text-service methods on those views
-        // corrupts the NSTextInputContext, breaking dictation and IME composition.
+        // corrupts the NSTextInputContext, breaking IME composition.
         // Spellcheck in the web content is handled by the JS injection in step 3
         // plus the HTML attributes set by CodeMirror.
         fn disable_on_view(view: cocoa::base::id) {
